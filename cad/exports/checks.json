@@ -1,0 +1,114 @@
+{
+  "interference": [
+    {
+      "variant": "print",
+      "pairs": 255,
+      "clashes": []
+    },
+    {
+      "variant": "cnc",
+      "pairs": 255,
+      "clashes": []
+    }
+  ],
+  "clearances": [
+    {
+      "name": "usb_plug_to_opening",
+      "value_mm": 0.25,
+      "minimum_mm": 0.2,
+      "ok": true
+    },
+    {
+      "name": "keycap_to_deck",
+      "value_mm": 0.5,
+      "minimum_mm": 0.4,
+      "ok": true
+    },
+    {
+      "name": "display_glass_under_deck",
+      "value_mm": 0.4,
+      "minimum_mm": 0.2,
+      "ok": true
+    },
+    {
+      "name": "display_window_inside_module",
+      "value_mm": 1.0,
+      "minimum_mm": 0.5,
+      "ok": true
+    },
+    {
+      "name": "encoder_body_under_deck",
+      "value_mm": 0.5,
+      "minimum_mm": 0.3,
+      "ok": true
+    },
+    {
+      "name": "screw_engagement",
+      "value_mm": 3.8,
+      "minimum_mm": 3.0,
+      "ok": true
+    },
+    {
+      "name": "screw_tip_to_hole_end",
+      "value_mm": 0.4,
+      "minimum_mm": 0.2,
+      "ok": true
+    },
+    {
+      "name": "skin_over_screw_hole",
+      "value_mm": 0.8,
+      "minimum_mm": 0.6,
+      "ok": true
+    },
+    {
+      "name": "knob_to_deck_when_pressed",
+      "value_mm": 0.5,
+      "minimum_mm": 0.3,
+      "ok": true
+    },
+    {
+      "name": "socket_to_floor",
+      "value_mm": 3.15,
+      "minimum_mm": 1.0,
+      "ok": true
+    },
+    {
+      "name": "usb_body_to_floor",
+      "value_mm": 1.74,
+      "minimum_mm": 0.5,
+      "ok": true
+    },
+    {
+      "name": "led_inside_slot_height",
+      "value_mm": 2.4,
+      "minimum_mm": 0.5,
+      "ok": true
+    }
+  ],
+  "printability": [
+    {
+      "part": "base",
+      "widest_span_mm": 8.4,
+      "limit_mm": 15.0,
+      "ok": true
+    },
+    {
+      "part": "top",
+      "widest_span_mm": 3.14,
+      "limit_mm": 15.0,
+      "ok": true
+    },
+    {
+      "part": "diffuser_left",
+      "widest_span_mm": 2.9,
+      "limit_mm": 15.0,
+      "ok": true
+    },
+    {
+      "part": "knob_left",
+      "widest_span_mm": 8.0,
+      "limit_mm": 15.0,
+      "ok": true
+    }
+  ]
+}

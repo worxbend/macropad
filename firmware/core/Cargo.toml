@@ -1,0 +1,6 @@
+[package]
+name = "macropad-core"
+description = "Hardware-independent macropad logic: input decoding, keymap engine, LED effects, display UI"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true

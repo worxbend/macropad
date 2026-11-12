@@ -1,0 +1,21 @@
+[project]
+name = "macropad-case"
+version = "0.1.0"
+description = "Parametric case for the macropad (build123d): 3D-print and CNC variants, fit checks, exports"
+requires-python = ">=3.11"
+dependencies = [
+    "build123d>=0.13",
+    "trimesh>=4.0",
+    "numpy>=1.26",
+    "matplotlib>=3.8",
+]
+
+[tool.setuptools]
+packages = ["macropad_case"]
+
+[tool.ruff]
+line-length = 110
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"

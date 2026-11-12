@@ -1,0 +1,6 @@
+[package]
+name = "macropad-uf2"
+description = "Converts the firmware ELF to a UF2 file the RP2350 boot ROM accepts"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true

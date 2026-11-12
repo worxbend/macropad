@@ -1,0 +1,100 @@
+# Single source of truth for the board: mechanical layout and pin map.
+# The PCB generator, the case model and the firmware pin check all read this file.
+#
+# Units: millimetres. Origin: top-left corner of the PCB seen from the top (key side).
+# X grows to the right, Y grows toward the front (the bottom edge of the pad).
+# "MEASURE" marks a dimension taken from community footprints, not from a caliper.
+
+[board]
+width = 84.0
+height = 82.5
+thickness = 1.6
+corner_radius = 2.0
+
+[keys]
+# 4 x 3 MX hot-swap grid, direct-wired (one GPIO per key, switch to GND, no diodes).
+columns = 4
+rows = 3
+pitch = 19.05
+first_x = 13.425   # centre of column 0
+first_y = 32.0     # centre of row 0
+# GPIO per key, row-major: K0 is top-left, K11 is bottom-right.
+gpio = [21, 20, 4, 3,  19, 18, 6, 5,  17, 16, 8, 7]
+
+[encoders]
+# Alps EC11E with push switch, 20 mm shaft. A/B/SW short to GND.
+part = "EC11E18244AU"
+[encoders.left]
+x = 13.425
+y = 11.0
+gpio_a = 27
+gpio_b = 28
+gpio_sw = 29
+[encoders.right]
+x = 70.575
+y = 11.0
+gpio_a = 0
+gpio_b = 1
+gpio_sw = 2
+
+[display]
+# nice!view: Sharp LS011B7DH03, 160 x 68, 1-bit memory LCD, 3-wire SPI, CS active high.
+# The module is 36 x 14 mm and lies landscape between the encoders.
+x = 42.0            # centre of the module PCB
+y = 11.0
+length = 36.0
+width = 14.0
+header_x = 25.27    # MEASURE: header row sits 1.27 mm from the module's short edge
+header_pitch = 2.54
+# Header pins from the back edge (small Y) to the front: MEASURE, check against your module.
+header_pins = ["MOSI", "SCK", "3V3", "GND", "CS"]
+gpio_sck = 22       # SPI0 SCK
+gpio_mosi = 23      # SPI0 TX
+gpio_cs = 24
+# Visible glass, centred on the module but pushed away from the header. MEASURE.
+window_x = 43.5
+window_y = 11.0
+window_length = 27.0
+window_width = 12.0
+
+[leds]
+# SK6812 SIDE-A side-emitting RGB, on the bottom face at the left and right edges,
+# shining outward through the diffuser strips in the case sides.
+part = "SK6812SIDE-A"
+gpio_data = 9       # through a 3.3 V -> 5 V level shifter
+inset = 0.8         # LED body centre to the PCB edge
+# Chain order: right side back to front, then left side front to back.
+right_y = [30.0, 43.5, 57.0, 70.5]
+left_y = [70.5, 57.0, 43.5, 30.0]
+
+[usb]
+# USB-C receptacle on the bottom face, centred on the back edge. Power, data and flashing.
+x = 42.0
+mouth_overhang = 0.5   # receptacle mouth past the PCB back edge
+body_height = 3.26     # below the PCB bottom face
+
+[buttons]
+# Tactile switches on the bottom face, reached through holes in the case floor.
+[buttons.boot]
+x = 30.5
+y = 21.3
+[buttons.reset]
+x = 53.5
+y = 21.3
+
+[mounting]
+hole_diameter = 2.2    # M2 clearance
+holes = [[3.2, 3.2], [80.8, 3.2], [42.0, 41.525], [42.0, 60.575], [3.2, 79.3], [80.8, 79.3]]
+
+[stack]
+# Heights above the PCB top face (negative = below it).
+plate_top = 5.0            # MX plate top surface
+plate_thickness = 1.5
+switch_cutout = 14.0
+deck_top = 8.5             # raised deck over the encoders and the display
+display_glass_top = 7.0    # MEASURE: nice!view on its low-profile sockets
+encoder_body_top = 6.5
+encoder_bushing_diameter = 7.0
+encoder_shaft_top = 20.0
+socket_depth = 1.85        # hot-swap socket below the PCB bottom face
+underside_clearance = 5.0  # PCB bottom face to the case floor

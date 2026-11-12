@@ -1,0 +1,10 @@
+[package]
+name = "macropad-sim"
+description = "Renders the firmware's real display UI to PNG files on a PC"
+edition.workspace = true
+version.workspace = true
+publish.workspace = true
+
+[dependencies]
+macropad-core = { path = "../core" }
+png = "0.18"
