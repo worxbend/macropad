@@ -138,6 +138,8 @@ class Case:
     led_body: tuple[float, float, float] = (4.0, 1.6, 1.6)  # MEASURE: along the edge, depth, height
     led_window_margin: float = 1.0
     led_sill: float = 1.0  # floor of the light channel above the cavity floor
+    # The light bar shows only through the gap, so the light reaches the eye indirectly. A guess:
+    # that it is bright and even enough to read as a line, and that a smoke-grey bar still passes it.
     light_channel_reach: float = 1.7  # from the cavity wall into the side wall; the rest is the outer skin
     light_channel_radius: float = 1.5  # outer plan corners of the channel and of the light bar
     diffuser_fit: float = 0.15

@@ -179,7 +179,7 @@ uv pip install --python .venv/bin/python -e .
 1. **Interference.** Every part against every bought component and every other part, for both variants:
    582 pairs each. Any shared volume over 0.05 mm³ fails. Keycaps are blocks that cover the whole key travel.
    The tilt bar against the back foot strip is skipped, because the bar takes that strip's recess.
-2. **Named clearances.** 48 gaps computed from the dimensions: USB plug to its opening, keycap to the
+2. **Named clearances.** 47 gaps computed from the dimensions: USB plug to its opening, keycap to the
    dish rim, lens to the glass, screw engagement, screw head under the strip recess, floor under each
    recess and each engraving, and more.
 3. **Measurements on the finished solids.** These do not trust how the model was built.

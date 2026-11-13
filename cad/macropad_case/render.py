@@ -9,6 +9,7 @@ import numpy as np
 from build123d import Box, Part, Pos, Rot
 from PIL import Image, ImageDraw, ImageFont
 
+from . import signature
 from .checks import PRINT_POSES
 from .components import DISPLAY_ACTIVE_AREA, drawn_components
 from .raster import Camera, Decal, Lighting, Material, Mesh, Scene, mesh_of, render
@@ -43,6 +44,8 @@ MATERIALS = {
     "button": Material((0.25, 0.25, 0.27)),
     "screw": Material((0.72, 0.73, 0.76), gloss=0.8),
 }
+LASER_MARK = Material((0.30, 0.31, 0.33), gloss=0.0)  # a guess: a dark mark on clear anodised aluminium
+MARK_OFF_SURFACE = 0.02  # mm below the underside, so the flat mark is drawn in front of it
 GLOWING_DIFFUSER = Material((0.98, 0.93, 0.82), glow=2.2)  # a guess: warm white; the LEDs are RGB
 
 
@@ -75,7 +78,7 @@ CENTRE = (BOARD.board.width / 2, -BOARD.board.height / 2, 3.0)
 FRONT_STRIP_LINE = screw_rows()[FRONT_ROW][0][1]
 FEET_BOTTOM = LEVELS.foot_recess_roof - foot_thickness(FRONT_ROW)
 EXPLODED_LIFT = {"base": -34.0, "diffuser": -16.0, "screw": -58.0, "foot_strip": -84.0, "centre_pad": -84.0,
-                 "top": 62.0, "lens": 74.0, "switch": 100.0, "keycap": 130.0, "knob": 152.0}
+                 "top": 56.0, "lens": 78.0, "switch": 122.0, "keycap": 150.0, "knob": 170.0}
 SECTION_X = BOARD.usb.x  # the cut passes through the USB port, the lens, the display and the two centre screws
 SECTION_Y = BOARD.leds.left_y[1]  # a second cut, across the pad through one LED on each side
 PLUG_PULLED_OUT = 14.0
@@ -126,7 +129,7 @@ VIEWS = [
     _colourway("Silver, milled", "hero_aluminium"),
     View("top_plan", _camera((0, 0, 420), target=(CENTRE[0], CENTRE[1], 0.0), field_of_view=17, up=(0.0, 1.0, 0.0))),
     View("side_profile", _camera((-420, 0, 22), target=(0.0, CENTRE[1], 5.0), field_of_view=11.5)),
-    View("exploded", _camera((-250, -430, 290), target=(CENTRE[0], CENTRE[1], 40.0), field_of_view=33),
+    View("exploded", _camera((-250, -430, 290), target=(CENTRE[0], CENTRE[1], 50.0), field_of_view=36),
          lift=EXPLODED_LIFT, ground=None, size=(1300, 1700)),
     View("section_usb_display", _camera((330, -70, 95), target=(SECTION_X, CENTRE[1] + 4, 4.0), field_of_view=14),
          scene=CUT_ALONG, hidden=("tilt_bar",)),
@@ -191,12 +194,24 @@ def _scene_meshes() -> dict[str, dict[str, Mesh]]:
         SHELLS: _meshes(_shells_side_by_side(printed)),
         BED: _meshes(_parts_on_the_bed(printed)),
     }
-    # The milled build differs from the printed one in its two shells only.
+    # The milled build differs from the printed one in its two shells and in the laser mark under the base.
     scenes[MILLED] = scenes[ASSEMBLY] | _meshes({name: milled[name] for name in ("base", "top")})
+    scenes[MILLED]["signature_mark"] = _laser_mark()
     # The cuts show the whole lens: a cut through its window would leave only the two borders.
     for name, (axis, position, keep) in CUTS.items():
         scenes[name] = _with_cut_faces(_meshes(_cut_open(assembly, axis, position, keep)), axis, position)
     return scenes
+
+
+def _laser_mark() -> Mesh:
+    """The signature as a flat patch of colour on the underside of the milled base. It is not in the
+    solids: a laser mark has no depth worth drawing."""
+    artwork = Pos(0, 0, LEVELS.floor_bottom - MARK_OFF_SURFACE) * signature.artwork()
+    seen_from_above = mesh_of(artwork, LASER_MARK)
+    # The sketch faces up; turn every triangle over so the mark is seen from below.
+    return replace(
+        seen_from_above, triangles=seen_from_above.triangles[:, ::-1], normals=-seen_from_above.normals[:, ::-1]
+    )
 
 
 def _meshes(solids: dict[str, Part]) -> dict[str, Mesh]:
