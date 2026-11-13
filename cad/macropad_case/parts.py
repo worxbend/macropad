@@ -27,11 +27,6 @@ UNDERSIDE_MARK_SIZE = 3.6
 
 def base(variant: str) -> Part:
     body = base_body(variant)
-    if variant == CNC:
-        # Milled only. Printed underside down, the groove's roof is one winding overhang that the
-        # printability check counts as a 24 mm span.
-        under_signature = (LEVELS.floor_bottom - CUT_OVERSHOOT, LEVELS.floor_bottom + signature.GROOVE_DEPTH)
-        body -= slab(signature.artwork(), under_signature)
     if variant == PRINT:
         under = LEVELS.floor_bottom - CUT_OVERSHOOT
         body -= slab(button_legends(), (under, LEVELS.floor_bottom + CASE.engraving_depth))
@@ -153,7 +148,7 @@ def underside_mark() -> Sketch:
 
 
 def underside_artwork() -> Sketch:
-    """Everything engraved in the floor."""
+    """Everything marked on the underside. The signature is laser-marked only: it is not in the solids."""
     return button_legends() + underside_mark() + signature.artwork()
 
 

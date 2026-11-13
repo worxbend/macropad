@@ -97,7 +97,7 @@ After a firmware change run `make firmware` and flash again.
 | Wrong colours (red and green swapped) | The colour order is assumed green-red-blue. It is set where `firmware/fw/src/leds.rs` creates the LED driver. |
 | The ripple or the knob dot runs the wrong way | The firmware's LED order follows `board.toml`: right side back to front, then left side front to back. If the board is wired otherwise, `firmware/core/src/geometry.rs` is the place. |
 | Dim or uneven through the strips | Print the diffusers in clear or natural PETG with 100 % infill. Ripple speed and idle level are guesses made on a monitor; they are constants in `firmware/core/src/lighting.rs`. |
-| Light leaks at the seam | The lap joint blocks the seam only along the ridges. It is open at the corners and next to the strips by design. |
+| Light leaks in the gap away from the two light lines | The lap joint blocks the joint only along the ridges. It is open at the corners and next to the light bars by design. A light-coloured printed base also glows through its 1.0 mm skin: print the base dark. |
 
 ## Report what you find
 

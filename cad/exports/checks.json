@@ -423,21 +423,15 @@
       "ok": true
     },
     {
-      "name": "floor_under_signature",
-      "value_mm": 2.1,
-      "minimum_mm": 0.8,
-      "ok": true
-    },
-    {
       "name": "signature_inside_free_field",
-      "value_mm": 2.517,
+      "value_mm": 2.304,
       "minimum_mm": 1.5,
       "ok": true
     },
     {
-      "name": "signature_groove_millable",
-      "value_mm": 0.6,
-      "minimum_mm": 0.46,
+      "name": "signature_line_laser_markable",
+      "value_mm": 0.3,
+      "minimum_mm": 0.18,
       "ok": true
     }
   ],

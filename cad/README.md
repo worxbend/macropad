@@ -23,6 +23,8 @@ Print one copy and measure before you order a batch or pay for machining.
 | Back, with the plug drawn pulled out. | The USB-C opening with its 0.5 mm lead-in. The gap runs into it on both sides. |
 | ![underside](../docs/images/cad/underside.png) | ![shells from inside](../docs/images/cad/shells_inside.png) |
 | Underside: two foot strips, the centre pad, the label field, BOOT and RESET. No screw shows. | Both shells from inside: lap ridges and light channels in the base, ribs and screw bosses under the plate. |
+| ![milled underside](../docs/images/cad/underside_aluminium.png) | |
+| Underside of the milled base, with the laser-marked signature beside the centre pad. | |
 
 The pictures come from the same solids as the exports. The display shows `docs/images/ui/media.png`,
 the firmware simulator's own picture, laid on the lit area of the glass (25.2 x 10.7 mm, a datasheet value
@@ -77,6 +79,12 @@ the USB parts and the screws are reference shapes drawn from datasheets, not ven
   underside. Print variant only: the CNC parts stay plain, to be laser-marked or left blank. The
   underside mark is not sunk but left standing in its field, flush with the underside: sunk into the
   field's roof it would be holes in a bridge.
+- **Signature.** A single-line signature reading "Oleksandr B" (34 x 19 mm, line 0.3 mm) and the caption `Signature Edition`
+  are laser-marked on the underside of the base, beside the centre pad (`macropad_case/signature.py`).
+  It is flat artwork, not geometry: the solids and the STEP/STL files do not contain it. Send
+  `exports/drawings/engraving_underside.dxf` to the laser shop; it holds the signature at its place,
+  drawn as seen from above (mirrored, because it is read from below). Two clearance rows check that
+  it stays clear of the feet and the label field and that the line is wide enough for a laser.
 - **Tilt.** An optional bar under the back of the base tilts the pad by 6°. It needs no change to the case.
 
 Walls: 2.7 mm at the sides, 3.175 mm at the back, 3.725 mm at the front. Floor 2.4 mm.
@@ -149,6 +157,7 @@ uv pip install --python .venv/bin/python -e .
 | `spec.py` | Every dimension, and the heights derived from `board.toml` |
 | `solids.py` | Small helpers, and the two outlines of the case |
 | `parts.py` | Base and top |
+| `signature.py` | The signature laser-marked on the underside: flat artwork, exported as DXF |
 | `small_parts.py` | Light bars, knobs, lens, foot strips, centre pad, tilt bar |
 | `components.py` | Reference shapes of the bought parts |
 | `checks.py`, `measure.py` | The checks below |
@@ -161,16 +170,16 @@ uv pip install --python .venv/bin/python -e .
 
 `check` writes `exports/checks.json` and runs five groups.
 
-0. **Self-test.** Before the case is judged, the measuring checks are run on SELF_TEST_COUNT small solids: a sheet
+0. **Self-test.** Before the case is judged, the measuring checks are run on 23 small solids: a sheet
    thinner than the minimum wall, a pocket with sharp corners, a pocket with too small a radius, a slot
    narrower than the tool, a groove in a side wall, a bridge that is too long, a shelf, a wall leaning 60°,
    an outline with arc corners, two loose boxes, a foot recess with a screw hole in its roof, a 1 mm ledge
    58 mm long between two posts, and sound versions of each. A check that misses its fault, or flags a
    sound shape, fails the run.
 1. **Interference.** Every part against every bought component and every other part, for both variants:
-   PAIR_COUNT pairs each. Any shared volume over 0.05 mm³ fails. Keycaps are blocks that cover the whole key travel.
+   582 pairs each. Any shared volume over 0.05 mm³ fails. Keycaps are blocks that cover the whole key travel.
    The tilt bar against the back foot strip is skipped, because the bar takes that strip's recess.
-2. **Named clearances.** CLEARANCE_COUNT gaps computed from the dimensions: USB plug to its opening, keycap to the
+2. **Named clearances.** 48 gaps computed from the dimensions: USB plug to its opening, keycap to the
    dish rim, lens to the glass, screw engagement, screw head under the strip recess, floor under each
    recess and each engraving, and more.
 3. **Measurements on the finished solids.** These do not trust how the model was built.

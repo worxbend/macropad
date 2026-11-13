@@ -3,8 +3,8 @@
 from pathlib import Path
 
 import matplotlib
-from build123d import Axis, Bezier, Box, Circle, Cylinder, Kind, Line, Part, Plane, Pos, Rectangle, RectangleRounded
-from build123d import Sketch, Text, Wire, chamfer, extrude, loft, make_face, mirror, offset
+from build123d import Axis, Bezier, Box, Circle, Cylinder, Line, Part, Plane, Pos, Rectangle, RectangleRounded
+from build123d import Sketch, Text, Wire, chamfer, extrude, make_face, mirror, offset
 
 from .spec import BOARD, CASE, CNC, PRINT, Span, case_bounds, grown
 
@@ -120,13 +120,6 @@ def chamfered_slab(profile: Sketch, z: tuple[float, float], bottom: float, top: 
     if top:
         body = chamfer(body.edges().group_by(Axis.Z)[-1], top)
     return body
-
-
-def flared_cut(opening: Sketch, top: float, depth: float) -> Part:
-    """A 45 degree lead-in around `opening`: `depth` deep, widest at the face z = `top`."""
-    narrow = Pos(0, 0, top - depth) * opening
-    wide = Pos(0, 0, top + CUT_OVERSHOOT) * offset(opening, amount=depth + CUT_OVERSHOOT, kind=Kind.INTERSECTION)
-    return loft([narrow.face(), wide.face()], ruled=True)
 
 
 def legend(text: str, size: float, centre: tuple[float, float], read_from_below: bool = False) -> Sketch:

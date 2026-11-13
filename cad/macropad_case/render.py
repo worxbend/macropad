@@ -138,6 +138,8 @@ VIEWS = [
          lighting=FROM_BEHIND),
     View("underside", _camera((-70, -150, -250), field_of_view=22, up=(0.0, 1.0, 0.0)), lighting=FROM_BELOW,
          ground=None),
+    View("underside_aluminium", _camera((-70, -150, -250), field_of_view=22, up=(0.0, 1.0, 0.0)), lighting=FROM_BELOW,
+         scene=MILLED, ground=None, overrides=COLOURWAYS["Silver, milled"][1]),
     View("light_line", _camera((-150, -130, 22), target=(4.0, -50.0, -1.0), field_of_view=17), lighting=NIGHT,
          overrides={"diffuser": GLOWING_DIFFUSER}),
     View("deck_detail", _camera((-60, -105, 95), target=(36.0, -13.0, 9.0), field_of_view=20)),

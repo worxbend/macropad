@@ -161,9 +161,8 @@ def _underside_margins() -> list[tuple[str, float, float]]:
         ("cone_inside_floor", LEVELS.floor_top - cone_top, 0.5),
         ("pad_lower_than_strips", CASE.foot_strip[1] - CASE.centre_pad_thickness, 0.1),
         ("floor_under_label_engraving", CASE.floor - CASE.label_field_depth - CASE.engraving_depth, CASE.min_wall),
-        ("floor_under_signature", CASE.floor - signature.GROOVE_DEPTH, CASE.min_wall),
         ("signature_inside_free_field", signature.margin_in_field(), signature.MARGIN),
-        ("signature_groove_millable", signature.GROOVE_WIDTH, signature.MIN_MILLED_GROOVE),
+        ("signature_line_laser_markable", signature.LINE_WIDTH, signature.MIN_LASER_LINE),
     ]
 
 
@@ -201,7 +200,7 @@ def measurements() -> list[dict]:
         "print_base": printed["base"], "print_top": printed["top"], "cnc_base": milled["base"], "cnc_top": milled["top"],
     }
     bodies = {
-        "print_base": base_body(PRINT), "print_top": top_body(PRINT), "cnc_base": base_body(CNC),
+        "print_base": base_body(PRINT), "print_top": top_body(PRINT), "cnc_base": milled["base"],
         "cnc_top": milled["top"], "diffuser": printed["diffuser_left"], "knob": printed["knob_left"],
         "tilt_bar": printed["tilt_bar"], "foot_strip": printed["foot_strip_back"], "centre_pad": printed["centre_pad"],
     }
@@ -217,9 +216,7 @@ def measurements() -> list[dict]:
     rows += moving_parts(printed)
     rows += _lens_and_feet(printed)
     for name in ("base", "top"):
-        # The base before the signature is engraved: that is a second operation with its own cutter
-        # and its own limits (the signature rows of the clearance table).
-        rows += measure.machinability(name, base_body(CNC) if name == "base" else milled[name])
+        rows += measure.machinability(name, milled[name])
     return rows
 
 

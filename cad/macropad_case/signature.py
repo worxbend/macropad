@@ -1,50 +1,62 @@
-"""The owner's signature, milled into the underside of the CNC base: one flowing line and a caption.
+"""The owner's signature, laser-marked on the underside of the base: one flowing line and a caption.
 
-The line is a single-stroke path, so a mill cuts it in one pass along the centre line with a cutter
-as wide as the groove. Sizes follow the published limits for milled text in aluminium: groove at
-least 0.46 mm wide, about 0.3 mm deep, at least 0.5 mm of metal between neighbouring strokes.
+Flat artwork only. A laser mark is a few hundredths of a millimetre deep, so nothing is cut into
+the solids; the artwork goes out as DXF with the drawings, at its place on the underside.
 """
 
-from math import atan2, degrees, dist
+from functools import cache
+from math import atan2, ceil, degrees, dist
 
 from build123d import Plane, Pos, Rot, Sketch, SlotOverall, mirror
 
 from .solids import legend
 from .spec import BOARD, CENTRE_ROW, FRONT_ROW, Span, foot_span, label_field
 
-GROOVE_WIDTH = 0.6  # one pass of a 0.6 mm end mill
-GROOVE_DEPTH = 0.3
-MIN_MILLED_GROOVE = 0.46  # narrowest milled stroke in soft metal, from Protolabs' milling guidelines
-SCALE = 0.5  # mm per drawing unit: the line comes out 34 mm wide and 24 mm tall
+LINE_WIDTH = 0.3
+MIN_LASER_LINE = 0.18  # thinner lines may break up, from JLCCNC's laser-marking guide (0.5 pt)
+SCALE = 0.37  # mm per drawing unit: the line comes out 34 mm wide and 19 mm tall
 CAPTION = "Signature Edition"
-CAPTION_SIZE = 2.6  # too fine for the 0.6 mm cutter: an engraving cutter or a laser in the CNC variant
+CAPTION_SIZE = 2.6
 CAPTION_GAP = 2.4  # under the lowest point of the line
 MARGIN = 1.5  # around the artwork, to the feet, the label field and the wall
-_SEGMENTS_PER_CURVE = 8
+SEGMENT_LENGTH = 0.3  # mm of line per straight piece: the facets are far below what a laser resolves
 
 # Cubic Bezier chains in drawing units, x to the right and y down, as read: start point, then three
-# points per curve. An "O", a scribble, and a "B" whose upper lobe runs long.
+# points per curve. A large "O", then "leksandr" in one joined stroke that runs on into a "B" whose
+# upper lobe runs long.
 _LETTER_O = [
-    (21, 27), (20, 21), (12, 20), (7, 27), (2, 35), (5, 45), (14, 45), (22, 45), (27, 39), (25, 35),
-    (23, 32), (18, 33), (17, 36),
+    (21, 29), (20, 23), (12, 22), (7, 29), (2, 37), (5, 47), (14, 47), (22, 47), (27, 41), (25, 37), (23,
+    34), (18, 35), (17, 38),
 ]
-_SCRIBBLE_AND_B = [
-    (24, 38), (25, 34), (28, 33), (27, 38), (28, 35), (30, 34), (30, 38), (31, 35), (33, 34), (33, 38),
-    (34, 35), (37, 35), (38, 38), (39, 41), (40, 43), (41, 40), (41, 46), (43, 52), (51, 52), (60, 52),
-    (64, 45), (62, 38), (61, 34), (58, 32), (55, 32.5), (50.5, 33.5), (51.5, 37.5), (56.5, 36.2),
-    (60, 35), (64, 31), (67, 25), (71, 17), (72, 9), (67, 6), (62, 3), (57, 8), (53, 15), (49, 22),
-    (46, 26), (37, 28),
+_LEKSANDR_B = [
+    (24, 40), (26, 36), (29, 26), (28, 22), (27.5, 19), (25.5, 22), (26, 30), (26.2, 35), (26.5, 39), (28,
+    40), (29.5, 40.5), (31, 37), (30, 35.5), (29, 34), (27.8, 37), (29, 39.5), (30, 41), (32, 40), (33,
+    38), (34, 34), (35.5, 26), (35, 22), (34.5, 19), (33, 23), (33.5, 31), (33.7, 36), (33.8, 39), (34,
+    40), (34.5, 36), (37, 34.5), (37, 36.5), (37, 38), (35, 37.5), (35, 37.5), (36.5, 38), (37.5, 40),
+    (39, 40), (40, 39), (40.5, 36), (41, 35), (41.5, 37), (43, 39), (41.5, 40), (40.5, 40.5), (43, 40),
+    (44, 38.5), (44.5, 36), (46, 34), (47.5, 35), (46, 34.5), (44.5, 38), (45.5, 39.8), (46.5, 41), (47.5,
+    37), (47.8, 35), (47.8, 38), (48, 40), (49.5, 39.5), (50, 38), (50, 36), (50.5, 35), (50.5, 37),
+    (50.5, 39), (50.5, 40), (51, 36), (53, 34), (53.5, 36), (53.8, 38), (53.8, 39.5), (55, 39.5), (54.5,
+    36), (56, 34), (57.5, 35), (56, 34.5), (54.8, 38), (55.8, 39.8), (57, 41), (58, 36), (58.3, 30),
+    (58.5, 26), (58.5, 23), (58.3, 21), (58, 28), (58, 37), (59.5, 40), (60.5, 38), (60.5, 36), (61, 35),
+    (61.5, 36), (63, 35.5), (63.5, 36.5), (64.5, 40), (64, 44), (65, 48), (66.5, 54), (72, 56), (78, 55),
+    (86, 54), (89, 46), (87, 40), (86, 36), (83, 34), (80, 35), (77, 36), (78, 38.5), (81, 38), (85, 37),
+    (89, 33), (92, 27), (96, 19), (97, 11), (92, 8), (87, 5), (82, 10), (78, 17), (74, 24), (71, 28), (62,
+    30),
 ]
-_STROKES = (_LETTER_O, _SCRIBBLE_AND_B)
+_STROKES = (_LETTER_O, _LEKSANDR_B)
 
 
 def _points(chain: list[tuple[float, float]]) -> list[tuple[float, float]]:
-    """The chain as a polyline, a fixed number of points per curve."""
+    """The chain as a polyline in drawing units, in pieces about SEGMENT_LENGTH long."""
     points = [chain[0]]
     for first in range(0, len(chain) - 1, 3):
         start, pull_start, pull_end, end = chain[first:first + 4]
-        for step in range(1, _SEGMENTS_PER_CURVE + 1):
-            t = step / _SEGMENTS_PER_CURVE
+        # The control polygon is never shorter than the curve.
+        control_length = (dist(start, pull_start) + dist(pull_start, pull_end) + dist(pull_end, end)) * SCALE
+        steps = max(4, ceil(control_length / SEGMENT_LENGTH))
+        for step in range(1, steps + 1):
+            t = step / steps
             weights = ((1 - t) ** 3, 3 * (1 - t) ** 2 * t, 3 * (1 - t) * t ** 2, t ** 3)
             points.append(tuple(
                 sum(weight * point[axis] for weight, point in zip(weights, (start, pull_start, pull_end, end)))
@@ -53,14 +65,15 @@ def _points(chain: list[tuple[float, float]]) -> list[tuple[float, float]]:
     return points
 
 
+@cache
 def _line() -> Sketch:
-    """The groove as read, in millimetres, centred on the origin, y up."""
+    """The line as read, in millimetres, centred on the origin, y up."""
     polylines = [[(x * SCALE, -y * SCALE) for x, y in _points(chain)] for chain in _STROKES]
     # One rounded slot per segment. A swept curve is not used: the scribble has cusps, which sweep
     # into an invalid face.
     slots = [
         Pos((a[0] + b[0]) / 2, (a[1] + b[1]) / 2) * Rot(0, 0, degrees(atan2(b[1] - a[1], b[0] - a[0])))
-        * SlotOverall(dist(a, b) + GROOVE_WIDTH, GROOVE_WIDTH)
+        * SlotOverall(dist(a, b) + LINE_WIDTH, LINE_WIDTH)
         for polyline in polylines for a, b in zip(polyline, polyline[1:])
     ]
     line = Sketch() + slots
@@ -94,7 +107,7 @@ def _centre() -> tuple[float, float]:
 
 
 def line() -> Sketch:
-    """The signature groove at its place in the floor, drawn as seen from above (mirrored: it is
+    """The signature line at its place on the underside, drawn as seen from above (mirrored: it is
     read from below)."""
     x, y = _centre()
     return Pos(x, -y) * mirror(_line(), Plane.YZ)
