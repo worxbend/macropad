@@ -165,7 +165,7 @@ def tilt_bar() -> Part:
 
 
 def _lowest_point() -> float:
-    back_edge = case_bounds()[1][0] + CASE.underside_chamfer
+    back_edge = case_bounds()[1][0] + CASE.tilt_bar_inset
     return LEVELS.floor_bottom - desk_plane_drop(back_edge) - 1
 
 
@@ -173,15 +173,21 @@ def tilt_bar_body() -> Part:
     """Optional wedge under the back of the base, finished. A tongue on its top sits in the base's
     back strip recess, and the back strip moves to a recess in its own sloped underside. Two holes keep
     the back corner screws reachable once that strip is peeled off."""
-    plan = case_outline(PRINT, -CASE.underside_chamfer) & rectangle((-FAR, FAR), (-FAR, CASE.tilt_bar_front))
+    plan = case_outline(PRINT, -CASE.tilt_bar_inset) & rectangle((-FAR, FAR), (-FAR, CASE.tilt_bar_front))
     lowest = _lowest_point()
     below_the_slope = _on_the_slope() * Pos(0, 0, -50) * Box(1000, 1000, 100)
+    block = slab(plan, (lowest, LEVELS.floor_bottom))
+    # The bar stands a little wider than the flat of the underside; its outer top edge is cut back at
+    # 45 degrees, so the underside chamfer of the base runs on down the bar.
+    front = -CASE.tilt_bar_front
+    outer = block.edges().group_by(Axis.Z)[-1].filter_by(lambda edge: edge.center().Y > front + CUT_OVERSHOOT)
+    block = chamfer(outer, CASE.underside_chamfer - CASE.tilt_bar_inset)
     tongue_height = CASE.tilt_tongue[1]
     tongue = slab(_tilt_tongue_plan(), (LEVELS.floor_bottom, LEVELS.floor_bottom + tongue_height))
     recess = _on_the_slope() * slab(
         stadium(_back_strip_at_origin(CASE.foot_recess_fit)), (-CUT_OVERSHOOT, CASE.foot_recess_depth)
     )
-    return slab(plan, (lowest, LEVELS.floor_bottom)) - below_the_slope + tongue - recess - _tilt_holes(lowest)
+    return block - below_the_slope + tongue - recess - _tilt_holes(lowest)
 
 
 def _tilt_holes(lowest: float) -> list[Part]:

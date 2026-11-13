@@ -5,7 +5,7 @@ BUILD := pcb/.build
 FAB := pcb/fab
 GERBER_LAYERS := F.Cu,In1.Cu,In2.Cu,B.Cu,F.Paste,B.Paste,F.SilkS,B.SilkS,F.Mask,B.Mask,Edge.Cuts
 
-.PHONY: help pcb pcb-place pcb-check pcb-fab pcb-test cad firmware ui-images docs-check test
+.PHONY: help pcb pcb-place pcb-check pcb-fab pcb-test cad firmware ui-images docs-check site test
 
 help:
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | sed 's/:.*##/\t/'
@@ -42,6 +42,9 @@ ui-images: ## Simulator: redraw docs/images/ui/ and the demo GIF (needs ImageMag
 docs-check: ## Every file and picture named in a Markdown file exists
 	python3 .github/scripts/check_docs.py
 
-test: pcb-test docs-check ## Everything that can be checked without Docker or hardware
+site: ## Microsite: site/ plus the pictures it names from docs/images/ -> _site/ (published by GitHub Pages)
+	python3 .github/scripts/build_site.py
+
+test: pcb-test docs-check site ## Everything that can be checked without Docker or hardware
 	$(MAKE) -C firmware test check-pins check-hid
 	cd cad && .venv/bin/python build.py check

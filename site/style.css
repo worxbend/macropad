@@ -1,0 +1,233 @@
+/* Palette taken from the case itself: bead-blasted aluminium, graphite keycaps, the glow in the seam. */
+:root {
+  --aluminium: #e4e6e8;
+  --panel: #f7f8f9;
+  --graphite: #23272b;
+  --pewter: #646b71;
+  --seam: #2f3438;
+  --glow: #5cc8b4;
+  --link: #1d5f8c;
+  --measure: 38rem;
+  --gutter: clamp(1rem, 4vw, 3rem);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --aluminium: #1b1e21;
+    --panel: #24282c;
+    --graphite: #e7e9eb;
+    --pewter: #a3aab0;
+    --seam: #0c0e10;
+    --link: #8cc4ea;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--aluminium);
+  color: var(--graphite);
+  font: 400 1.0625rem/1.6 "Hanken Grotesk", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+img { display: block; max-width: 100%; height: auto; }
+
+a { color: var(--link); text-underline-offset: 0.18em; }
+
+a:focus-visible, .button:focus-visible {
+  outline: 3px solid var(--glow);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.skip {
+  position: absolute;
+  left: -999px;
+  top: 0.5rem;
+  background: var(--panel);
+  padding: 0.5rem 1rem;
+}
+.skip:focus { left: 0.5rem; }
+
+h1, h2, h3 {
+  font-family: "Bricolage Grotesque", "Hanken Grotesk", sans-serif;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.6em;
+}
+
+h1 { font-size: clamp(2.4rem, 6.5vw, 5rem); max-width: 14ch; }
+h2 { font-size: clamp(1.8rem, 3.6vw, 2.75rem); max-width: 18ch; }
+h3 { font-size: 1.2rem; font-weight: 500; letter-spacing: -0.01em; margin-bottom: 0.4em; }
+
+p { margin: 0 0 1em; max-width: var(--measure); }
+
+/* --- page frame ---------------------------------------------------------------------------- */
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 1.25rem var(--gutter);
+}
+
+.wordmark {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.top nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; }
+.top nav a { color: var(--pewter); text-decoration: none; }
+.top nav a:hover { color: var(--graphite); }
+
+main > section { padding: 0 var(--gutter); max-width: 76rem; margin: 0 auto; }
+
+.bottom {
+  padding: 3rem var(--gutter) 4rem;
+  color: var(--pewter);
+  max-width: 76rem;
+  margin: 0 auto;
+}
+
+/* --- hero ---------------------------------------------------------------------------------- */
+
+.hero { padding-top: clamp(2rem, 8vw, 6rem); }
+
+.lede { font-size: clamp(1.1rem, 1.6vw, 1.3rem); color: var(--pewter); max-width: 34rem; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 2rem 0 0; max-width: none; }
+
+.button {
+  display: inline-block;
+  padding: 0.75rem 1.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--pewter);
+  color: var(--graphite);
+  text-decoration: none;
+  font-weight: 600;
+}
+.button:hover { border-color: var(--graphite); }
+.button.primary { background: var(--graphite); border-color: var(--graphite); color: var(--aluminium); }
+.button.primary:hover { background: var(--seam); }
+
+.hero-shot { margin: clamp(2rem, 6vw, 4rem) 0 0; }
+.hero-shot img { width: 100%; border-radius: 22px; background: var(--panel); }
+
+.status {
+  margin: 1.5rem auto 0;
+  padding: 0.9rem 1.2rem;
+  border-left: 3px solid var(--glow);
+  background: var(--panel);
+  max-width: 44rem;
+  font-size: 0.98rem;
+}
+
+/* --- the seam: the case's one line, drawn between chapters ------------------------------- */
+
+.seam {
+  position: relative;
+  height: 2px;
+  margin: clamp(4rem, 10vw, 8rem) var(--gutter);
+  background: var(--seam);
+  opacity: 0.85;
+}
+
+/* A short stretch glows, the way the LEDs light only part of the real seam. */
+.seam span {
+  position: absolute;
+  inset: 0 auto 0 8%;
+  width: 28%;
+  background: var(--glow);
+  box-shadow: 0 0 10px 1px var(--glow), 0 0 28px 2px color-mix(in srgb, var(--glow) 45%, transparent);
+  transform-origin: left center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .seam span { animation: glow-in 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-timeline: view(); animation-range: entry 10% cover 40%; }
+  @keyframes glow-in { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+}
+
+/* --- chapters ------------------------------------------------------------------------------ */
+
+figure { margin: 0; }
+
+figcaption { color: var(--pewter); font-size: 0.92rem; margin-top: 0.6rem; max-width: 34rem; }
+
+.chapter .text { margin-bottom: 2rem; }
+
+.wide { margin-top: 1rem; }
+.wide img { width: 100%; border-radius: 18px; background: var(--panel); }
+
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 2.5rem 2rem;
+  margin-top: 3rem;
+}
+.pair img { border-radius: 14px; background: var(--panel); }
+
+.split { display: grid; gap: 2rem; align-items: center; }
+.split img { border-radius: 18px; background: var(--panel); }
+
+@media (min-width: 52rem) {
+  .split { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 4rem; }
+  .split.reverse > .text { order: 2; }
+  .split .text { margin-bottom: 0; }
+}
+
+.screen img { image-rendering: pixelated; background: #0f1113; padding: clamp(0.5rem, 2vw, 1.5rem); }
+
+/* --- specs --------------------------------------------------------------------------------- */
+
+.specs dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 0;
+  margin: 2rem 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--pewter) 40%, transparent);
+}
+.specs dl > div {
+  padding: 1.1rem 1.25rem 1.1rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--pewter) 40%, transparent);
+}
+.specs dt { color: var(--pewter); font-size: 0.92rem; }
+.specs dd { margin: 0.2rem 0 0; font-weight: 500; }
+
+/* --- build steps: a real sequence, so they are numbered ------------------------------------ */
+
+.steps {
+  list-style: none;
+  counter-reset: step;
+  padding: 0;
+  margin: 2rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 2rem;
+}
+.steps li { counter-increment: step; background: var(--panel); border-radius: 18px; padding: 1.5rem; }
+.steps li::before {
+  content: counter(step);
+  display: block;
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-weight: 700;
+  font-size: 2.25rem;
+  line-height: 1;
+  color: var(--pewter);
+  margin-bottom: 0.75rem;
+}
+.steps p { font-size: 0.98rem; }
+
+.caution { margin-top: 2rem; color: var(--pewter); }
+
+code { font-size: 0.92em; background: color-mix(in srgb, var(--pewter) 15%, transparent); padding: 0.1em 0.35em; border-radius: 4px; }

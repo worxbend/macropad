@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>macropad</title>
+  <meta name="description" content="An open 12-key macropad: RP2350 on a four-layer PCB, two knobs, a nice!view display, a line of light round the case, Rust firmware. Design files only; not built yet.">
+  <meta property="og:title" content="macropad">
+  <meta property="og:description" content="Twelve keys, two knobs and a line of light. Open hardware, not built yet.">
+  <meta property="og:image" content="images/cad/hero_aluminium.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to the content</a>
+
+  <header class="top">
+    <a class="wordmark" href="#main">macropad</a>
+    <nav aria-label="Sections">
+      <a href="#case">Case</a>
+      <a href="#signature">Signature</a>
+      <a href="#inside">Inside</a>
+      <a href="#firmware">Firmware</a>
+      <a href="#build">Build one</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <h1>Twelve keys, two knobs and a line of light.</h1>
+      <p class="lede">
+        An open-source macropad on its own four-layer board, with a nice!view screen between the knobs
+        and a thin glow in the seam of the case. Every file to make one is in the repository.
+      </p>
+      <p class="actions">
+        <a class="button primary" href="https://github.com/worxbend/macropad/releases/latest">Download the order files</a>
+        <a class="button" href="https://github.com/worxbend/macropad">Open the repository</a>
+      </p>
+      <figure class="hero-shot">
+        <img src="images/cad/hero_aluminium.png" width="1600" height="1100"
+             alt="The milled aluminium case seen from the front left: twelve black keys in a shallow dish, two silver knobs, the display between them.">
+      </figure>
+      <p class="status" role="note">
+        <strong>Not built yet.</strong> Nothing here has been printed, milled, assembled or switched on.
+        The pictures are renders of the design files.
+      </p>
+    </section>
+
+    <div class="seam" aria-hidden="true"><span></span></div>
+
+    <section id="case" class="chapter">
+      <div class="text">
+        <h2>One slab, one seam</h2>
+        <p>
+          The case is two shells that meet in a shadow gap halfway up its sides. Light from eight LEDs on
+          the board edge leaks into that gap, so the pad glows along a single line instead of through strips.
+          Make it on a printer or have it milled from aluminium; both come from the same parametric model.
+        </p>
+      </div>
+      <figure class="wide">
+        <img src="images/cad/colourways.png" width="1600" height="1100" loading="lazy"
+             alt="Four finishes side by side: chalk and graphite printed, silver and space grey milled.">
+        <figcaption>Printed in chalk or graphite, milled in silver or space grey.</figcaption>
+      </figure>
+      <div class="pair">
+        <figure>
+          <img src="images/cad/side_profile.png" width="1600" height="1100" loading="lazy"
+               alt="The case from the side: one thin dark line runs round it at mid height.">
+          <figcaption>The seam runs round the case at one height.</figcaption>
+        </figure>
+        <figure>
+          <img src="images/cad/light_line.png" width="1600" height="1100" loading="lazy"
+               alt="The case at night with a thin line of light glowing in the seam on its side.">
+          <figcaption>At night the seam lights up. Colour and brightness are a guess until one is built.</figcaption>
+        </figure>
+        <figure>
+          <img src="images/cad/knob_detail.png" width="1600" height="1100" loading="lazy"
+               alt="Close-up of a knob with fine vertical grooves and a flat top.">
+          <figcaption>Knobs with fine grooves, plain bands and a flat top.</figcaption>
+        </figure>
+        <figure>
+          <img src="images/cad/exploded.png" width="1600" height="1100" loading="lazy"
+               alt="Exploded view: keycaps, switches, top shell, light bars, board, base, feet and screws.">
+          <figcaption>Hidden screws, a lens over the display, light bars in the seam.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <div class="seam" aria-hidden="true"><span></span></div>
+
+    <section id="signature" class="chapter split">
+      <div class="text">
+        <h2>Signature edition</h2>
+        <p>
+          The underside of the milled case carries a hand-drawn signature and the words
+          Signature Edition, laser-marked into the anodised surface beside the centre foot.
+        </p>
+        <p>
+          The mark is flat artwork, not a cut: the laser shop gets it as a drawing at its place on the base.
+        </p>
+      </div>
+      <figure>
+        <img src="images/cad/underside_aluminium.png" width="1600" height="1100" loading="lazy"
+             alt="The underside of the milled base: two black foot strips, a centre pad, and a signature with the caption Signature Edition.">
+      </figure>
+    </section>
+
+    <div class="seam" aria-hidden="true"><span></span></div>
+
+    <section id="inside" class="chapter split reverse">
+      <div class="text">
+        <h2>A real board, not hand wiring</h2>
+        <p>
+          An RP2354A, the RP2350 with its flash inside the package, sits on a four-layer board with every
+          key on its own pin. Hot-swap sockets take any MX switch. One USB-C port powers it, talks to the
+          computer and loads new firmware.
+        </p>
+        <p>
+          The whole board is generated by code, routed by its own router and checked against its schematic
+          on every build. <a href="images/pcb/schematic.pdf">Read the schematic</a>.
+        </p>
+      </div>
+      <figure>
+        <img src="images/pcb/assembled-angle.png" width="1568" height="1568" loading="lazy"
+             alt="The populated circuit board at an angle: twelve switch positions, two encoders, the display socket.">
+      </figure>
+    </section>
+
+    <div class="seam" aria-hidden="true"><span></span></div>
+
+    <section id="firmware" class="chapter">
+      <div class="text">
+        <h2>Firmware you can read</h2>
+        <p>
+          Written in Rust on embassy. Four layers for media, editing, navigation and numbers. The screen
+          shows what each key does right now, and the knobs change volume, scroll or anything you map.
+          Drag one file onto the board to update it.
+        </p>
+      </div>
+      <figure class="wide screen">
+        <img src="images/ui/demo.gif" width="1104" height="573" loading="lazy"
+             alt="The display cycling through the media, navigation and number layers as keys are pressed.">
+        <figcaption>The screen as the simulator draws it.</figcaption>
+      </figure>
+    </section>
+
+    <div class="seam" aria-hidden="true"><span></span></div>
+
+    <section class="chapter specs" aria-labelledby="specs-title">
+      <h2 id="specs-title">What is in it</h2>
+      <dl>
+        <div><dt>Keys</dt><dd>12, MX hot-swap, one pin each, no diodes</dd></div>
+        <div><dt>Knobs</dt><dd>2 Alps EC11 encoders with push</dd></div>
+        <div><dt>Screen</dt><dd>nice!view, 160 × 68, always on</dd></div>
+        <div><dt>Light</dt><dd>8 side-emitting RGB LEDs in the case seam</dd></div>
+        <div><dt>Chip</dt><dd>RP2354A: RP2350 with 2 MB flash in the package</dd></div>
+        <div><dt>Board</dt><dd>84 × 82.5 mm, four layers, parts on one side</dd></div>
+        <div><dt>Port</dt><dd>One USB-C for power, data and flashing</dd></div>
+        <div><dt>Firmware</dt><dd>Rust, embassy, drag-and-drop UF2 updates</dd></div>
+      </dl>
+    </section>
+
+    <div class="seam" aria-hidden="true"><span></span></div>
+
+    <section id="build" class="chapter">
+      <h2>Build one</h2>
+      <ol class="steps">
+        <li>
+          <h3>Order the board</h3>
+          <p>Upload the Gerbers, bill of materials and placement list to JLCPCB. They place every part but three.</p>
+          <a href="https://github.com/worxbend/macropad/blob/main/docs/ordering.md">Ordering guide</a>
+        </li>
+        <li>
+          <h3>Make the case</h3>
+          <p>Print the STL files, or send the STEP files to a CNC shop together with the signature drawing.</p>
+          <a href="https://github.com/worxbend/macropad/blob/main/cad/README.md">Case notes</a>
+        </li>
+        <li>
+          <h3>Put it together</h3>
+          <p>Solder the knobs and the display socket, fit the switches, close the case with six screws from below.</p>
+          <a href="https://github.com/worxbend/macropad/blob/main/docs/assembly.md">Assembly guide</a>
+        </li>
+        <li>
+          <h3>Load the firmware</h3>
+          <p>Hold BOOT, plug it in and copy <code>macropad.uf2</code> to the drive that appears.</p>
+          <a href="https://github.com/worxbend/macropad/blob/main/docs/flashing.md">Flashing guide</a>
+        </li>
+      </ol>
+      <p class="caution">
+        Read <a href="https://github.com/worxbend/macropad#before-you-order">Before you order</a> first:
+        a few part orientations and pin orders are still unchecked against their datasheets.
+      </p>
+    </section>
+  </main>
+
+  <footer class="bottom">
+    <p>macropad is open hardware by worxbend. Source, issues and releases live on
+      <a href="https://github.com/worxbend/macropad">GitHub</a>.</p>
+  </footer>
+</body>
+</html>

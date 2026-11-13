@@ -156,6 +156,9 @@ class Case:
     engraving_depth: float = 0.4
     tilt_angle: float = 6.0  # degrees, with the optional tilt bar in the back strip recess
     tilt_bar_front: float = 8.7  # board Y of the bar's front face
+    # The bar's plan is the outline made this much smaller: wide enough for a 0.8 mm wall beside the ends
+    # of its strip recess. It is less than the underside chamfer, so the bar's top edge is chamfered too.
+    tilt_bar_inset: float = 1.5
     tilt_hole_diameter: float = 5.6  # through the bar, over each back corner screw
     # The bar's tongue in the base's back strip recess: play per side, height, and how far it stays
     # from the bar's hole over each corner screw (a tongue round the holes would be a 0.75 mm ring).

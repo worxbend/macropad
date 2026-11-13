@@ -27,6 +27,7 @@ jobs:
       # The runner's own Python 3.12 is enough: both targets use the standard library only.
       - run: make pcb-test
       - run: make docs-check
+      - run: make site
 
   firmware:
     name: Firmware tests, board check, HID check

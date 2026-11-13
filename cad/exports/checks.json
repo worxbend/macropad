@@ -588,11 +588,11 @@
   "measurements": [
     {
       "name": "thinnest_wall_print_base",
-      "value": 0.2,
+      "value": 1.0,
       "limit": 0.8,
       "kind": "min",
       "unit": "mm",
-      "ok": false
+      "ok": true
     },
     {
       "name": "thinnest_wall_print_top",
@@ -636,11 +636,11 @@
     },
     {
       "name": "thinnest_wall_tilt_bar",
-      "value": 0.2,
+      "value": 1.015,
       "limit": 0.8,
       "kind": "min",
       "unit": "mm",
-      "ok": false
+      "ok": true
     },
     {
       "name": "thinnest_wall_foot_strip",
@@ -780,19 +780,19 @@
     },
     {
       "name": "cnc_corner_curvature_at_join",
-      "value": 0.667,
+      "value": 0.0,
       "limit": 0.01,
       "kind": "max",
       "unit": "1/mm",
-      "ok": false
+      "ok": true
     },
     {
       "name": "cnc_corner_smallest_radius",
-      "value": 1.5,
+      "value": 4.714,
       "limit": 4.66,
       "kind": "min",
       "unit": "mm",
-      "ok": false
+      "ok": true
     },
     {
       "name": "base_boss_wall_under_pcb",
@@ -1044,7 +1044,7 @@
     },
     {
       "name": "label_text_inside_field",
-      "value": 1.451,
+      "value": 1.118,
       "limit": 1.0,
       "kind": "min",
       "unit": "mm",
@@ -1172,11 +1172,11 @@
     },
     {
       "name": "underside_mark_stroke",
-      "value": 0.422,
+      "value": 0.477,
       "limit": 0.45,
       "kind": "min",
       "unit": "mm",
-      "ok": false
+      "ok": true
     },
     {
       "name": "cnc_base_sharp_internal_corners",
@@ -1266,7 +1266,7 @@
       "part": "base",
       "widest_span_mm": 7.4,
       "limit_mm": 15.0,
-      "bed_contact_mm2": 5847.7,
+      "bed_contact_mm2": 5825.1,
       "minimum_contact_mm2": 100.0,
       "height_over_narrow_side": 0.1,
       "longest_bridge_mm": 6.8,
@@ -1398,9 +1398,9 @@
       "part": "tilt_bar",
       "widest_span_mm": 7.4,
       "limit_mm": 15.0,
-      "bed_contact_mm2": 254.3,
+      "bed_contact_mm2": 306.2,
       "minimum_contact_mm2": 100.0,
-      "height_over_narrow_side": 0.8,
+      "height_over_narrow_side": 0.7,
       "longest_bridge_mm": 6.8,
       "bridge_at": [
         2.8,
@@ -1409,7 +1409,7 @@
       ],
       "deepest_cantilever_mm": 0.0,
       "cantilever_at": [
-        -1.3,
+        -1.9,
         -8.1,
         -9.2
       ],

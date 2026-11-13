@@ -1,4 +1,5 @@
 .build/
+_site/
 .venv/
 __pycache__/
 *.pyc
