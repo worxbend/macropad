@@ -55,7 +55,8 @@ def knob() -> Part:
 def _knob_grooves() -> list[Part]:
     """Straight 90 degree V grooves between the two plain bands."""
     radius, depth, past = CASE.knob_diameter / 2, CASE.knob_groove_depth, GROOVE_CUTTER_PAST
-    vee = Polygon((radius - depth, 0), (radius + past, depth + past), (radius + past, -depth - past), align=None)
+    # Counter-clockwise, so the face looks up and `slab` extrudes it upward.
+    vee = Polygon((radius - depth, 0), (radius + past, -depth - past), (radius + past, depth + past), align=None)
     groove = slab(vee, (LEVELS.knob_bottom + CASE.knob_plain_band, LEVELS.knob_top - CASE.knob_plain_band))
     step = 360 / CASE.knob_grooves
     # Half a step off, so a land and not a groove lies in line with the pointer.

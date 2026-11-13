@@ -8,7 +8,7 @@ import numpy as np
 import trimesh
 from build123d import Box, Part, Pos, Rot
 
-from . import measure, printsim, selftest
+from . import measure, printsim, selftest, signature
 from .components import MX_FLANGE, at, components, keycap
 from .parts import base_body, label_field_outline, top_body, underside_mark, usb_cutout
 from .small_parts import BAR_TO_TOP, case_parts, desk_plane_drop
@@ -160,6 +160,9 @@ def _underside_margins() -> list[tuple[str, float, float]]:
         ("cone_inside_floor", LEVELS.floor_top - cone_top, 0.5),
         ("pad_lower_than_strips", CASE.foot_strip[1] - CASE.centre_pad_thickness, 0.1),
         ("floor_under_label_engraving", CASE.floor - CASE.label_field_depth - CASE.engraving_depth, CASE.min_wall),
+        ("floor_under_signature", CASE.floor - signature.GROOVE_DEPTH, CASE.min_wall),
+        ("signature_inside_free_field", signature.margin_in_field(), signature.MARGIN),
+        ("signature_groove_millable", signature.GROOVE_WIDTH, signature.MIN_MILLED_GROOVE),
     ]
 
 

@@ -8,6 +8,7 @@ from math import sqrt
 
 from build123d import Align, Circle, Cone, Part, Plane, Polygon, Pos, Rectangle, RectangleRounded, Sketch, extrude
 
+from . import signature
 from .solids import CUT_OVERSHOOT, box, case_outline, chamfered_slab, cylinder, discs, legend, millable, pcb_outline
 from .solids import rectangle, rounded_rectangle, slab, stadium
 from .spec import BOARD, CASE, CNC, LEVELS, PRINT, buttons, case_bounds, deck_pocket_front, dish_floor
@@ -26,6 +27,8 @@ UNDERSIDE_MARK_SIZE = 3.6
 
 def base(variant: str) -> Part:
     body = base_body(variant)
+    under_signature = (LEVELS.floor_bottom - CUT_OVERSHOOT, LEVELS.floor_bottom + signature.GROOVE_DEPTH)
+    body -= slab(signature.artwork(), under_signature)
     if variant == PRINT:
         under = LEVELS.floor_bottom - CUT_OVERSHOOT
         body -= slab(button_legends(), (under, LEVELS.floor_bottom + CASE.engraving_depth))
@@ -146,7 +149,7 @@ def underside_mark() -> Sketch:
 
 def underside_artwork() -> Sketch:
     """Everything engraved in the floor."""
-    return button_legends() + underside_mark()
+    return button_legends() + underside_mark() + signature.artwork()
 
 
 def usb_cutout() -> Part:
