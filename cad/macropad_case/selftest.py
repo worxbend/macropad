@@ -3,7 +3,7 @@ a sound solid and must stay quiet. A check that cannot fail proves nothing about
 
 from math import radians, tan
 
-from build123d import Align, Axis, Box, Cone, Cylinder, Part, Plane, Polygon, Pos, extrude, fillet
+from build123d import Axis, Box, Cylinder, Part, Plane, Polygon, Pos, extrude, fillet
 
 from . import measure, printsim
 from .solids import case_outline, overlap_volume, slab
@@ -66,8 +66,13 @@ def run() -> list[dict]:
          measure.MAX_JOIN_CURVATURE),
         ("loose_pieces_found", measure.soundness_faults(loose), "more than", 0),
         ("one_box_is_sound", measure.soundness_faults(Box(5, 5, 5)), "equal to", 0),
-        ("hole_in_recess_roof_found", _longest_bridge(_recessed_block(coned=False)), "more than", CASE.max_bridge),
-        ("coned_hole_in_recess_roof_prints", _longest_bridge(_recessed_block(coned=True)), "less than", CASE.max_bridge),
+        ("hole_in_recess_roof_found", _longest_bridge(_recessed_block(skin=0.0)), "more than", CASE.max_bridge),
+        ("skinned_hole_in_recess_roof_prints", _longest_bridge(_recessed_block(CASE.screw_skin)), "less than",
+         CASE.max_bridge),
+        ("thin_stroke_found", measure.stroke_width(_bar_glyph(0.3)), "less than", 0.45),
+        ("wide_stroke_passes", measure.stroke_width(_bar_glyph(0.6)), "more than", 0.45),
+        ("foot_over_a_hole_found", measure.bearing_share(*_foot_on_a_block(hole=6.0)), "less than", 0.8),
+        ("foot_on_a_flat_bears", measure.bearing_share(*_foot_on_a_block(hole=0.0)), "more than", 0.99),
         ("ledge_between_walls_found", _longest_bridge(_ledged_wall(sloped=False)), "more than", CASE.max_bridge),
         ("sloped_ledge_prints", _longest_bridge(_ledged_wall(sloped=True)), "less than", CASE.max_bridge),
     ]
@@ -85,19 +90,27 @@ def _longest_bridge(part: Part) -> float:
     return printsim.simulate(_triangles(part)).longest_bridge
 
 
-def _recessed_block(coned: bool) -> Part:
-    """A block on the bed with a foot recess under it and a screw counterbore in the roof of that
-    recess. `coned` joins the two with the 45 degree cone the base has."""
+def _recessed_block(skin: float) -> Part:
+    """A block on the bed with a foot recess under it and a screw counterbore above that recess.
+    `skin` is how much of the recess roof is left under the counterbore: none, or the one layer the base has."""
     recess_width = CASE.foot_strip[0] + 2 * CASE.foot_recess_fit
     depth = CASE.foot_recess_depth
     block = Pos(0, 0, 3) * Box(40, 14, 6)
     recess = Pos(0, 0, depth / 2 - 1) * Box(30, recess_width, depth + 2)
-    counterbore = Pos(0, 0, depth + 1) * Cylinder(CASE.counterbore_diameter / 2, 4)
-    if not coned:
-        return block - recess - counterbore
-    wide, narrow = (diameter / 2 for diameter in CASE.screw_cone)
-    cone = Pos(0, 0, depth - 0.01) * Cone(wide, narrow, wide - narrow, align=(Align.CENTER, Align.CENTER, Align.MIN))
-    return block - recess - counterbore - cone
+    counterbore = Pos(0, 0, depth + skin + 2 - 0.01) * Cylinder(CASE.counterbore_diameter / 2, 4)
+    return block - recess - counterbore
+
+
+def _bar_glyph(stroke: float) -> Part:
+    """A stand-in for a letter: one bar 3 mm long."""
+    return Plane.XY * Polygon((0, 0), (3, 0), (3, stroke), (0, stroke), align=None)
+
+
+def _foot_on_a_block(hole: float) -> tuple[Part, Part]:
+    """A foot 10 x 10 x 1 under a block, and the block, with a round hole of the given diameter over the foot."""
+    foot = Pos(0, 0, -0.5) * Box(10, 10, 1)
+    block = Pos(0, 0, 3) * Box(20, 20, 6)
+    return foot, block - Cylinder(hole / 2, 20) if hole else block
 
 
 def _ledged_wall(sloped: bool) -> Part:

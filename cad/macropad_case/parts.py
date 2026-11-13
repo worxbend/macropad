@@ -4,40 +4,47 @@ Both are built the way a mill would cut them: an outline slab with chamfered edg
 level by level. The print variant adds what only a printer can make (45 degree fillers, engraved text).
 """
 
-from math import sqrt
+from math import radians, sqrt, tan
 
 from build123d import Align, Circle, Cone, Part, Plane, Polygon, Pos, Rectangle, RectangleRounded, Sketch, extrude
 
 from . import signature
 from .solids import CUT_OVERSHOOT, box, case_outline, chamfered_slab, cylinder, discs, legend, millable, pcb_outline
 from .solids import rectangle, rounded_rectangle, slab, stadium
-from .spec import BOARD, CASE, CNC, LEVELS, PRINT, buttons, case_bounds, deck_pocket_front, dish_floor
-from .spec import encoder_centres, foot_span, grown, key_centres, label_field, lap_runs, led_slot_span, lens_opening
-from .spec import lens_recess, lens_rib_spans, mounting_holes, rib_lines, screw_rows
+from .spec import BOARD, CASE, CNC, LEVELS, PRINT, buttons, case_bounds, deck_pocket_front, dish_floor, encoder_centres
+from .spec import foot_span, grown, key_centres, knob_well_diameter, label_field, lap_runs, led_slot_span
+from .spec import lens_opening, lens_recess, lens_rib_spans, mounting_holes, rib_lines, screw_rows, screw_seat
 
 FAR = 500.0
 WIDTH = BOARD.board.width
 HEIGHT = BOARD.board.height
-WORDMARK = "macropad"
-WORDMARK_SIZE = 2.6
+# Text sizes for a 0.4 mm nozzle: the thinnest stroke of each must be wider than one line (checked).
 LEGEND_SIZE = 3.4
 UNDERSIDE_MARK = "worxbend / macropad"
-UNDERSIDE_MARK_SIZE = 3.6
+UNDERSIDE_MARK_SIZE = 5.2  # 4.6 gave a 0.42 mm stroke
 
 
 def base(variant: str) -> Part:
+    """The base. The print variant has its text engraved into the face that lies on the bed, and a
+    skin across each screw hole; the CNC variant stays plain, to be laser-marked."""
     body = base_body(variant)
     if variant == PRINT:
-        under = LEVELS.floor_bottom - CUT_OVERSHOOT
-        body -= slab(button_legends(), (under, LEVELS.floor_bottom + CASE.engraving_depth))
-        # The mark stands in its field, flush with the underside. Sunk into the field's roof it would
-        # be holes in a bridge, which do not print.
-        body += slab(underside_mark(), (LEVELS.floor_bottom, LEVELS.floor_bottom + CASE.label_field_depth + CUT_OVERSHOOT))
+        engraved = (LEVELS.floor_bottom - CUT_OVERSHOOT, LEVELS.floor_bottom + CASE.engraving_depth)
+        body = body + screw_skins() - slab(button_legends() + underside_mark(), engraved)
     return body
 
 
+def screw_skins() -> list[Part]:
+    """Print only: one layer that closes each counterbore at the roof of its foot recess. A hole in
+    that roof would be a hole in a bridge. The builder cuts the six skins out, so they are not a wall
+    of the finished base."""
+    skin = (LEVELS.foot_recess_roof, LEVELS.foot_recess_roof + CASE.screw_skin)
+    into_the_wall = CASE.counterbore_diameter + 2 * CUT_OVERSHOOT  # so each skin joins the base, not just touches it
+    return [cylinder(hole, into_the_wall, skin) for hole in mounting_holes()]
+
+
 def base_body(variant: str) -> Part:
-    """The base before any text is engraved."""
+    """The finished base before any text is engraved, with its screw holes open."""
     body = _base_blank(variant)
     cavity = pcb_outline(CASE.pcb_gap)
     pockets = [
@@ -47,18 +54,18 @@ def base_body(variant: str) -> Part:
     ]
     # One boolean for every pocket: cut one at a time, the 0.01 mm overlaps between levels upset OCCT.
     body -= [slab(millable(pocket, variant), (bottom, top + CUT_OVERSHOOT)) for pocket, (bottom, top) in pockets]
-    return body + lap_ridges() - _base_cuts()
+    return body + lap_ridges() - _base_cuts(variant)
 
 
 def _base_blank(variant: str) -> Part:
     """The outside of the base: the full outline up to the gap, then a rim set back by the gap depth.
-    The two shells meet at the back of that gap, so the joint is a shadow line and not a seam."""
+    The two shells meet at the back of that gap, so the joint is a shadow line and not a seam.
+    The rim's top edge stays sharp: it is the seat of the top, and nobody sees it."""
     skin = chamfered_slab(
         case_outline(variant), (LEVELS.floor_bottom, LEVELS.gap_bottom), bottom=CASE.underside_chamfer,
         top=CASE.seam_chamfer,
     )
-    rim = chamfered_slab(case_outline(variant, -CASE.gap_depth), (LEVELS.gap_bottom, 0), bottom=0, top=CASE.seam_chamfer)
-    return skin + rim
+    return skin + slab(case_outline(variant, -CASE.gap_depth), (LEVELS.gap_bottom, 0))
 
 
 def lap_ridges() -> Part:
@@ -101,12 +108,10 @@ def _lap_footprint(run: tuple[str, float, float], outward: float, along: float) 
     return (span, across) if wall in ("back", "front") else (across, span)
 
 
-def _base_cuts() -> list[Part]:
+def _base_cuts(variant: str) -> list[Part]:
     under = LEVELS.floor_bottom - CUT_OVERSHOOT
     screw_holes = [cylinder(hole, BOARD.mounting.hole_diameter, (under, 0)) for hole in mounting_holes()]
-    counterbores = [
-        cylinder(hole, CASE.counterbore_diameter, (under, LEVELS.counterbore_top)) for hole in mounting_holes()
-    ]
+    counterbores = [cylinder(hole, CASE.counterbore_diameter, (under, screw_seat(variant))) for hole in mounting_holes()]
     button_holes = [
         cylinder(centre, CASE.button_hole_diameter, (under, LEVELS.floor_top + CUT_OVERSHOOT))
         for centre in buttons().values()
@@ -114,21 +119,8 @@ def _base_cuts() -> list[Part]:
     foot_recesses = [
         slab(stadium(grown(foot_span(row), CASE.foot_recess_fit)), (under, LEVELS.foot_recess_roof)) for row in screw_rows()
     ]
-    field = slab(label_field_outline(), (under, LEVELS.floor_bottom + CASE.label_field_depth))
     light_channels = [_light_channel(left=True), _light_channel(left=False)]
-    return [usb_cutout(), field] + light_channels + screw_holes + counterbores + _screw_cones() + button_holes + foot_recesses
-
-
-def _screw_cones() -> list[Part]:
-    """A 45 degree cone from the roof of each foot recess up to the counterbore. Without it the roof is
-    a bridge with a hole in it, which does not print; a chamfer mill cuts the cone in the CNC variant."""
-    wide, narrow = (diameter / 2 for diameter in CASE.screw_cone)
-    cone = Cone(wide, narrow, wide - narrow, align=(Align.CENTER, Align.CENTER, Align.MIN))
-    return [Pos(x, -y, LEVELS.foot_recess_roof - CUT_OVERSHOOT) * cone for x, y in mounting_holes()]
-
-
-def label_field_outline() -> Sketch:
-    return rounded_rectangle(label_field(), CASE.label_field[2])
+    return [usb_cutout()] + light_channels + screw_holes + counterbores + button_holes + foot_recesses
 
 
 def button_legends() -> Sketch:
@@ -150,6 +142,11 @@ def underside_mark() -> Sketch:
 def underside_artwork() -> Sketch:
     """Everything marked on the underside. The signature is laser-marked only: it is not in the solids."""
     return button_legends() + underside_mark() + signature.artwork()
+
+
+def printed_text() -> dict[str, Sketch]:
+    """Each piece of text that is engraved into the print variant, by name."""
+    return {"legend": button_legends(), "underside_mark": underside_mark()}
 
 
 def usb_cutout() -> Part:
@@ -185,24 +182,28 @@ def _light_channel(left: bool) -> Part:
 
 
 def top(variant: str) -> Part:
-    body = top_body(variant)
-    if variant == PRINT:
-        body -= slab(deck_artwork(), (LEVELS.deck_top - CASE.engraving_depth, LEVELS.deck_top + CUT_OVERSHOOT))
-    return body
-
-
-def top_body(variant: str) -> Part:
-    """The top before any text is engraved."""
+    """The top. Its face carries no text in either variant."""
     # The dish goes first and the pockets go in one boolean: in any other order OCCT returns the
     # CNC top in pieces.
     body = _top_blank(variant) - key_dish()
     body -= [slab(millable(pocket, variant), z_range) for pocket, z_range in _top_pockets(variant)]
     if variant == PRINT:
         body += _print_gussets() + _print_boss_webs() + _print_lens_fillers()
-    pilot_holes = [
-        cylinder(hole, CASE.pilot_diameter, (-CUT_OVERSHOOT, CASE.pilot_depth)) for hole in mounting_holes()
-    ]
-    return body - pilot_holes - usb_cutout() - lap_grooves()
+    return body - _top_screw_holes(variant) - usb_cutout() - lap_grooves()
+
+
+def _top_screw_holes(variant: str) -> list[Part]:
+    """Print: a pilot hole the screw cuts its own thread in. CNC: the tap drill, with the cone its
+    point leaves, because that point is what comes nearest to the dish floor."""
+    if variant == PRINT:
+        return [cylinder(hole, CASE.pilot_diameter, (-CUT_OVERSHOOT, CASE.pilot_depth)) for hole in mounting_holes()]
+    diameter, depth = CASE.cnc_tap_drill
+    point = Pos(0, 0, depth) * Cone(diameter / 2, 0, drill_point_height(), align=(Align.CENTER, Align.CENTER, Align.MIN))
+    return [cylinder(hole, diameter, (-CUT_OVERSHOOT, depth)) + Pos(hole[0], -hole[1]) * point for hole in mounting_holes()]
+
+
+def drill_point_height() -> float:
+    return CASE.cnc_tap_drill[0] / 2 / tan(radians(CASE.cnc_drill_point_angle / 2))
 
 
 def _top_blank(variant: str) -> Part:
@@ -226,20 +227,23 @@ def _top_pockets(variant: str) -> list[tuple[Sketch, tuple[float, float]]]:
     lens_ribs = Sketch() + [rectangle(span, (-FAR, FAR)) for span in lens_rib_spans()]
     bushing_hole = BOARD.stack.encoder_bushing_diameter + CASE.bushing_clearance
     above = LEVELS.deck_top + CUT_OVERSHOOT
+    opening = rectangle(*lens_opening(variant))
     return [
         (cavity, (-CUT_OVERSHOOT, LEVELS.rib_bottom)),
         (cavity - _ribs(), (LEVELS.rib_bottom, LEVELS.plate_bottom)),
         (under_the_deck, (LEVELS.plate_bottom, LEVELS.lens_rib_bottom)),
         (under_the_deck - lens_ribs, (LEVELS.lens_rib_bottom, LEVELS.deck_bottom)),
         (_switch_cutouts(variant), (LEVELS.plate_bottom, LEVELS.plate_top + CUT_OVERSHOOT)),
-        (rectangle(*lens_opening()), (LEVELS.lens_rib_bottom, above)),
-        (lens_recess_outline(), (LEVELS.lens_seat, above)),
+        (opening, (LEVELS.lens_rib_bottom, above)),
+        (lens_recess_outline(variant), (LEVELS.lens_seat, above)),
         (discs(encoder_centres(), bushing_hole), (LEVELS.deck_bottom, above)),
+        (discs(encoder_centres(), knob_well_diameter()), (LEVELS.knob_well_floor, above)),
     ]
 
 
-def lens_recess_outline() -> Sketch:
-    return rounded_rectangle(lens_recess(), CASE.lens_corner_radius + CASE.lens_fit)
+def lens_recess_outline(variant: str) -> Sketch:
+    fit = CASE.print_lens_fit if variant == PRINT else CASE.lens_fit
+    return rounded_rectangle(lens_recess(variant), CASE.lens_corner_radius + fit)
 
 
 def _ribs() -> Sketch:
@@ -249,9 +253,15 @@ def _ribs() -> Sketch:
     return Sketch() + [rectangle((-FAR, FAR), (line - half, line + half)) for line in rib_lines()]
 
 
+def switch_cutout_length(variant: str) -> float:
+    """Size of a switch cut-out along X. The high-X edge of each cut-out is a bridge while the top
+    prints standing, and a bridge sags: the print's cut-out is longer by that sag, at that edge."""
+    return BOARD.stack.switch_cutout + (CASE.print_bridge_sag if variant == PRINT else 0.0)
+
+
 def _switch_cutouts(variant: str) -> Sketch:
-    side = BOARD.stack.switch_cutout
-    cutout = Rectangle(side, side)
+    side, length = BOARD.stack.switch_cutout, switch_cutout_length(variant)
+    cutout = Pos((length - side) / 2, 0) * Rectangle(length, side)
     if variant == CNC:
         cutout += _dog_bones(side)
     return Sketch() + [Pos(x, -y) * cutout for x, y in key_centres()]
@@ -262,13 +272,6 @@ def _dog_bones(side: float) -> list[Sketch]:
     radius = CASE.cnc_corner_radius
     centre = side / 2 - radius / sqrt(2)
     return [Pos(sign_x * centre, sign_y * centre) * Circle(radius) for sign_x in (-1, 1) for sign_y in (-1, 1)]
-
-
-def deck_artwork() -> Sketch:
-    """The wordmark on the top face, between the back edge and the lens."""
-    back_edge = case_bounds()[1][0] + CASE.chamfer
-    lens_back = lens_recess()[1][0]
-    return legend(WORDMARK, WORDMARK_SIZE, (WIDTH / 2, (back_edge + lens_back) / 2))
 
 
 def _print_gussets() -> list[Part]:
@@ -287,7 +290,8 @@ def _print_lens_fillers() -> list[Part]:
     ledge as long as the deck pocket is deep."""
     height = CASE.lens_rib[1]
     y_range = (-CASE.pcb_gap, deck_pocket_front())
-    through = slab(rectangle(*lens_opening()), (LEVELS.lens_rib_bottom - CUT_OVERSHOOT, LEVELS.deck_bottom + CUT_OVERSHOOT))
+    opening = rectangle(*lens_opening(PRINT))
+    through = slab(opening, (LEVELS.lens_rib_bottom - CUT_OVERSHOOT, LEVELS.deck_bottom + CUT_OVERSHOOT))
     return [_gusset((rib_start, LEVELS.deck_bottom), -height, y_range) - through for rib_start, _ in lens_rib_spans()]
 
 

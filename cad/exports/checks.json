@@ -121,9 +121,33 @@
       "ok": true
     },
     {
-      "name": "coned_hole_in_recess_roof_prints",
+      "name": "skinned_hole_in_recess_roof_prints",
       "found": 6.8,
       "expected": "less than 15.0",
+      "ok": true
+    },
+    {
+      "name": "thin_stroke_found",
+      "found": 0.273,
+      "expected": "less than 0.45",
+      "ok": true
+    },
+    {
+      "name": "wide_stroke_passes",
+      "found": 0.5,
+      "expected": "more than 0.45",
+      "ok": true
+    },
+    {
+      "name": "foot_over_a_hole_found",
+      "found": 0.717,
+      "expected": "less than 0.8",
+      "ok": true
+    },
+    {
+      "name": "foot_on_a_flat_bears",
+      "found": 1.0,
+      "expected": "more than 0.99",
       "ok": true
     },
     {
@@ -154,19 +178,19 @@
   "clearances": [
     {
       "name": "usb_plug_to_opening",
-      "value_mm": 0.25,
-      "minimum_mm": 0.2,
+      "value_mm": 0.5,
+      "minimum_mm": 0.4,
       "ok": true
     },
     {
       "name": "keycap_to_deck",
-      "value_mm": 2.6,
+      "value_mm": 3.1,
       "minimum_mm": 0.4,
       "ok": true
     },
     {
       "name": "display_glass_under_deck",
-      "value_mm": 0.48,
+      "value_mm": 0.38,
       "minimum_mm": 0.2,
       "ok": true
     },
@@ -184,14 +208,14 @@
     },
     {
       "name": "screw_engagement",
-      "value_mm": 3.9,
+      "value_mm": 3.6,
       "minimum_mm": 3.0,
       "ok": true
     },
     {
       "name": "screw_tip_to_hole_end",
-      "value_mm": 0.3,
-      "minimum_mm": 0.2,
+      "value_mm": 0.6,
+      "minimum_mm": 0.6,
       "ok": true
     },
     {
@@ -202,7 +226,7 @@
     },
     {
       "name": "screw_head_below_underside",
-      "value_mm": 0.9,
+      "value_mm": 0.6,
       "minimum_mm": 0.2,
       "ok": true
     },
@@ -213,20 +237,56 @@
       "ok": true
     },
     {
+      "name": "print_pilot_after_shrink",
+      "value_mm": 1.65,
+      "minimum_mm": 1.6,
+      "ok": true
+    },
+    {
+      "name": "print_pilot_thread_bite",
+      "value_mm": 0.175,
+      "minimum_mm": 0.125,
+      "ok": true
+    },
+    {
+      "name": "cnc_screw_engagement",
+      "value_mm": 1.9,
+      "minimum_mm": 1.6,
+      "ok": true
+    },
+    {
+      "name": "cnc_full_thread_past_screw_tip",
+      "value_mm": 1.1,
+      "minimum_mm": 0.5,
+      "ok": true
+    },
+    {
+      "name": "cnc_skin_over_drill_point",
+      "value_mm": 0.819,
+      "minimum_mm": 0.8,
+      "ok": true
+    },
+    {
+      "name": "cnc_screw_head_below_underside",
+      "value_mm": 0.9,
+      "minimum_mm": 0.2,
+      "ok": true
+    },
+    {
       "name": "knob_to_well_floor_when_pressed",
-      "value_mm": 0.5,
+      "value_mm": 0.3,
       "minimum_mm": 0.3,
       "ok": true
     },
     {
       "name": "skin_under_knob_well",
-      "value_mm": 1.5,
+      "value_mm": 0.8,
       "minimum_mm": 0.8,
       "ok": true
     },
     {
       "name": "lens_ledge_thickness",
-      "value_mm": 1.0,
+      "value_mm": 0.9,
       "minimum_mm": 0.8,
       "ok": true
     },
@@ -280,7 +340,7 @@
     },
     {
       "name": "foot_below_underside",
-      "value_mm": 1.0,
+      "value_mm": 1.2,
       "minimum_mm": 0.5,
       "ok": true
     },
@@ -304,7 +364,7 @@
     },
     {
       "name": "switch_flange_to_dish_floor",
-      "value_mm": 0.35,
+      "value_mm": 0.85,
       "minimum_mm": 0.25,
       "ok": true
     },
@@ -316,50 +376,104 @@
     },
     {
       "name": "knob_covers_bushing_hole",
-      "value_mm": 3.85,
+      "value_mm": 3.05,
       "minimum_mm": 3.0,
       "ok": true
     },
     {
       "name": "knob_groove_land",
-      "value_mm": 0.496,
+      "value_mm": 0.608,
       "minimum_mm": 0.45,
       "ok": true
     },
     {
+      "name": "knob_well_to_lens_recess",
+      "value_mm": 1.025,
+      "minimum_mm": 1.0,
+      "ok": true
+    },
+    {
+      "name": "knob_well_to_dish_rim",
+      "value_mm": 1.1,
+      "minimum_mm": 1.0,
+      "ok": true
+    },
+    {
+      "name": "print_switch_cutout_after_sag",
+      "value_mm": 14.0,
+      "minimum_mm": 14.0,
+      "ok": true
+    },
+    {
+      "name": "cnc_dish_wall_inside_8mm_chamfer_cutter",
+      "value_mm": 0.5,
+      "minimum_mm": 0.0,
+      "ok": true
+    },
+    {
       "name": "display_module_inside_opening",
-      "value_mm": 0.4,
+      "value_mm": 0.3,
       "minimum_mm": 0.3,
       "ok": true
     },
     {
       "name": "lens_below_flush",
+      "value_mm": 0.12,
+      "minimum_mm": 0.0,
+      "ok": true
+    },
+    {
+      "name": "lens_not_proud_thick_sheet",
       "value_mm": 0.02,
       "minimum_mm": 0.0,
       "ok": true
     },
     {
       "name": "lens_end_ledge",
-      "value_mm": 1.1,
+      "value_mm": 1.3,
       "minimum_mm": 1.0,
       "ok": true
     },
     {
       "name": "lens_to_knob",
-      "value_mm": 1.075,
+      "value_mm": 1.875,
       "minimum_mm": 1.0,
       "ok": true
     },
     {
       "name": "lens_to_dish_rim",
-      "value_mm": 1.95,
+      "value_mm": 1.35,
       "minimum_mm": 1.0,
       "ok": true
     },
     {
       "name": "lens_recess_bridge_margin",
-      "value_mm": 0.2,
+      "value_mm": 0.0,
       "minimum_mm": 0.0,
+      "ok": true
+    },
+    {
+      "name": "print_lens_fit_after_bridge_sag",
+      "value_mm": 0.1,
+      "minimum_mm": 0.0,
+      "ok": true
+    },
+    {
+      "name": "lens_to_glass_under_press",
+      "value_mm": 0.32,
+      "minimum_mm": 0.2,
+      "ok": true
+    },
+    {
+      "name": "header_pins_under_lens",
+      "value_mm": 0.78,
+      "minimum_mm": 0.5,
+      "ok": true
+    },
+    {
+      "name": "lens_mask_window_inside_glass",
+      "value_mm": 0.8,
+      "minimum_mm": 0.5,
       "ok": true
     },
     {
@@ -376,19 +490,49 @@
     },
     {
       "name": "light_slit_height",
-      "value_mm": 1.1,
+      "value_mm": 1.4,
       "minimum_mm": 0.8,
       "ok": true
     },
     {
+      "name": "light_line_visible_at_45deg",
+      "value_mm": 0.7,
+      "minimum_mm": 0.6,
+      "ok": true
+    },
+    {
       "name": "led_to_light_bar",
-      "value_mm": 0.2,
+      "value_mm": 0.3,
       "minimum_mm": 0.1,
       "ok": true
     },
     {
+      "name": "pcb_edge_to_light_bar_lip",
+      "value_mm": 0.15,
+      "minimum_mm": 0.15,
+      "ok": true
+    },
+    {
+      "name": "gap_growth_room_thick_pcb",
+      "value_mm": 0.04,
+      "minimum_mm": 0.0,
+      "ok": true
+    },
+    {
+      "name": "lap_overlap_thick_pcb",
+      "value_mm": 0.44,
+      "minimum_mm": 0.3,
+      "ok": true
+    },
+    {
       "name": "screw_head_under_strip_recess",
-      "value_mm": 0.3,
+      "value_mm": 0.2,
+      "minimum_mm": 0.2,
+      "ok": true
+    },
+    {
+      "name": "cnc_screw_head_under_strip_recess",
+      "value_mm": 0.5,
       "minimum_mm": 0.2,
       "ok": true
     },
@@ -400,13 +544,13 @@
     },
     {
       "name": "floor_under_strip_recess",
-      "value_mm": 1.8,
+      "value_mm": 2.0,
       "minimum_mm": 0.8,
       "ok": true
     },
     {
-      "name": "cone_inside_floor",
-      "value_mm": 0.8,
+      "name": "screw_skin_inside_floor",
+      "value_mm": 1.8,
       "minimum_mm": 0.5,
       "ok": true
     },
@@ -418,8 +562,14 @@
     },
     {
       "name": "floor_under_label_engraving",
-      "value_mm": 1.6,
+      "value_mm": 2.0,
       "minimum_mm": 0.8,
+      "ok": true
+    },
+    {
+      "name": "chamfer_to_strip_recess",
+      "value_mm": 0.5,
+      "minimum_mm": 0.4,
       "ok": true
     },
     {
@@ -438,15 +588,15 @@
   "measurements": [
     {
       "name": "thinnest_wall_print_base",
-      "value": 1.0,
+      "value": 0.2,
       "limit": 0.8,
       "kind": "min",
       "unit": "mm",
-      "ok": true
+      "ok": false
     },
     {
       "name": "thinnest_wall_print_top",
-      "value": 1.0,
+      "value": 0.8,
       "limit": 0.8,
       "kind": "min",
       "unit": "mm",
@@ -462,7 +612,7 @@
     },
     {
       "name": "thinnest_wall_cnc_top",
-      "value": 1.0,
+      "value": 0.8,
       "limit": 0.8,
       "kind": "min",
       "unit": "mm",
@@ -470,7 +620,7 @@
     },
     {
       "name": "thinnest_wall_diffuser",
-      "value": 1.5,
+      "value": 1.25,
       "limit": 0.8,
       "kind": "min",
       "unit": "mm",
@@ -478,7 +628,7 @@
     },
     {
       "name": "thinnest_wall_knob",
-      "value": 1.7,
+      "value": 1.0,
       "limit": 0.8,
       "kind": "min",
       "unit": "mm",
@@ -486,11 +636,11 @@
     },
     {
       "name": "thinnest_wall_tilt_bar",
-      "value": 1.014,
+      "value": 0.2,
       "limit": 0.8,
       "kind": "min",
       "unit": "mm",
-      "ok": true
+      "ok": false
     },
     {
       "name": "thinnest_wall_foot_strip",
@@ -630,19 +780,19 @@
     },
     {
       "name": "cnc_corner_curvature_at_join",
-      "value": 0.0,
+      "value": 0.667,
       "limit": 0.01,
       "kind": "max",
       "unit": "1/mm",
-      "ok": true
+      "ok": false
     },
     {
       "name": "cnc_corner_smallest_radius",
-      "value": 4.714,
+      "value": 1.5,
       "limit": 4.66,
       "kind": "min",
       "unit": "mm",
-      "ok": true
+      "ok": false
     },
     {
       "name": "base_boss_wall_under_pcb",
@@ -662,7 +812,7 @@
     },
     {
       "name": "top_boss_wall",
-      "value": 1.4,
+      "value": 1.35,
       "limit": 1.2,
       "kind": "min",
       "unit": "mm",
@@ -670,7 +820,7 @@
     },
     {
       "name": "diffuser_stopped_outward",
-      "value": 87.017,
+      "value": 80.875,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -678,7 +828,7 @@
     },
     {
       "name": "diffuser_stopped_inward",
-      "value": 38.11,
+      "value": 31.184,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -686,7 +836,7 @@
     },
     {
       "name": "diffuser_stopped_upward",
-      "value": 39.653,
+      "value": 38.75,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -694,7 +844,7 @@
     },
     {
       "name": "diffuser_stopped_downward",
-      "value": 31.79,
+      "value": 31.959,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -702,7 +852,7 @@
     },
     {
       "name": "diffuser_stopped_to_the_back",
-      "value": 2.685,
+      "value": 3.057,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -710,7 +860,7 @@
     },
     {
       "name": "diffuser_stopped_to_the_front",
-      "value": 2.685,
+      "value": 3.057,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -750,7 +900,7 @@
     },
     {
       "name": "lap_stops_top_sliding_front",
-      "value": 8.705,
+      "value": 8.612,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -790,7 +940,7 @@
     },
     {
       "name": "cnc_lap_stops_top_sliding_front",
-      "value": 8.705,
+      "value": 8.612,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -798,7 +948,7 @@
     },
     {
       "name": "pressed_keycap_to_top",
-      "value": 0.426,
+      "value": 0.563,
       "limit": 0.4,
       "kind": "min",
       "unit": "mm",
@@ -806,7 +956,7 @@
     },
     {
       "name": "keycap_to_knob",
-      "value": 3.95,
+      "value": 4.763,
       "limit": 2.0,
       "kind": "min",
       "unit": "mm",
@@ -814,7 +964,7 @@
     },
     {
       "name": "keycap_to_knob_right",
-      "value": 3.95,
+      "value": 4.763,
       "limit": 2.0,
       "kind": "min",
       "unit": "mm",
@@ -822,7 +972,7 @@
     },
     {
       "name": "pressed_knob_to_top",
-      "value": 0.5,
+      "value": 0.3,
       "limit": 0.3,
       "kind": "min",
       "unit": "mm",
@@ -830,7 +980,7 @@
     },
     {
       "name": "knob_to_top",
-      "value": 1.0,
+      "value": 0.8,
       "limit": 0.8,
       "kind": "min",
       "unit": "mm",
@@ -838,7 +988,7 @@
     },
     {
       "name": "lens_not_proud",
-      "value": 0.02,
+      "value": 0.12,
       "limit": 0.0,
       "kind": "min",
       "unit": "mm",
@@ -846,10 +996,18 @@
     },
     {
       "name": "lens_carried_by_ledges",
-      "value": 4.439,
+      "value": 5.149,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
+      "ok": true
+    },
+    {
+      "name": "lens_tape_area",
+      "value": 30.287,
+      "limit": 30.0,
+      "kind": "min",
+      "unit": "mm^2",
       "ok": true
     },
     {
@@ -861,12 +1019,164 @@
       "ok": true
     },
     {
+      "name": "foot_strip_back_bearing_share",
+      "value": 0.948,
+      "limit": 0.8,
+      "kind": "min",
+      "unit": "of 1",
+      "ok": true
+    },
+    {
+      "name": "foot_strip_front_bearing_share",
+      "value": 0.948,
+      "limit": 0.8,
+      "kind": "min",
+      "unit": "of 1",
+      "ok": true
+    },
+    {
+      "name": "centre_pad_bearing_share",
+      "value": 0.823,
+      "limit": 0.8,
+      "kind": "min",
+      "unit": "of 1",
+      "ok": true
+    },
+    {
       "name": "label_text_inside_field",
-      "value": 2.005,
+      "value": 1.451,
       "limit": 1.0,
       "kind": "min",
       "unit": "mm",
       "ok": true
+    },
+    {
+      "name": "shell_seat_area",
+      "value": 256.508,
+      "limit": 150.0,
+      "kind": "min",
+      "unit": "mm^2",
+      "ok": true
+    },
+    {
+      "name": "shell_seat_area_left",
+      "value": 36.033,
+      "limit": 5.0,
+      "kind": "min",
+      "unit": "mm^2",
+      "ok": true
+    },
+    {
+      "name": "shell_seat_area_right",
+      "value": 36.033,
+      "limit": 5.0,
+      "kind": "min",
+      "unit": "mm^2",
+      "ok": true
+    },
+    {
+      "name": "shell_seat_area_back",
+      "value": 66.132,
+      "limit": 5.0,
+      "kind": "min",
+      "unit": "mm^2",
+      "ok": true
+    },
+    {
+      "name": "shell_seat_area_front",
+      "value": 121.72,
+      "limit": 5.0,
+      "kind": "min",
+      "unit": "mm^2",
+      "ok": true
+    },
+    {
+      "name": "cnc_shell_seat_area",
+      "value": 252.225,
+      "limit": 150.0,
+      "kind": "min",
+      "unit": "mm^2",
+      "ok": true
+    },
+    {
+      "name": "cnc_shell_seat_area_left",
+      "value": 34.957,
+      "limit": 5.0,
+      "kind": "min",
+      "unit": "mm^2",
+      "ok": true
+    },
+    {
+      "name": "cnc_shell_seat_area_right",
+      "value": 34.957,
+      "limit": 5.0,
+      "kind": "min",
+      "unit": "mm^2",
+      "ok": true
+    },
+    {
+      "name": "cnc_shell_seat_area_back",
+      "value": 65.022,
+      "limit": 5.0,
+      "kind": "min",
+      "unit": "mm^2",
+      "ok": true
+    },
+    {
+      "name": "cnc_shell_seat_area_front",
+      "value": 120.519,
+      "limit": 5.0,
+      "kind": "min",
+      "unit": "mm^2",
+      "ok": true
+    },
+    {
+      "name": "pcb_seen_through_gap",
+      "value": 0.15,
+      "limit": 0.15,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "light_bar_end_gap_in_slit",
+      "value": 0.15,
+      "limit": 0.2,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "usb_opening_asymmetry_base",
+      "value": 0.0,
+      "limit": 0.5,
+      "kind": "max",
+      "unit": "mm^3",
+      "ok": true
+    },
+    {
+      "name": "usb_opening_asymmetry_top",
+      "value": 0.0,
+      "limit": 0.5,
+      "kind": "max",
+      "unit": "mm^3",
+      "ok": true
+    },
+    {
+      "name": "legend_stroke",
+      "value": 0.484,
+      "limit": 0.45,
+      "kind": "min",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "underside_mark_stroke",
+      "value": 0.422,
+      "limit": 0.45,
+      "kind": "min",
+      "unit": "mm",
+      "ok": false
     },
     {
       "name": "cnc_base_sharp_internal_corners",
@@ -887,7 +1197,7 @@
     },
     {
       "name": "cnc_base_undercut_area",
-      "value": 1.423,
+      "value": 0.686,
       "limit": 5.0,
       "kind": "max",
       "unit": "mm^2",
@@ -924,11 +1234,11 @@
       "kind": "min",
       "unit": "mm",
       "ok": true,
-      "note": "8 full round holes left out: they are drilled"
+      "note": "10 full round holes left out: they are drilled"
     },
     {
       "name": "cnc_top_undercut_area",
-      "value": 1.802,
+      "value": 1.55,
       "limit": 5.0,
       "kind": "max",
       "unit": "mm^2",
@@ -954,22 +1264,22 @@
   "printability": [
     {
       "part": "base",
-      "widest_span_mm": 8.0,
+      "widest_span_mm": 7.4,
       "limit_mm": 15.0,
-      "bed_contact_mm2": 5666.9,
+      "bed_contact_mm2": 5847.7,
       "minimum_contact_mm2": 100.0,
       "height_over_narrow_side": 0.1,
-      "longest_bridge_mm": 7.4,
+      "longest_bridge_mm": 6.8,
       "bridge_at": [
-        14.7,
-        -36.1,
+        2.8,
+        -82.7,
         -8.5
       ],
-      "deepest_cantilever_mm": 1.0,
+      "deepest_cantilever_mm": 0.3,
       "cantilever_at": [
-        5.7,
-        -81.8,
-        -8.3
+        2.3,
+        -80.2,
+        -6.3
       ],
       "cantilever_limit_mm": 1.5,
       "ok": true
@@ -981,17 +1291,17 @@
       "bed_contact_mm2": 604.1,
       "minimum_contact_mm2": 100.0,
       "height_over_narrow_side": 10.6,
-      "longest_bridge_mm": 14.2,
+      "longest_bridge_mm": 14.4,
       "bridge_at": [
-        -7.3,
-        -18.1,
-        60.7
+        -7.2,
+        -18.2,
+        60.5
       ],
-      "deepest_cantilever_mm": 1.1,
+      "deepest_cantilever_mm": 1.2,
       "cantilever_at": [
-        -0.3,
-        0.8,
-        -1.7
+        -8.5,
+        -12.3,
+        78.3
       ],
       "cantilever_limit_mm": 1.5,
       "ok": true
@@ -1000,7 +1310,7 @@
       "part": "diffuser_left",
       "widest_span_mm": 0.7,
       "limit_mm": 15.0,
-      "bed_contact_mm2": 235.1,
+      "bed_contact_mm2": 238.0,
       "minimum_contact_mm2": 100.0,
       "height_over_narrow_side": 0.3,
       "longest_bridge_mm": 0.0,
@@ -1011,7 +1321,7 @@
       ],
       "deepest_cantilever_mm": 0.1,
       "cantilever_at": [
-        0.1,
+        1.8,
         -72.7,
         -1.6
       ],
@@ -1020,22 +1330,22 @@
     },
     {
       "part": "knob_left",
-      "widest_span_mm": 8.0,
+      "widest_span_mm": 0.8,
       "limit_mm": 15.0,
-      "bed_contact_mm2": 126.4,
+      "bed_contact_mm2": 140.5,
       "minimum_contact_mm2": 100.0,
-      "height_over_narrow_side": 0.8,
-      "longest_bridge_mm": 6.6,
+      "height_over_narrow_side": 0.9,
+      "longest_bridge_mm": 0.2,
       "bridge_at": [
-        10.4,
-        -9.3,
-        14.2
+        13.4,
+        5.5,
+        -21.5
       ],
-      "deepest_cantilever_mm": 0.64,
+      "deepest_cantilever_mm": 0.0,
       "cantilever_at": [
-        11.4,
-        -13.3,
-        14.2
+        5.9,
+        3.5,
+        -9.9
       ],
       "cantilever_limit_mm": 1.5,
       "ok": true
@@ -1051,13 +1361,13 @@
       "bridge_at": [
         -0.6,
         -7.1,
-        -9.9
+        -10.1
       ],
       "deepest_cantilever_mm": 0.0,
       "cantilever_at": [
         -0.6,
         -7.1,
-        -9.9
+        -10.1
       ],
       "cantilever_limit_mm": 1.5,
       "ok": true
@@ -1073,13 +1383,13 @@
       "bridge_at": [
         38.1,
         -64.4,
-        -9.7
+        -9.9
       ],
       "deepest_cantilever_mm": 0.0,
       "cantilever_at": [
         38.1,
         -64.4,
-        -9.7
+        -9.9
       ],
       "cantilever_limit_mm": 1.5,
       "ok": true
@@ -1088,20 +1398,20 @@
       "part": "tilt_bar",
       "widest_span_mm": 7.4,
       "limit_mm": 15.0,
-      "bed_contact_mm2": 306.2,
+      "bed_contact_mm2": 254.3,
       "minimum_contact_mm2": 100.0,
       "height_over_narrow_side": 0.8,
       "longest_bridge_mm": 6.8,
       "bridge_at": [
-        6.7,
+        2.8,
         -4.8,
-        -16.6
+        -16.8
       ],
-      "deepest_cantilever_mm": 1.0,
+      "deepest_cantilever_mm": 0.0,
       "cantilever_at": [
-        5.7,
-        -3.9,
-        -16.6
+        -1.3,
+        -8.1,
+        -9.2
       ],
       "cantilever_limit_mm": 1.5,
       "ok": true

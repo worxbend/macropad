@@ -11,11 +11,11 @@ from xml.sax.saxutils import escape
 from build123d import Box, Compound, ExportDXF, GeomType, Part, Plane, Pos, Unit, section
 
 from .components import drawn_components
-from .parts import deck_artwork, underside_artwork
+from .parts import drill_point_height, underside_artwork
 from .small_parts import case_parts, lens_mask_outline, lens_outline
 from .spec import BOARD, CASE, CNC, LEVELS, PRINT, Span, buttons, case_bounds, dish_rim, encoder_centres, foot_span
-from .spec import grown, key_centres, label_field, led_slot_span, lens_opening, lens_recess, mounting_holes
-from .spec import screw_rows
+from .spec import grown, key_centres, knob_well_diameter, led_slot_span, lens_opening, lens_recess, lens_span
+from .spec import mounting_holes, screw_rows, screw_seat
 
 SHEET = (420.0, 297.0)  # A3 landscape, mm
 SCALE = 1.6
@@ -91,12 +91,9 @@ def write_drawings(folder: Path, images: Path) -> int:
 
 
 def write_outlines(folder: Path) -> None:
-    """Flat artwork as DXF: the text of the print variant, for laser-marking the milled parts, and
-    the lens with its mask, for whoever cuts and prints it."""
-    outlines = {
-        "engraving_top": deck_artwork(), "engraving_underside": underside_artwork(), "lens": lens_outline(),
-        "lens_mask": lens_mask_outline(),
-    }
+    """Flat artwork as DXF: the marks on the underside, for laser-marking the milled base, and the
+    lens with its mask, for whoever cuts and prints it. The top face carries no mark."""
+    outlines = {"engraving_underside": underside_artwork(), "lens": lens_outline(), "lens_mask": lens_mask_outline()}
     for name, artwork in outlines.items():
         exporter = ExportDXF(unit=Unit.MM)
         exporter.add_shape(artwork)
@@ -106,7 +103,7 @@ def write_outlines(folder: Path) -> None:
 
 def general_arrangement() -> str:
     solids = {
-        name: solid for name, solid in (case_parts(PRINT) | drawn_components()).items()
+        name: solid for name, solid in (case_parts(PRINT) | drawn_components(PRINT)).items()
         if not name.startswith(NOT_DRAWN)
     }
     assembly = Compound(children=list(solids.values()))
@@ -208,7 +205,7 @@ def _side_point(board_y: float, z: float) -> tuple[float, float]:
 def _top_dimensions() -> list[str]:
     keys = key_centres()
     (left_x, knob_y), (right_x, _) = encoder_centres()
-    (recess_start, recess_end), (recess_back, _) = lens_recess()
+    (lens_start, lens_end), (lens_back, _) = lens_span()
     above_the_case = -(SCALE * (knob_y - BACK) + 11)
     below_the_case = SCALE * (FRONT_SIDE - keys[-1][1]) + 8
     right_of_the_case = SCALE * (RIGHT_SIDE - keys[-1][0]) + 10
@@ -216,8 +213,8 @@ def _top_dimensions() -> list[str]:
         _dimension(TOP, _plan_point(LEFT, BACK), _plan_point(RIGHT_SIDE, BACK), -22, _mm(RIGHT_SIDE - LEFT)),
         _dimension(TOP, _plan_point(LEFT, BACK), _plan_point(LEFT, FRONT_SIDE), -16, _mm(FRONT_SIDE - BACK)),
         _dimension(TOP, _plan_point(left_x, knob_y), _plan_point(right_x, knob_y), above_the_case, _mm(right_x - left_x)),
-        _dimension(TOP, _plan_point(recess_start, recess_back), _plan_point(recess_end, recess_back),
-                   -(SCALE * (recess_back - BACK) + 3), f"{_mm(CASE.lens[0])} lens"),
+        _dimension(TOP, _plan_point(lens_start, lens_back), _plan_point(lens_end, lens_back),
+                   -(SCALE * (lens_back - BACK) + 3), f"{_mm(CASE.lens[0])} lens"),
         _dimension(TOP, _plan_point(*keys[-2]), _plan_point(*keys[-1]), below_the_case, _mm(BOARD.keys.pitch)),
         _dimension(TOP, _plan_point(*keys[BOARD.keys.columns - 1]), _plan_point(*keys[2 * BOARD.keys.columns - 1]),
                    right_of_the_case, _mm(BOARD.keys.pitch)),
@@ -313,10 +310,11 @@ BASE_SHEET = PartSheet(
         f"Every pocket corner is R{_mm(CASE.cnc_corner_radius)} or larger: "
         f"a {_mm(2 * CASE.cnc_corner_radius)} mm end mill reaches them all.",
         f"45 degree chamfers: {_mm(CASE.underside_chamfer)} on the underside rim, "
-        f"{_mm(CASE.seam_chamfer)} on the two rims at the gap, "
-        "the flank and ends of the lap ridges, the cones under the foot recesses, the USB lead-in.",
+        f"{_mm(CASE.seam_chamfer)} on the outer skin's top edge at the gap, "
+        "the flank and ends of the lap ridges, the USB lead-in. The rim inside the gap stays sharp: the top seats on it.",
         f"The rim steps in {_mm(CASE.gap_depth)} mm over the top {_mm(CASE.gap_height)} mm, all round: that is the gap. "
         "Cut it with the side of the end mill in setup 1.",
+        f"Screw holes go straight through: M2 x {_mm(CASE.cnc_screw_length)} socket head from below.",
         CORNER_NOTE,
         "General tolerance: ISO 2768-m is a proposal. Nothing has been made or measured.",
     ),
@@ -330,8 +328,12 @@ TOP_SHEET = PartSheet(
         f"Switch cut-outs {_mm(BOARD.stack.switch_cutout)} square in a {_mm(BOARD.stack.plate_thickness)} mm plate. "
         "Take their tolerance from the Cherry MX datasheet.",
         f"Key dish: flat floor on the plate, walls at 45 degrees, {_mm(LEVELS.deck_top - LEVELS.plate_top)} deep. "
-        "A 90 degree chamfer mill cuts the walls.",
-        f"Pilot holes are for self-tapping M2 in plastic. In aluminium drill {_mm(CASE.screw_thread_core)} and tap M2.",
+        "A 90 degree chamfer mill of 8 mm or more cuts the walls.",
+        f"Screw holes: drill {_mm(CASE.cnc_tap_drill[0])} to {_mm(CASE.cnc_tap_drill[1])} at full diameter, "
+        f"tap M2 with a bottoming tap to {_mm(CASE.cnc_full_thread)} full thread or more, "
+        f"for M2 x {_mm(CASE.cnc_screw_length)}.",
+        "Setup 2 (top side up): hold the part on a fixture plate through the six M2 holes, or in soft jaws cut to "
+        "the outline. The skirts are too thin for vise pressure.",
         CORNER_NOTE,
         "General tolerance: ISO 2768-m is a proposal. Nothing has been made or measured.",
     ),
@@ -374,11 +376,10 @@ def _span_size(span: Span) -> str:
 def _base_features() -> list[tuple[str, tuple[float, float], str]]:
     """(tag, board position, what to make) for every hole and every recess in the underside of the base.
     A line break in the text starts a new line in the table."""
-    cone_mouth, cone_end = CASE.screw_cone
+    seat = screw_seat(CNC) - LEVELS.floor_bottom
     screw_text = (
         f"\u2300{_mm(BOARD.mounting.hole_diameter)} through; counterbore \u2300{_mm(CASE.counterbore_diameter)} to "
-        f"{_mm(CASE.counterbore_depth)} from below\n45\u00b0 cone \u2300{_mm(cone_mouth)} to \u2300{_mm(cone_end)}, "
-        f"starting {_mm(CASE.foot_recess_depth)} from below"
+        f"{_mm(seat)} from below"
     )
     screws = [(f"S{index + 1}", hole, screw_text) for index, hole in enumerate(mounting_holes())]
     button_text = f"\u2300{_mm(CASE.button_hole_diameter)} through"
@@ -389,27 +390,31 @@ def _base_features() -> list[tuple[str, tuple[float, float], str]]:
          f"slot {_span_size(grown(foot_span(row), CASE.foot_recess_fit))}, full-radius ends, {depth}")
         for index, row in enumerate(screw_rows())
     ]
-    field_text = (
-        f"pocket {_span_size(label_field())}, R{_mm(CASE.label_field[2])}, {_mm(CASE.label_field_depth)} deep from below"
-    )
-    return screws + button_holes + recesses + [("LF", _span_centre(label_field()), field_text)]
+    return screws + button_holes + recesses
 
 
 def _top_features() -> list[tuple[str, tuple[float, float], str]]:
-    pilot = f"\u2300{_mm(CASE.pilot_diameter)} x {_mm(CASE.pilot_depth)} deep from below"
-    pilots = [(f"S{index + 1}", hole, pilot) for index, hole in enumerate(mounting_holes())]
+    drill, depth = CASE.cnc_tap_drill
+    tapped = (
+        f"\u2300{_mm(drill)} x {_mm(depth)} from below (point to {_mm(depth + drill_point_height())}), "
+        f"tap M2 to {_mm(CASE.cnc_full_thread)} full thread"
+    )
+    pilots = [(f"S{index + 1}", hole, tapped) for index, hole in enumerate(mounting_holes())]
     bushing = BOARD.stack.encoder_bushing_diameter + CASE.bushing_clearance
-    through = f"\u2300{_mm(bushing)} through"
+    through = (
+        f"\u2300{_mm(bushing)} through; well \u2300{_mm(knob_well_diameter())} x "
+        f"{_mm(CASE.knob_well_depth)} deep from above"
+    )
     encoders = [(f"E{index + 1}", centre, through) for index, centre in enumerate(encoder_centres())]
     cutout = (
         f"{_mm(BOARD.stack.switch_cutout)} square through, first of {len(key_centres())} "
         f"on a {_mm(BOARD.keys.pitch)} grid"
     )
     lens_text = (
-        f"lens recess {_span_size(lens_recess())}, R{_mm(CASE.lens_corner_radius + CASE.lens_fit)}, "
-        f"{_mm(CASE.lens_recess_depth)} deep from above\nopening {_span_size(lens_opening())} through, in its middle"
+        f"lens recess {_span_size(lens_recess(CNC))}, R{_mm(CASE.lens_corner_radius + CASE.lens_fit)}, "
+        f"{_mm(CASE.lens_recess_depth)} deep from above\nopening {_span_size(lens_opening(CNC))} through, in its middle"
     )
-    return pilots + encoders + [("K1", key_centres()[0], cutout), ("LS", _span_centre(lens_recess()), lens_text)]
+    return pilots + encoders + [("K1", key_centres()[0], cutout), ("LS", _span_centre(lens_recess(CNC)), lens_text)]
 
 
 def _feature_tags(features: list[tuple[str, tuple[float, float], str]]) -> list[str]:
@@ -495,7 +500,7 @@ def _base_dimensions() -> list[str]:
 
 def _top_part_dimensions() -> list[str]:
     keys = key_centres()
-    (recess_start, recess_end), (recess_back, recess_front) = lens_recess()
+    (recess_start, recess_end), (recess_back, recess_front) = lens_recess(CNC)
     (_, _), (rim_back, rim_front) = dish_rim()
     return [
         _dimension(PLAN_ABOVE, _plan_point(LEFT, BACK), _plan_point(RIGHT_SIDE, BACK), -17, _mm(RIGHT_SIDE - LEFT)),

@@ -22,18 +22,22 @@ TILE_SIZE = (IMAGE_SIZE[0] // 2, IMAGE_SIZE[1] // 2)
 WORKERS = 4  # each view holds about 1 GB of buffers while it renders
 
 GRAPHITE = Material((0.16, 0.17, 0.19), gloss=0.08)
-GRAPHITE_KNOB = replace(GRAPHITE, gloss=0.3)  # a little shine, so the grooves catch the light
+# The knobs are printed in both builds, in graphite, with a little shine so the grooves catch the light.
+GRAPHITE_KNOB = replace(GRAPHITE, gloss=0.3)
+DARK_SWITCH = Material((0.16, 0.16, 0.17), gloss=0.3)
 MATERIALS = {
     "base": GRAPHITE, "top": Material((0.80, 0.79, 0.76), gloss=0.08), "tilt_bar": GRAPHITE, "knob": GRAPHITE_KNOB,
-    "diffuser": Material((0.11, 0.11, 0.12), gloss=0.3),  # smoke-grey: unlit, it disappears in the gap
+    # Natural translucent: it passes the most light. Unlit it sits in the shadow of the gap.
+    "diffuser": Material((0.96, 0.94, 0.89), gloss=0.1),
     "keycap": Material((0.93, 0.92, 0.90), gloss=0.12),
-    "lens": Material((0.03, 0.03, 0.04), gloss=0.9),
+    # Black-printed glass: no broad highlight, only the band of a window mirrored in it.
+    "lens": Material((0.03, 0.03, 0.04), gloss=0.0, sheen=0.35),
     "foot_strip": Material((0.06, 0.06, 0.06), gloss=0.05),
     "centre_pad": Material((0.06, 0.06, 0.06), gloss=0.05),
     "tilt_strip": Material((0.06, 0.06, 0.06), gloss=0.05),
-    "switch": Material((0.16, 0.16, 0.17), gloss=0.3),
+    "switch": Material((0.88, 0.87, 0.84), gloss=0.2),  # Chalk: switches with light housings (see docs/parts.md)
     "socket": Material((0.30, 0.31, 0.33)),
-    "pcb": Material((0.08, 0.42, 0.30), gloss=0.3),
+    "pcb": Material((0.05, 0.06, 0.06), gloss=0.3),  # black solder mask, an order option; the default is green
     "display_glass": Material((0.42, 0.45, 0.47), gloss=0.9),
     "display_pixels": Material((0.66, 0.71, 0.63), gloss=0.9),
     "display": Material((0.10, 0.16, 0.30)),
@@ -46,15 +50,17 @@ MATERIALS = {
 }
 LASER_MARK = Material((0.30, 0.31, 0.33), gloss=0.0)  # a guess: a dark mark on clear anodised aluminium
 MARK_OFF_SURFACE = 0.02  # mm below the underside, so the flat mark is drawn in front of it
-GLOWING_DIFFUSER = Material((0.98, 0.93, 0.82), glow=2.2)  # a guess: warm white; the LEDs are RGB
+# A guess: warm white; the LEDs are RGB. The slit is lit indirectly, so its ends fade out.
+GLOWING_DIFFUSER = Material((0.98, 0.93, 0.82), glow=2.2, glow_fade=3.0)
 
 
 def _anodised(colour: tuple[float, float, float]) -> Material:
-    return Material(colour, gloss=0.45, metal=0.6)
+    return Material(colour, gloss=0.6, metal=0.85)
 
 
-def _two_tone(top: Material, base: Material, knob: Material, keycap: tuple[float, float, float]) -> dict[str, Material]:
-    return {"top": top, "base": base, "tilt_bar": base, "knob": knob, "keycap": Material(keycap, gloss=0.12)}
+def _two_tone(top: Material, base: Material, keycap: tuple[float, float, float]) -> dict[str, Material]:
+    """A colourway with dark switches. Its knobs stay printed graphite."""
+    return {"top": top, "base": base, "tilt_bar": base, "keycap": Material(keycap, gloss=0.12), "switch": DARK_SWITCH}
 
 
 SILVER, SPACE_GREY = _anodised((0.77, 0.78, 0.80)), _anodised((0.33, 0.34, 0.36))
@@ -63,22 +69,26 @@ ASSEMBLY, MILLED, CUT_ALONG, CUT_ACROSS, SHELLS, BED = "assembly", "milled", "cu
 COLOURWAYS = {
     "Chalk, printed": (ASSEMBLY, {}),
     "Graphite, printed": (ASSEMBLY, _two_tone(
-        Material((0.17, 0.18, 0.20), gloss=0.08), Material((0.09, 0.09, 0.10), gloss=0.08), GRAPHITE_KNOB,
-        (0.22, 0.22, 0.24))),
-    "Silver, milled": (MILLED, _two_tone(SILVER, SILVER, SILVER, (0.14, 0.14, 0.15))),
-    "Space grey, milled": (MILLED, _two_tone(SPACE_GREY, SPACE_GREY, SPACE_GREY, (0.10, 0.10, 0.11))),
+        Material((0.17, 0.18, 0.20), gloss=0.08), Material((0.09, 0.09, 0.10), gloss=0.08), (0.22, 0.22, 0.24))),
+    "Silver, milled": (MILLED, _two_tone(SILVER, SILVER, (0.14, 0.14, 0.15))),
+    "Space grey, milled": (MILLED, _two_tone(SPACE_GREY, SPACE_GREY, (0.10, 0.10, 0.11))),
 }
 FROM_BELOW = Lighting(key_direction=(-0.45, -0.35, -0.82), key=1.15, ambient=0.6, fill=0.35)
 FROM_BEHIND = Lighting(key_direction=(-0.45, 0.6, 0.66))  # the default light only grazes the back wall
 RAKING = Lighting(key_direction=(-0.85, -0.3, 0.45), key=1.25, ambient=0.36, fill=0.3)  # low: for the knob grooves
+OVERHEAD = Lighting(key_direction=(-0.10, 0.06, 0.99))  # high, so the knobs' shadows stay off the lens
 NIGHT = Lighting(key=0.22, fill=0.06, ambient=0.10, background_top=(0.05, 0.05, 0.07),
                  background_bottom=(0.09, 0.09, 0.12), bloom=0.55, edge_ink=0.25)
 
 CENTRE = (BOARD.board.width / 2, -BOARD.board.height / 2, 3.0)
 FRONT_STRIP_LINE = screw_rows()[FRONT_ROW][0][1]
 FEET_BOTTOM = LEVELS.foot_recess_roof - foot_thickness(FRONT_ROW)
-EXPLODED_LIFT = {"base": -34.0, "diffuser": -16.0, "screw": -58.0, "foot_strip": -84.0, "centre_pad": -84.0,
-                 "top": 56.0, "lens": 78.0, "switch": 122.0, "keycap": 150.0, "knob": 170.0}
+# How far each part moves in the exploded view: up, and the light bars out to their sides as well.
+EXPLODED_SHIFT = {
+    "base": (0, 0, -34.0), "diffuser_left": (-15.0, 0, -16.0), "diffuser_right": (15.0, 0, -16.0),
+    "screw": (0, 0, -80.0), "foot_strip": (0, 0, -112.0), "centre_pad": (0, 0, -112.0),
+    "top": (0, 0, 56.0), "lens": (0, 0, 68.0), "switch": (0, 0, 122.0), "keycap": (0, 0, 150.0), "knob": (0, 0, 170.0),
+}
 SECTION_X = BOARD.usb.x  # the cut passes through the USB port, the lens, the display and the two centre screws
 SECTION_Y = BOARD.leds.left_y[1]  # a second cut, across the pad through one LED on each side
 PLUG_PULLED_OUT = 14.0
@@ -91,7 +101,8 @@ CAP_TOLERANCE = 1e-3
 SHELLS_GAP = 10.0
 BED_GAP = 8.0
 LONG_PART = 2.0  # on the bed, a part this many times longer than wide is turned to lie across the row
-TILE_LABEL = (22, (18, 16), (0.25, 0.27, 0.30))  # font size in pixels, position from the top-left corner, colour
+TILE_LABEL = (13, 24, (0.25, 0.27, 0.30))  # font size in pixels, margin from the bottom-left corner, colour
+LABEL_FONT = LEGEND_FONT.with_name("DejaVuSans.ttf")
 # For each cut scene: the model axis the cut plane is normal to, where it lies, and which side stays.
 CUTS = {CUT_ALONG: (0, SECTION_X, -1), CUT_ACROSS: (1, -SECTION_Y, 1)}
 
@@ -103,11 +114,12 @@ class View:
     lighting: Lighting = Lighting()
     scene: str = ASSEMBLY
     hidden: tuple[str, ...] = ("usb_plug",)
-    lift: dict[str, float] = field(default_factory=dict)
+    shift: dict[str, tuple[float, float, float]] = field(default_factory=dict)
     tilted: bool = False
     ground: float | None = FEET_BOTTOM
     overrides: dict[str, Material] = field(default_factory=dict)
     size: tuple[int, int] = IMAGE_SIZE
+    outlined: bool = False  # ink the edges, as in a technical picture; product pictures have none
 
 
 def _camera(offset: tuple[float, float, float], target: tuple[float, float, float] = CENTRE, **options) -> Camera:
@@ -115,6 +127,8 @@ def _camera(offset: tuple[float, float, float], target: tuple[float, float, floa
 
 
 HERO_CAMERA = _camera((-95, -170, 250), target=(CENTRE[0], CENTRE[1] - 2, 4.0), field_of_view=21)
+# From below and in front, 25 degrees off square, with the front edge level in the picture.
+UNDERSIDE_CAMERA = _camera((0, -300 * sin(radians(25)), -300 * cos(radians(25))), field_of_view=24, up=(0.0, 1.0, 0.0))
 LEFT_KNOB = (encoder_centres()[0][0], -encoder_centres()[0][1], (LEVELS.knob_bottom + LEVELS.knob_top) / 2)
 BACK_FACE = -case_bounds()[1][0]  # model Y of the back of the case
 
@@ -127,33 +141,33 @@ def _colourway(name: str, picture: str, size: tuple[int, int] = IMAGE_SIZE) -> V
 VIEWS = [
     _colourway("Chalk, printed", "hero"),
     _colourway("Silver, milled", "hero_aluminium"),
-    View("top_plan", _camera((0, 0, 420), target=(CENTRE[0], CENTRE[1], 0.0), field_of_view=17, up=(0.0, 1.0, 0.0))),
+    View("top_plan", _camera((0, 0, 420), target=(CENTRE[0], CENTRE[1], 0.0), field_of_view=17, up=(0.0, 1.0, 0.0)),
+         lighting=OVERHEAD),
     View("side_profile", _camera((-420, 0, 22), target=(0.0, CENTRE[1], 5.0), field_of_view=11.5)),
     View("exploded", _camera((-250, -430, 290), target=(CENTRE[0], CENTRE[1], 50.0), field_of_view=36),
-         lift=EXPLODED_LIFT, ground=None, size=(1300, 1700)),
+         shift=EXPLODED_SHIFT, ground=None, size=(1300, 1700), outlined=True),
     View("section_usb_display", _camera((330, -70, 95), target=(SECTION_X, CENTRE[1] + 4, 4.0), field_of_view=14),
-         scene=CUT_ALONG, hidden=("tilt_bar",)),
+         scene=CUT_ALONG, hidden=("tilt_bar",), outlined=True),
     View("section_light_line", _camera((-40, -200, 46), target=(17.0, -SECTION_Y, 4.5), field_of_view=12),
-         scene=CUT_ACROSS, hidden=("tilt_bar", "usb_plug"), ground=None),
+         scene=CUT_ACROSS, hidden=("tilt_bar", "usb_plug"), ground=None, outlined=True),
     View("back_usb", _camera((70, 250, 80), target=(CENTRE[0], -20.0, 2.0), field_of_view=19), lighting=FROM_BEHIND,
          hidden=()),
-    View("usb_detail", _camera((26, 120, 24), target=(BOARD.usb.x, BACK_FACE, -2.0), field_of_view=13),
+    View("usb_detail", _camera((0, 130, 12), target=(BOARD.usb.x, BACK_FACE, -3.0), field_of_view=11),
          lighting=FROM_BEHIND),
-    View("underside", _camera((-70, -150, -250), field_of_view=22, up=(0.0, 1.0, 0.0)), lighting=FROM_BELOW,
-         ground=None),
-    View("underside_aluminium", _camera((-70, -150, -250), field_of_view=22, up=(0.0, 1.0, 0.0)), lighting=FROM_BELOW,
-         scene=MILLED, ground=None, overrides=COLOURWAYS["Silver, milled"][1]),
+    View("underside", UNDERSIDE_CAMERA, lighting=FROM_BELOW, ground=None),
+    View("underside_aluminium", UNDERSIDE_CAMERA, lighting=FROM_BELOW, scene=MILLED, ground=None,
+         overrides=COLOURWAYS["Silver, milled"][1]),
     View("light_line", _camera((-150, -130, 22), target=(4.0, -50.0, -1.0), field_of_view=17), lighting=NIGHT,
          overrides={"diffuser": GLOWING_DIFFUSER}),
     View("deck_detail", _camera((-60, -105, 95), target=(36.0, -13.0, 9.0), field_of_view=20)),
-    View("knob_detail", _camera((-46, -62, 44), target=LEFT_KNOB, field_of_view=14), lighting=RAKING, scene=MILLED,
-         overrides=COLOURWAYS["Silver, milled"][1]),  # on the dark knob of the other colourways the grooves hardly show
+    View("knob_detail", _camera((-46, -62, 44), target=LEFT_KNOB, field_of_view=14), lighting=RAKING),
     View("tilt", _camera((-330, -45, 35), target=(0.0, CENTRE[1], 4.0), field_of_view=12),
          hidden=("usb_plug", "foot_strip_back"), tilted=True),
     View("shells_inside", _camera((-60, -260, 300), target=(BOARD.board.width + SHELLS_GAP / 2 + 3, CENTRE[1], 0.0),
-                                  field_of_view=27), scene=SHELLS, hidden=(), ground=LEVELS.floor_bottom),
+                                  field_of_view=27), scene=SHELLS, hidden=(), ground=LEVELS.floor_bottom,
+         outlined=True),
     View("print_plate", _camera((170, -330, 250), target=(100.0, -44.0, 12.0), field_of_view=30), scene=BED,
-         hidden=(), ground=0.0),
+         hidden=(), ground=0.0, outlined=True),
 ]
 COLOURWAY_TILES = [_colourway(name, name, TILE_SIZE) for name in COLOURWAYS]
 
@@ -175,20 +189,22 @@ def _save(picture: np.ndarray, path: Path) -> None:
 
 
 def _tiled(tiles: dict[str, np.ndarray]) -> np.ndarray:
-    """Four pictures in two rows of two, each with its name in the top-left corner."""
-    font_size, position, colour = TILE_LABEL
-    font = ImageFont.truetype(str(LEGEND_FONT), font_size)
+    """Four pictures in two rows of two, each with its name in the bottom-left corner."""
+    font_size, margin, colour = TILE_LABEL
+    font = ImageFont.truetype(str(LABEL_FONT), font_size)
     labelled = []
     for name, picture in tiles.items():
         tile = Image.fromarray(picture)
-        ImageDraw.Draw(tile).text(position, name, font=font, fill=tuple(int(channel * 255) for channel in colour))
+        position = (margin, tile.height - margin)
+        ink = tuple(int(channel * 255) for channel in colour)
+        ImageDraw.Draw(tile).text(position, name, font=font, anchor="ls", fill=ink)
         labelled.append(np.asarray(tile))
     return np.vstack([np.hstack(labelled[:2]), np.hstack(labelled[2:])])
 
 
 def _scene_meshes() -> dict[str, dict[str, Mesh]]:
     printed, milled = case_parts(PRINT), case_parts(CNC)
-    assembly = printed | drawn_components() | tilt_strip()
+    assembly = printed | drawn_components(PRINT) | tilt_strip()
     scenes = {
         ASSEMBLY: _meshes(assembly | {"lens": lens_drawn()}),
         SHELLS: _meshes(_shells_side_by_side(printed)),
@@ -291,16 +307,17 @@ def _render_view(view: View, meshes: dict[str, Mesh]) -> np.ndarray:
         override = next((material for key, material in view.overrides.items() if name.startswith(key)), None)
         mesh = replace(mesh, material=override) if override else mesh
         scene.meshes.append(_placed(mesh, name, view))
-    return render(scene, view.camera, view.size, view.lighting)
+    lighting = view.lighting if view.outlined else replace(view.lighting, edge_ink=0.0)
+    return render(scene, view.camera, view.size, lighting)
 
 
 def _placed(mesh: Mesh, name: str, view: View) -> Mesh:
     identity = np.eye(3)
     if name == "usb_plug" and view.scene in (ASSEMBLY, MILLED):
         mesh = mesh.moved(identity, np.array((0.0, PLUG_PULLED_OUT, 0.0)))
-    lift = next((height for key, height in view.lift.items() if name.startswith(key)), 0.0)
-    if lift:
-        mesh = mesh.moved(identity, np.array((0.0, 0.0, lift)))
+    shift = next((offset for key, offset in view.shift.items() if name.startswith(key)), None)
+    if shift:
+        mesh = mesh.moved(identity, np.array(shift, dtype=float))
     return _tilted(mesh) if view.tilted else mesh
 
 

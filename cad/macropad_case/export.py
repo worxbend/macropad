@@ -42,7 +42,7 @@ def _export_part(part: Part, name: str, stem: Path, lie_on_bed: bool) -> None:
 
 def _assembly() -> Compound:
     labelled = []
-    for name, solid in (case_parts(PRINT) | components()).items():
+    for name, solid in (case_parts(PRINT) | components(PRINT)).items():
         solid.label = name
         labelled.append(solid)
     return Compound(label="macropad", children=labelled)

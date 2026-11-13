@@ -3,32 +3,36 @@ pad and the optional tilt bar."""
 
 from math import cos, radians, tan
 
-from build123d import Align, Axis, Box, Cone, Cylinder, Location, Part, Plane, Polygon, Pos, Rot, Sketch, chamfer, fillet
-from build123d import mirror
+from build123d import Axis, Box, Cylinder, Location, Part, Plane, Polygon, Pos, Rot, Sketch, chamfer, fillet, mirror
+from build123d import revolve
 
 from .parts import FAR, WIDTH, base, top
 from .solids import CUT_OVERSHOOT, box, case_outline, centred_rectangle, cylinder, d_profile, rectangle
 from .solids import rounded_rectangle, slab, stadium
 from .spec import BACK_ROW, BOARD, CASE, CENTRE_ROW, FRONT_ROW, LEVELS, PRINT, Span, case_bounds, encoder_centres
-from .spec import foot_span, foot_thickness, grown, led_slot_span, screw_rows
+from .spec import foot_span, foot_thickness, grown, led_slot_span, lens_span, screw_rows
 
 BAR_TO_TOP = 0.1  # the light bar ends this far under the top shell
+BORE_END = BOARD.stack.encoder_shaft_top + 0.3  # the knob's bore is this much deeper than the shaft is long
 GROOVE_CUTTER_PAST = 0.2  # the V profile that cuts a knob groove runs this far past the knob's surface
 
 
 def diffuser_left() -> Part:
     """Light bar for the left wall: a plain bar that stands in the base's channel, behind the outer
-    skin of the wall. Only the top of its outer face shows, at the back of the gap. A lip beside the
-    PCB edge stops it from falling inward once the PCB is in."""
+    skin of the wall. Only the top of its outer face shows, at the back of the gap. Below the gap its
+    ends are rounded like the channel; in the gap they are square like the slot through the rim, so
+    the bar fills that slot from end to end. A lip beside the PCB edge stops it from falling inward
+    once the PCB is in."""
     fit = CASE.diffuser_fit
     slot_start, slot_end = led_slot_span()
     along = (slot_start + fit, slot_end - fit)
-    outer_face = -(CASE.pcb_gap + CASE.light_channel_reach) + fit
-    inner_face = -CASE.pcb_gap + CASE.diffuser_inner_face
-    bar = box((outer_face, inner_face), along, (LEVELS.led_slot_bottom + fit, -BAR_TO_TOP))
-    outer_ends = bar.edges().filter_by(Axis.Z).group_by(Axis.X)[0]
-    lip = box((inner_face, -CASE.diffuser_to_pcb), along, (LEVELS.pcb_bottom, -BAR_TO_TOP))
-    return fillet(outer_ends, CASE.light_channel_radius) + lip
+    x_range = (-(CASE.pcb_gap + CASE.light_channel_reach) + fit, -CASE.pcb_gap)
+    in_the_gap = LEVELS.gap_bottom + fit  # the square part clears the floor of the slot by the fit
+    in_the_channel = box(x_range, along, (LEVELS.led_slot_bottom + fit, in_the_gap))
+    outer_ends = in_the_channel.edges().filter_by(Axis.Z).group_by(Axis.X)[0]
+    shown = box(x_range, along, (in_the_gap, -BAR_TO_TOP))
+    lip = box((-CASE.pcb_gap, -CASE.diffuser_to_pcb), along, (LEVELS.pcb_bottom, -BAR_TO_TOP))
+    return fillet(outer_ends, CASE.light_channel_radius) + shown + lip
 
 
 def diffuser_right() -> Part:
@@ -38,7 +42,7 @@ def diffuser_right() -> Part:
 def knob() -> Part:
     """One knob at the origin in X and Y, at its assembled height: a plain cylinder with fine straight
     grooves round the middle, a flat top, and a pointer dimple on the same side as the flat of the
-    D-shaft (toward the back of the board)."""
+    D-shaft (toward the back of the board). Its foot stands in a well in the top face."""
     blank = cylinder((0, 0), CASE.knob_diameter, (LEVELS.knob_bottom, LEVELS.knob_top))
     body = chamfer(blank.edges().group_by(Axis.Z)[-1], CASE.chamfer)
     body = chamfer(body.edges().group_by(Axis.Z)[0], CASE.chamfer)
@@ -48,19 +52,39 @@ def knob() -> Part:
     )
     clearance = CASE.knob_bore_clearance
     d_bore = d_profile(CASE.shaft_diameter + clearance, CASE.shaft_flat + clearance)
-    bore = slab(d_bore, (LEVELS.knob_bottom, BOARD.stack.encoder_shaft_top + 0.3))
-    return body - bushing_pocket - bore - _knob_grooves() - _knob_pointer()
+    bore = slab(d_bore, (LEVELS.knob_bottom, BORE_END))
+    return body - bushing_pocket - bore - _knob_grooves() - _knob_pointer() + _knob_crush_ribs()
 
 
 def _knob_grooves() -> list[Part]:
-    """Straight 90 degree V grooves between the two plain bands."""
+    """Straight 90 degree V grooves between the two plain bands. Each one runs out at 45 degrees at
+    both ends: its floor rises to the knob's surface instead of ending in a square step."""
     radius, depth, past = CASE.knob_diameter / 2, CASE.knob_groove_depth, GROOVE_CUTTER_PAST
+    start, end = LEVELS.knob_bottom + CASE.knob_plain_band, LEVELS.knob_top - CASE.knob_plain_band
     # Counter-clockwise, so the face looks up and `slab` extrudes it upward.
     vee = Polygon((radius - depth, 0), (radius + past, -depth - past), (radius + past, depth + past), align=None)
-    groove = slab(vee, (LEVELS.knob_bottom + CASE.knob_plain_band, LEVELS.knob_top - CASE.knob_plain_band))
+    # What the cutter must leave: the knob inside the groove floors, flaring out at both ends.
+    kept = revolve(Plane.XZ * Polygon(
+        (0, start - past), (radius + past, start - past), (radius - depth, start + depth),
+        (radius - depth, end - depth), (radius + past, end + past), (0, end + past), align=None,
+    ), Axis.Z)
+    groove = slab(vee, (start - past, end + past)) - kept
     step = 360 / CASE.knob_grooves
     # Half a step off, so a land and not a groove lies in line with the pointer.
     return [Rot(0, 0, (index + 0.5) * step) * groove for index in range(CASE.knob_grooves)]
+
+
+def _knob_crush_ribs() -> list[Part]:
+    """Three low ribs on the round side of the bore. They touch the shaft, so a bore that prints to
+    size still grips it; a bore that prints small crushes them."""
+    width, length = CASE.knob_crush_rib
+    shaft_radius, bore_radius = CASE.shaft_diameter / 2, (CASE.shaft_diameter + CASE.knob_bore_clearance) / 2
+    into_the_wall = 0.3  # so the rib and the knob are one body
+    rib = Pos((shaft_radius + bore_radius + into_the_wall) / 2, 0, BORE_END - length / 2) * Box(
+        bore_radius + into_the_wall - shaft_radius, width, length
+    )
+    # The flat of the bore faces +Y; the ribs sit opposite it and 60 degrees to either side.
+    return [Rot(0, 0, angle) * rib for angle in (210, 270, 330)]
 
 
 def _knob_pointer() -> Part:
@@ -73,10 +97,7 @@ def knobs() -> list[Part]:
 
 
 def lens_outline() -> Sketch:
-    length, width, _ = CASE.lens
-    display = BOARD.display
-    span = (display.x - length / 2, display.x + length / 2), (display.y - width / 2, display.y + width / 2)
-    return rounded_rectangle(span, CASE.lens_corner_radius)
+    return rounded_rectangle(lens_span(), CASE.lens_corner_radius)
 
 
 def lens_mask_outline() -> Sketch:
@@ -133,40 +154,49 @@ def _back_strip_at_origin(grow: float) -> Span:
 
 
 def tilt_bar() -> Part:
-    """Optional wedge under the back of the base. A tongue on its top sits in the base's back strip
-    recess, and the back strip moves to a recess in its own sloped underside. Two holes keep the back
-    corner screws reachable once that strip is peeled off."""
-    plan = case_outline(PRINT, -CASE.underside_chamfer) & rectangle((-FAR, FAR), (-FAR, CASE.tilt_bar_front))
+    """The tilt bar as it prints: the finished bar with a skin across each hole, where the hole opens
+    into the roof of the strip recess. The bar prints with that recess on the bed, and a hole in its
+    roof would be a hole in a bridge. The builder cuts the two skins out."""
+    skin = CASE.screw_skin
+    layer = _on_the_slope() * Pos(0, 0, CASE.foot_recess_depth + skin / 2) * Box(1000, 1000, skin)
+    through = (_lowest_point(), LEVELS.floor_bottom)
+    into_the_wall = CASE.tilt_hole_diameter + 2 * CUT_OVERSHOOT  # so each skin joins the bar, not just touches it
+    return tilt_bar_body() + [cylinder(screw, into_the_wall, through) & layer for screw in screw_rows()[BACK_ROW]]
+
+
+def _lowest_point() -> float:
     back_edge = case_bounds()[1][0] + CASE.underside_chamfer
-    lowest = LEVELS.floor_bottom - desk_plane_drop(back_edge) - 1
+    return LEVELS.floor_bottom - desk_plane_drop(back_edge) - 1
+
+
+def tilt_bar_body() -> Part:
+    """Optional wedge under the back of the base, finished. A tongue on its top sits in the base's
+    back strip recess, and the back strip moves to a recess in its own sloped underside. Two holes keep
+    the back corner screws reachable once that strip is peeled off."""
+    plan = case_outline(PRINT, -CASE.underside_chamfer) & rectangle((-FAR, FAR), (-FAR, CASE.tilt_bar_front))
+    lowest = _lowest_point()
     below_the_slope = _on_the_slope() * Pos(0, 0, -50) * Box(1000, 1000, 100)
     tongue_height = CASE.tilt_tongue[1]
     tongue = slab(_tilt_tongue_plan(), (LEVELS.floor_bottom, LEVELS.floor_bottom + tongue_height))
     recess = _on_the_slope() * slab(
         stadium(_back_strip_at_origin(CASE.foot_recess_fit)), (-CUT_OVERSHOOT, CASE.foot_recess_depth)
     )
-    back_screws = screw_rows()[BACK_ROW]
-    through = (lowest, LEVELS.floor_bottom + tongue_height + 1)
-    holes = [cylinder(screw, CASE.tilt_hole_diameter, through) for screw in back_screws]
-    return slab(plan, (lowest, LEVELS.floor_bottom)) - below_the_slope + tongue - recess - _tilt_cones() - holes
+    return slab(plan, (lowest, LEVELS.floor_bottom)) - below_the_slope + tongue - recess - _tilt_holes(lowest)
+
+
+def _tilt_holes(lowest: float) -> list[Part]:
+    """A hole straight up to each back corner screw."""
+    through = (lowest, LEVELS.floor_bottom + CASE.tilt_tongue[1] + 1)
+    return [cylinder(screw, CASE.tilt_hole_diameter, through) for screw in screw_rows()[BACK_ROW]]
 
 
 def _tilt_tongue_plan() -> Sketch:
     """The tongue fills the back strip recess between the two corner screws, with a little play."""
-    play, _, from_cone = CASE.tilt_tongue
+    play, _, from_hole = CASE.tilt_tongue
     (x_low, x_high), y_range = grown(foot_span(BACK_ROW), CASE.foot_recess_fit - play)
     left_screw, right_screw = sorted(x for x, _ in screw_rows()[BACK_ROW])
-    clear_of_screw = CASE.screw_cone[0] / 2 + from_cone
+    clear_of_screw = CASE.tilt_hole_diameter / 2 + from_hole
     return stadium(((max(x_low, left_screw + clear_of_screw), min(x_high, right_screw - clear_of_screw)), y_range))
-
-
-def _tilt_cones() -> list[Part]:
-    """The same 45 degree cone as in the base, between the bar's strip recess and each screw hole:
-    the bar prints with that recess on the bed, and a hole in its flat roof would not print."""
-    wide, narrow = (diameter / 2 for diameter in CASE.screw_cone)
-    cone = Cone(wide, narrow, wide - narrow, align=(Align.CENTER, Align.CENTER, Align.MIN))
-    roof = CASE.foot_recess_depth - CUT_OVERSHOOT
-    return [_on_the_slope() * Pos(x, 0, roof) * cone for x, _ in screw_rows()[BACK_ROW]]
 
 
 def tilt_strip() -> dict[str, Part]:

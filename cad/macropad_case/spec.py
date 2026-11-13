@@ -39,9 +39,13 @@ class Case:
     pcb_gap: float = 0.3
     floor: float = 2.4
     chamfer: float = 0.5  # top rim, knob rims, USB lead-in
-    underside_chamfer: float = 1.5  # makes the dark base recede
-    seam_chamfer: float = 0.3  # the three edges at the base/top joint
-    gap_height: float = 1.2  # the line round the case: the base rim steps in under the top
+    # Makes the dark base recede. Not larger: 2.5 would leave no land between the chamfer and the
+    # ends of the foot strip recesses.
+    underside_chamfer: float = 2.0
+    seam_chamfer: float = 0.3  # the two outer edges at the gap; the rim inside the gap stays sharp, it is the seat
+    # The line round the case: the base rim steps in under the top. 1.5 puts the top of the outer skin
+    # almost level with the LEDs' upper edge, so more of the light bar shows from a seated position.
+    gap_height: float = 1.5
     gap_depth: float = 1.0
     corner_setback: float = 10.0  # CNC: where a corner curve leaves the straight side
     corner_handles: tuple[float, float] = (0.6, 0.2)  # CNC: inner control points of the curve, as shares of the setback
@@ -61,26 +65,38 @@ class Case:
     boss_root_diameter: float = 8.0  # the boss is wider below the sockets, where it joins the floor
     boss_root_height: float = 2.4
     top_boss_diameter: float = 4.5
-    screw_length: float = 10.0  # M2 x 10
+    # Print: M2 x 10 cuts its own thread. CNC: M2 x 8 in a tapped blind hole, because a tap does not
+    # thread a hole to its end. The counterbores differ so that each screw ends where its hole allows.
+    screw_length: float = 10.0
+    cnc_screw_length: float = 8.0
     counterbore_diameter: float = 4.4
-    counterbore_depth: float = 2.9  # from the underside; the head ends up above the foot recess
-    screw_cone: tuple[float, float] = (7.0, 5.0)  # 45 degree cone from the foot recess up to the counterbore
-    pilot_diameter: float = 1.7  # self-tapping in plastic; tap drill for M2 in aluminium is 1.6
+    counterbore_depth: float = 2.6  # from the underside; the head ends up above the foot recess
+    cnc_counterbore_depth: float = 2.9
+    # Print only: one layer that closes each screw hole at the roof of its foot recess. A hole in that
+    # roof would be a hole in a bridge. The builder cuts the six skins out.
+    screw_skin: float = 0.2
+    pilot_diameter: float = 1.8  # print; guess: a hole printed lying down comes out about 0.15 smaller
+    print_hole_shrink: float = 0.15  # guess
     pilot_depth: float = 4.2
-    min_screw_engagement: float = 3.0
+    cnc_tap_drill: tuple[float, float] = (1.6, 3.7)  # diameter, depth at full diameter; the drill point comes on top
+    cnc_drill_point_angle: float = 118.0
+    cnc_full_thread: float = 3.0  # guess: a bottoming tap leaves about 0.6 mm of a 3.7 mm hole without full thread
+    min_screw_engagement: float = 3.0  # self-tapped in plastic
+    cnc_min_screw_engagement: float = 1.6  # the height of an M2 nut
     screw_head: tuple[float, float] = (3.8, 2.0)  # ISO 4762 M2 cap head: diameter, height
-    screw_thread_core: float = 1.6  # thread minor diameter, drawn inside the self-tapped hole
+    screw_thread_core: float = 1.5  # thread root diameter, drawn inside the hole of the top
 
     rib_width: float = 2.0  # plate ribs between the key rows
     rib_to_pcb: float = 1.0  # above the lap grooves, so the ribs do not close them
 
     keycap_width: float = 18.1
+    keycap_worst_skirt: tuple[float, float] = (18.3, 0.3)  # widest skirt with the sharpest corners the dish must clear
     keycap_pressed_bottom: float = 2.0  # MEASURE: keycap skirt above the plate at full travel
     keycap_top: float = 14.5  # MEASURE: tallest common keycap above the plate
     key_travel: float = 4.0
     keycap_profile: tuple[float, float, float] = (12.7, 7.4, 0.6)  # DSA: top width, height, dish depth
     switch_body: float = 13.95
-    dish_floor_margin: float = 8.15  # outer key centres to the foot of the dish wall: the MX rim (7.8) and 0.35
+    dish_floor_margin: float = 8.65  # outer key centres to the foot of the dish wall: the MX rim (7.8) and 0.85
     dish_floor_radius: float = 1.5
     deck_front_wall: float = 1.85  # between the dish wall and the pocket under the deck, level with the deck skin
 
@@ -90,61 +106,70 @@ class Case:
     shaft_diameter: float = 6.0
     shaft_flat: float = 4.5  # MEASURE: D-shaft thickness across the flat
 
-    knob_diameter: float = 16.0
-    knob_to_deck: float = 1.0  # knob underside above the deck
-    knob_well_depth: float = 0.0  # the knobs stand on the plain deck
-    knob_grooves: int = 36  # guess: the land between two grooves is still one 0.4 mm line wide
-    knob_groove_depth: float = 0.45  # a 90 degree V, so twice as wide as deep
+    knob_diameter: float = 14.4  # the smallest that still covers the bushing hole by 3 mm under its grooves
+    knob_to_well_floor: float = 0.8  # knob underside above the floor of its well, not pressed
+    knob_well_depth: float = 0.7  # each knob stands in a shallow well, so no bushing shows under it
+    knob_well_reveal: float = 0.55  # between the knob and the wall of its well
+    knob_grooves: int = 30  # guess: the land between two grooves is wider than one 0.4 mm line
+    knob_groove_depth: float = 0.45  # a 90 degree V, so twice as wide as deep; it runs out at 45 degrees at both ends
     knob_plain_band: float = 1.5  # smooth band under and over the grooves
-    knob_pointer: tuple[float, float, float] = (1.2, 0.4, 5.5)  # dimple diameter, depth, distance from the axis
+    knob_pointer: tuple[float, float, float] = (0.8, 0.4, 5.5)  # dimple diameter, depth, distance from the axis
     knob_cap: float = 2.0
     knob_bore_clearance: float = 0.2
+    # Guess: three ribs in the bore that touch the shaft, so a bore printed to size still grips it.
+    knob_crush_rib: tuple[float, float] = (1.0, 6.0)  # width, length down from the end of the bore
     encoder_press_travel: float = 0.5
 
     display_thickness: float = 2.9  # MEASURE: nice!view module, PCB bottom to glass top
     display_glass: tuple[float, float] = (30.0, 13.6)  # MEASURE: LCD glass on the module, length and width
     display_board_thickness: float = 1.0  # MEASURE: the module's own PCB
-    lens: tuple[float, float, float] = (39.0, 14.6, 1.0)  # guess: clear cast acrylic, length, width, thickness
-    lens_corner_radius: float = 2.0
-    lens_fit: float = 0.1  # the recess is this much larger than the lens on every side
+    lens: tuple[float, float, float] = (39.0, 14.6, 1.0)  # guess: cover glass, length, width, thickness
+    lens_corner_radius: float = 2.5
+    lens_modulus: float = 70_000.0  # MPa; guess: soda-lime glass. Cast acrylic is about 3000
+    lens_press_load: float = 5.0  # N; guess: a fingertip on the middle of the lens
+    lens_fit: float = 0.1  # CNC: the recess is this much larger than the lens on every side
+    print_lens_fit: float = 0.2
+    # Guess: how far a bridged edge hangs down in a print. The top prints standing on its left wall,
+    # so the high-X edge of every opening is such a bridge.
+    print_bridge_sag: float = 0.2
+    print_lens_end_room: float = 0.1  # extra room at the bridged end of the print's lens recess
     lens_tape: float = 0.13  # guess: double-sided tape between the lens and its two ledges
-    lens_recess_depth: float = 1.15  # leaves the lens 0.02 under the top face
-    lens_opening_length: float = 37.0  # through opening over the whole display module, between the two ledges
+    lens_recess_depth: float = 1.25  # leaves a 1.0 mm lens 0.12 under the top face, and a 1.1 mm one 0.02
+    lens_opening_length: float = 36.6  # through opening over the whole display module, between the two ledges
     lens_rib: tuple[float, float] = (3.6, 0.65)  # width, height of the rib under each ledge
-    lens_rib_past_recess: float = 1.0  # how far a rib reaches beyond the end of the recess
+    lens_rib_past_lens: float = 1.1  # how far a rib reaches beyond the end of the lens
+    header_pin_height: float = 1.5  # the display's header pins above its board, once trimmed
 
     usb_body: tuple[float, float] = (8.94, 7.35)  # receptacle width, depth
     usb_plug: tuple[float, float] = (12.5, 6.5)  # plug overmould width, height
-    usb_margin: float = 0.25
+    usb_margin: float = 0.5  # round the overmould: a 13.0 x 7.0 plug still enters
     usb_mouth_chamfer: float = 0.5
 
     button_hole_diameter: float = 2.5
     button_body: tuple[float, float] = (5.1, 1.5)  # tact switch width, height
     foot_strip: tuple[float, float] = (7.0, 1.6)  # guess: printed TPU or cut from sheet; width, thickness
     centre_pad_thickness: float = 1.4  # lower than the strips, so the pad never makes the case rock
-    foot_recess_depth: float = 0.6
+    foot_recess_depth: float = 0.4
     foot_recess_fit: float = 0.2  # a recess is this much larger than its strip on every side
-    label_field: tuple[float, float, float] = (60.0, 8.0, 3.0)  # length, width, corner radius
+    label_field: tuple[float, float] = (66.0, 8.0)  # the flat area kept free for the mark: length, width
     label_field_centre: float = 32.4  # board Y: between the button legends and the centre pad
-    label_field_depth: float = 0.4
     engraving_depth: float = 0.4
     tilt_angle: float = 6.0  # degrees, with the optional tilt bar in the back strip recess
     tilt_bar_front: float = 8.7  # board Y of the bar's front face
     tilt_hole_diameter: float = 5.6  # through the bar, over each back corner screw
     # The bar's tongue in the base's back strip recess: play per side, height, and how far it stays
-    # from the cone mouth of each corner screw (a tongue round the holes would be a 0.75 mm ring).
-    tilt_tongue: tuple[float, float, float] = (0.15, 0.5, 1.0)
+    # from the bar's hole over each corner screw (a tongue round the holes would be a 0.75 mm ring).
+    tilt_tongue: tuple[float, float, float] = (0.15, 0.3, 1.7)
 
     led_body: tuple[float, float, float] = (4.0, 1.6, 1.6)  # MEASURE: along the edge, depth, height
     led_window_margin: float = 1.0
     led_sill: float = 1.0  # floor of the light channel above the cavity floor
     # The light bar shows only through the gap, so the light reaches the eye indirectly. A guess:
-    # that it is bright and even enough to read as a line, and that a smoke-grey bar still passes it.
+    # that it is bright and even enough to read as a line.
     light_channel_reach: float = 1.7  # from the cavity wall into the side wall; the rest is the outer skin
     light_channel_radius: float = 1.5  # outer plan corners of the channel and of the light bar
     diffuser_fit: float = 0.15
-    diffuser_inner_face: float = 0.1  # the bar ends this far inside the cavity wall, in front of the LEDs
-    diffuser_to_pcb: float = 0.05
+    diffuser_to_pcb: float = 0.15  # the bar's lip to the PCB edge; the PCB outline may be this much large
 
     socket_box: tuple[float, float, float, float] = (-8.4, 7.2, -6.9, -0.5)  # hot-swap socket, from key centre
     switch_post: tuple[float, float] = (4.0, 3.3)  # MX centre post diameter, length below the PCB top
@@ -198,7 +223,6 @@ class Levels:
     knob_bottom: float
     knob_top: float
     bushing_top: float
-    counterbore_top: float
     foot_recess_roof: float
     lens_seat: float
     lens_bottom: float
@@ -227,10 +251,9 @@ def levels() -> Levels:
         boss_root_top=floor_top + CASE.boss_root_height,
         rib_bottom=CASE.rib_to_pcb,
         knob_well_floor=stack.deck_top - CASE.knob_well_depth,
-        knob_bottom=stack.deck_top - CASE.knob_well_depth + CASE.knob_to_deck,
+        knob_bottom=stack.deck_top - CASE.knob_well_depth + CASE.knob_to_well_floor,
         knob_top=stack.encoder_shaft_top + CASE.knob_cap,
         bushing_top=stack.encoder_body_top + CASE.bushing_length,
-        counterbore_top=floor_bottom + CASE.counterbore_depth,
         foot_recess_roof=floor_bottom + CASE.foot_recess_depth,
         lens_seat=lens_seat,
         lens_bottom=lens_seat + CASE.lens_tape,
@@ -274,23 +297,44 @@ def deck_pocket_front() -> float:
     return dish_wall_at_deck_skin - CASE.deck_front_wall
 
 
-def lens_recess() -> Span:
+def lens_span() -> Span:
     display = BOARD.display
-    half_length, half_width = CASE.lens[0] / 2 + CASE.lens_fit, CASE.lens[1] / 2 + CASE.lens_fit
+    half_length, half_width = CASE.lens[0] / 2, CASE.lens[1] / 2
     return (display.x - half_length, display.x + half_length), (display.y - half_width, display.y + half_width)
 
 
-def lens_opening() -> Span:
+def lens_recess(variant: str) -> Span:
+    """The recess the lens lies in. The print's recess is looser, and longer at its high-X end: that
+    end is a bridge while the top prints, and a bridge sags."""
+    (x_low, x_high), y_range = grown(lens_span(), CASE.print_lens_fit if variant == PRINT else CASE.lens_fit)
+    return (x_low, x_high + (CASE.print_lens_end_room if variant == PRINT else 0.0)), y_range
+
+
+def lens_opening(variant: str) -> Span:
     """The through opening under the lens. It is as wide as the recess, so the lens rests on two end ledges."""
     half_length = CASE.lens_opening_length / 2
-    return (BOARD.display.x - half_length, BOARD.display.x + half_length), lens_recess()[1]
+    return (BOARD.display.x - half_length, BOARD.display.x + half_length), lens_recess(variant)[1]
 
 
 def lens_rib_spans() -> list[tuple[float, float]]:
     """Board X range of the rib under each lens ledge, left then right."""
-    (recess_start, recess_end), _ = lens_recess()
-    width, past = CASE.lens_rib[0], CASE.lens_rib_past_recess
-    return [(recess_start - past, recess_start - past + width), (recess_end + past - width, recess_end + past)]
+    (lens_start, lens_end), _ = lens_span()
+    width, past = CASE.lens_rib[0], CASE.lens_rib_past_lens
+    return [(lens_start - past, lens_start - past + width), (lens_end + past - width, lens_end + past)]
+
+
+def knob_well_diameter() -> float:
+    return CASE.knob_diameter + 2 * CASE.knob_well_reveal
+
+
+def screw_length(variant: str) -> float:
+    return CASE.cnc_screw_length if variant == CNC else CASE.screw_length
+
+
+def screw_seat(variant: str) -> float:
+    """Z of the counterbore's roof, which the screw head seats on."""
+    depth = CASE.cnc_counterbore_depth if variant == CNC else CASE.counterbore_depth
+    return LEVELS.floor_bottom + depth
 
 
 def led_slot_span() -> tuple[float, float]:
@@ -344,7 +388,8 @@ def foot_thickness(row: str) -> float:
 
 
 def label_field() -> Span:
-    length, width, _ = CASE.label_field
+    """The flat area of the underside kept free for the mark. Nothing is cut there but the mark itself."""
+    length, width = CASE.label_field
     middle_x, middle_y = BOARD.board.width / 2, CASE.label_field_centre
     return (middle_x - length / 2, middle_x + length / 2), (middle_y - width / 2, middle_y + width / 2)
 

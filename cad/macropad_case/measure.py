@@ -8,14 +8,14 @@ from math import cos, pi, sin
 
 import numpy as np
 import trimesh
-from build123d import Axis, Edge, GeomType, Part, Plane, Pos, Vector, section
+from build123d import Axis, Edge, GeomType, Part, Plane, Pos, Sketch, Vector, mirror, section
 from scipy.ndimage import binary_dilation, binary_opening, grey_closing
 
 from .components import pcb
 from .parts import lap_ridges
 from .raster import DEPTH_MAP_SIZE, mesh_of, Material, rasterise
-from .solids import cylinder, overlap_volume
-from .spec import BOARD, CASE, LEVELS, mounting_holes
+from .solids import box, cylinder, overlap_volume, rectangle
+from .spec import BOARD, CASE, LEVELS, case_bounds, led_slot_span, mounting_holes
 
 WALL_SAMPLES = 3000  # surface points probed per part
 WALL_MESH_TOLERANCE = 0.1
@@ -41,6 +41,11 @@ MAX_JOIN_CURVATURE = 0.01  # per mm, where a corner curve meets a straight side
 CURVE_SAMPLES = 40  # places along a corner curve where its radius is taken
 SAME_POINT = 1e-6  # mm
 COVER_SLICE = 0.1  # mm; thickness of the disc that stands for a counterbore mouth
+SEAT_PROBE = 0.01  # mm; the two shells are cut this far from the plane they meet on
+FAR = 500.0
+SIGHT_STEP = 0.05  # mm between the rays that look into the gap
+SIGHT_START = 5.0  # mm outside the case
+PORT_BOX = (6.0, 6.0)  # mm; how far the symmetry check reaches beside the USB plug and into the case
 
 
 def row(name: str, value: float, limit: float, kind: str = "min", unit: str = "mm") -> dict:
@@ -93,13 +98,19 @@ def soundness_faults(part: Part) -> int:
 
 
 def outline_corners(part: Part, z: float) -> tuple[float, float]:
-    """On the part's outer outline at height `z`: the largest curvature (1/mm) at a place where a
+    """At the four corners of the part's outer outline at height `z`: the largest curvature (1/mm) at a place where a
     curved edge meets a straight one, and the smallest radius (mm) along the curved edges. An arc
     meets a straight side with a curvature of 1/radius; a continuous-curvature corner meets it with zero."""
     cut = section(part, section_by=Plane.XY.offset(z))
     outline = max(cut.faces(), key=lambda face: face.area).outer_wire().edges()
     straight_ends = [edge @ end for edge in outline.filter_by(GeomType.LINE) for end in (0, 1)]
-    curved = [edge for edge in outline if edge.geom_type != GeomType.LINE]
+    # Only the four corners count: an opening in a side wall (the USB port) has its own milled radii.
+    box = cut.bounding_box()
+    corners = [Vector(x, y, z) for x in (box.min.X, box.max.X) for y in (box.min.Y, box.max.Y)]
+    curved = [
+        edge for edge in outline if edge.geom_type != GeomType.LINE
+        and min((edge.center() - corner).length for corner in corners) < CASE.corner_setback
+    ]
     at_joins = [
         _curvature(edge, end) for edge in curved for end in (0.0, 1.0)
         if any((edge @ end - point).length < SAME_POINT for point in straight_ends)
@@ -130,6 +141,90 @@ def uncovered_screw_area(feet: list[Part]) -> float:
     mouths = [cylinder(hole, CASE.counterbore_diameter, (roof - COVER_SLICE, roof)) for hole in mounting_holes()]
     uncovered = sum(mouth.volume - sum(overlap_volume(mouth, foot) for foot in feet) for mouth in mouths)
     return uncovered / COVER_SLICE
+
+
+def bearing_share(foot: Part, base: Part) -> float:
+    """Share of a foot's face that lies on the base, not over a hole: the foot is pushed a little
+    way into the roof of its recess, and what it then shares with the base is compared with all of it."""
+    size = foot.bounding_box().size
+    pushed_in = overlap_volume(Pos(0, 0, COVER_SLICE) * foot, base)
+    return pushed_in / (foot.volume / size.Z * COVER_SLICE)
+
+
+def stroke_width(artwork: Sketch) -> float:
+    """Mean stroke width in mm of the thinnest glyph: twice a glyph's area over the length of its
+    outline. A dot would read as half its diameter; the engraved texts have none."""
+    def outline_length(face) -> float:
+        return sum(wire.length for wire in (face.outer_wire(), *face.inner_wires()))
+
+    return min(2 * face.area / outline_length(face) for face in artwork.faces())
+
+
+def seat_areas(base: Part, top: Part) -> dict[str, float]:
+    """Area in mm^2 on which the top rests on the base, in all and at each of the four sides of the
+    PCB. A corner counts for both sides it belongs to."""
+    seat = Pos(0, 0, SEAT_PROBE) * section(base, section_by=Plane.XY.offset(-SEAT_PROBE)) & (
+        Pos(0, 0, -SEAT_PROBE) * section(top, section_by=Plane.XY.offset(SEAT_PROBE))
+    )
+    width, height = BOARD.board.width, BOARD.board.height
+    sides = {
+        "left": ((-FAR, 0), (-FAR, FAR)), "right": ((width, FAR), (-FAR, FAR)),
+        "back": ((-FAR, FAR), (-FAR, 0)), "front": ((-FAR, FAR), (height, FAR)),
+    }
+    return {"all": seat.area} | {side: (seat & rectangle(*span)).area for side, span in sides.items()}
+
+
+def pcb_seen_through_gap(in_the_way: list[Part], board: Part) -> float:
+    """Longest stretch in mm of the left side along which the PCB edge shows through the gap. Rays go
+    square into the side at half the gap's height; a ray counts when the PCB is the first thing it hits."""
+    height = LEVELS.gap_bottom / 2
+    (left, _), _ = case_bounds()
+    looked_at = box((left - 1, 1), (0, BOARD.board.height), (height - 0.5, height + 0.5))
+    # A part that does not reach this height (the top) has nothing to draw; the board always does.
+    near = [piece for piece in (part & looked_at for part in in_the_way) if piece.solids()] + [board & looked_at]
+    meshes = [mesh_of(piece, ANY_MATERIAL).triangles for piece in near]
+    triangles = np.concatenate(meshes)
+    first_of_board = len(triangles) - len(meshes[-1])
+    along = np.arange(0, BOARD.board.height, SIGHT_STEP) + SIGHT_STEP / 2
+    origins = np.stack([np.full_like(along, left - SIGHT_START), -along, np.full_like(along, height)], axis=1)
+    inward = np.broadcast_to((1.0, 0.0, 0.0), origins.shape)
+    sees_board = np.zeros(len(along), dtype=bool)
+    for start in range(0, len(along), RAYS_PER_BATCH):
+        chosen = slice(start, start + RAYS_PER_BATCH)
+        distance, struck = _first_hit(origins[chosen], inward[chosen], triangles)
+        sees_board[chosen] = np.isfinite(distance) & (struck >= first_of_board)
+    return _longest_run(sees_board) * SIGHT_STEP
+
+
+def _longest_run(flags: np.ndarray) -> int:
+    longest = current = 0
+    for flag in flags:
+        current = current + 1 if flag else 0
+        longest = max(longest, current)
+    return longest
+
+
+def bar_end_gap(bar: Part) -> float:
+    """Gap in mm between an end of the left light bar's visible face and the end of its slot, at half
+    the gap's height. The larger of the two ends."""
+    outline = section(bar, section_by=Plane.XY.offset(LEVELS.gap_bottom / 2)).vertices()
+    outer_face = min(vertex.X for vertex in outline)
+    along = [-vertex.Y for vertex in outline if vertex.X < outer_face + PROBE]
+    slot_start, slot_end = led_slot_span()
+    return max(min(along) - slot_start, slot_end - max(along))
+
+
+def asymmetry_at_usb(shell: Part) -> float:
+    """Volume in mm^3 by which a shell differs from its own mirror image round the USB opening."""
+    beside, inward = PORT_BOX
+    half_width = CASE.usb_plug[0] / 2 + beside
+    back_face = case_bounds()[1][0]
+    around_the_port = box(
+        (BOARD.usb.x - half_width, BOARD.usb.x + half_width), (back_face - 1, inward), (LEVELS.floor_bottom, LEVELS.plate_top)
+    )
+    as_built = shell & around_the_port
+    mirrored = mirror(as_built, Plane.YZ.offset(BOARD.usb.x))
+    return sum(solid.volume for difference in (as_built - mirrored, mirrored - as_built) for solid in difference.solids())
 
 
 def boss_wall(part: Part, hole_diameter: float, z: float) -> float:

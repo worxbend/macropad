@@ -27,12 +27,19 @@ MESH_TOLERANCE = 0.03
 HATCH_LINE = 0.28  # share of the hatch spacing that a line takes
 HATCH_SHADE = 0.55  # how dark a hatch line is
 # What a metal surface mirrors, by the height (Z of the unit vector) its reflected ray points to: a
-# floor below, a lighter ceiling above, and a bright band low on the walls between them. A
-# 45 degree chamfer seen from above mirrors that band, so it is the brightest line on the part.
-STUDIO_FLOOR = 0.55
-STUDIO_CEILING = 0.8
-STUDIO_BAND = (0.9, 0.4, 0.22)  # extra brightness, the height it is centred on, its spread
+# sky three times brighter at the horizon than at the zenith, a darker floor that lightens toward the
+# horizon, and a bright band of soft boxes low on the walls. A 45 degree chamfer seen from above
+# mirrors that band, so it is the brightest line on the part; a vertical flank mirrors the floor.
+STUDIO_HORIZON = 1.2
+STUDIO_ZENITH = 0.4
+STUDIO_NADIR = 0.3
+STUDIO_FLOOR_AT_HORIZON = 0.7
+STUDIO_BAND = (0.9, 0.4, 0.2)  # extra brightness, the height it is centred on, its spread
 STUDIO_KEY_SHARE = 0.6  # how much of the key light counts toward the brightness of the studio
+# A glossy sheet mirrors one window as a soft band across it. The band runs along this direction in
+# plan, lies off the middle of the sheet by a share of its half-length, and is that wide.
+SHEEN_ACROSS = (0.8, 0.6, 0.0)
+SHEEN_PLACE = (-0.3, 0.3)
 MESH_ANGLE = 0.15
 
 
@@ -43,6 +50,8 @@ class Material:
     glow: float = 0.0  # light the surface gives off, as a multiple of its colour
     hatch: float = 0.0  # mm between hatch lines on a cut face; negative leans them the other way
     metal: float = 0.0  # share of the surface's light that is a mirror image of the studio, not diffuse
+    sheen: float = 0.0  # brightness of the window a glossy sheet mirrors, as a band across the mesh
+    glow_fade: float = 0.0  # mm; the glow fades out over this length at both ends of the mesh's longest side
 
 
 @dataclass(frozen=True)
@@ -337,6 +346,17 @@ class _SceneArrays:
         self.glow = np.array([mesh.material.glow for mesh in scene.meshes])
         self.hatch = np.array([mesh.material.hatch for mesh in scene.meshes])
         self.metal = np.array([mesh.material.metal for mesh in scene.meshes])
+        self.sheen = np.array([mesh.material.sheen for mesh in scene.meshes])
+        self.glow_fade = np.array([mesh.material.glow_fade for mesh in scene.meshes])
+        # Each mesh's extent, for the effects that are laid out along it.
+        points = [mesh.triangles.reshape(-1, 3) for mesh in scene.meshes]
+        low, high = np.array([each.min(axis=0) for each in points]), np.array([each.max(axis=0) for each in points])
+        self.long_axis = (high - low).argmax(axis=1)
+        rows = np.arange(len(low))
+        self.long_ends = np.stack([low[rows, self.long_axis], high[rows, self.long_axis]], axis=1)
+        across = _unit(np.array(SHEEN_ACROSS))
+        self.sheen_middle = (low + high) / 2 @ across
+        self.sheen_half = np.abs((high - low) / 2) @ np.abs(across)
         self.decals = {number: mesh.decal for number, mesh in enumerate(scene.meshes) if mesh.decal}
 
 
@@ -390,8 +410,27 @@ class _Surface:
         self.colour = self.colour * _hatching(self.position, np.where(hit, geometry.hatch[mesh], 0.0))[..., None]
         self.gloss = np.where(hit, geometry.gloss[mesh], 0.0)
         self.metal = np.where(hit, geometry.metal[mesh], 0.0)
-        self.glow_colour = np.where(hit[..., None], geometry.colour[mesh] * geometry.glow[mesh][..., None], 0.0)
+        glow = geometry.glow[mesh] * _end_fade(geometry, mesh, self.position)
+        self.glow_colour = np.where(hit[..., None], geometry.colour[mesh] * glow[..., None], 0.0)
+        self.sheen = np.where(hit, geometry.sheen[mesh] * _sheen_band(geometry, mesh, self.position), 0.0)
         self.face = np.where(hit, geometry.face[safe], -1)
+
+
+def _end_fade(geometry: _SceneArrays, mesh: np.ndarray, position: np.ndarray) -> np.ndarray:
+    """1 in the middle of each mesh, falling to 0 toward both ends of its longest side over the
+    mesh's `glow_fade`. A lit strip that ends in a hard edge would be brighter than the light allows."""
+    fade = geometry.glow_fade[mesh]
+    along = np.take_along_axis(position, geometry.long_axis[mesh][..., None], axis=-1)[..., 0]
+    start, end = geometry.long_ends[mesh, 0], geometry.long_ends[mesh, 1]
+    share = np.minimum(along - start, end - along) / np.where(fade > 0, fade, 1.0)
+    return np.where(fade > 0, np.clip(share, 0, 1), 1.0)
+
+
+def _sheen_band(geometry: _SceneArrays, mesh: np.ndarray, position: np.ndarray) -> np.ndarray:
+    """A soft band across each mesh, 0..1: where a window would be mirrored."""
+    offset, width = SHEEN_PLACE
+    across = (position @ _unit(np.array(SHEEN_ACROSS)) - geometry.sheen_middle[mesh]) / geometry.sheen_half[mesh]
+    return np.exp(-(((across - offset) / width) ** 2))
 
 
 def _hatching(position: np.ndarray, spacing: np.ndarray) -> np.ndarray:
@@ -477,7 +516,9 @@ def _shade(surface: _Surface, lighting: Lighting, triangles: np.ndarray, ground_
     diffuse = diffuse * (1 - surface.metal) + surface.metal * _studio(surface, lighting) * occlusion
     halfway = _unit(surface.toward_eye + key)
     highlight = surface.gloss * np.clip((normal * halfway).sum(axis=-1), 0, None) ** 40 * (1 - shadow)
-    model = surface.colour * diffuse[..., None] + highlight[..., None] * lighting.key + surface.glow_colour
+    window = surface.sheen * (lighting.ambient + STUDIO_KEY_SHARE * lighting.key)
+    model = (surface.colour * diffuse[..., None] + (highlight * lighting.key + window)[..., None]
+             + surface.glow_colour)
     if ground_z is None:
         return model
     contact = _contact_shadow(triangles, ground_z, surface.position)
@@ -489,12 +530,12 @@ def _shade(surface: _Surface, lighting: Lighting, triangles: np.ndarray, ground_
 def _studio(surface: _Surface, lighting: Lighting) -> np.ndarray:
     """How bright the studio is where each pixel's mirror image comes from."""
     normal, toward_eye = surface.normal, surface.toward_eye
-    reflected_z = 2 * (normal * toward_eye).sum(axis=-1) * normal[..., 2] - toward_eye[..., 2]
-    above_floor = np.clip((reflected_z + 0.1) / 0.35, 0, 1)
-    walls = STUDIO_FLOOR + (STUDIO_CEILING - STUDIO_FLOOR) * above_floor * above_floor * (3 - 2 * above_floor)
+    reflected_z = np.clip(2 * (normal * toward_eye).sum(axis=-1) * normal[..., 2] - toward_eye[..., 2], -1, 1)
+    sky = STUDIO_HORIZON + (STUDIO_ZENITH - STUDIO_HORIZON) * np.clip(reflected_z, 0, 1) ** 0.7
+    floor = STUDIO_FLOOR_AT_HORIZON + (STUDIO_NADIR - STUDIO_FLOOR_AT_HORIZON) * np.clip(-reflected_z, 0, 1)
     extra, centre, spread = STUDIO_BAND
     band = extra * np.exp(-((reflected_z - centre) / spread) ** 2)
-    return (walls + band) * (lighting.ambient + STUDIO_KEY_SHARE * lighting.key)
+    return (np.where(reflected_z >= 0, sky, floor) + band) * (lighting.ambient + STUDIO_KEY_SHARE * lighting.key)
 
 
 def _crease_occlusion(surface: _Surface) -> np.ndarray:

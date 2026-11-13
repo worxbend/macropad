@@ -5,10 +5,11 @@
 Dimensions marked MEASURE in `spec.py` and here are from datasheets and footprints, not from a caliper.
 """
 
-from build123d import Axis, Box, Cylinder, Part, Pos, Rectangle, RectangleRounded, Sphere, chamfer, fillet, loft
+from build123d import Axis, Box, Cylinder, Part, Pos, Rectangle, RectangleRounded, Sphere, chamfer, extrude, fillet
+from build123d import loft
 
 from .solids import box, centred_box, cylinder, d_profile, pcb_outline, slab
-from .spec import BOARD, CASE, LEVELS, buttons, encoder_centres, key_centres, mounting_holes
+from .spec import BOARD, CASE, LEVELS, buttons, encoder_centres, key_centres, mounting_holes, screw_length, screw_seat
 
 # MEASURE: EC11E terminals and mounting tabs, from the KiCad footprint, relative to the encoder centre.
 ENCODER_PINS = [(-7.5, -2.5), (-7.5, 0.0), (-7.5, 2.5), (7.0, -2.5), (7.0, 2.5)]
@@ -93,6 +94,14 @@ def _tapered_block(bottom_width: float, top_width: float, z: tuple[float, float]
     ])
 
 
+def worst_keycap_skirt() -> Part:
+    """The lower edge of the widest, sharpest-cornered keycap the dish must clear, at the origin and
+    pressed all the way down. A slab, not a keycap: only its outline matters."""
+    width, corner_radius = CASE.keycap_worst_skirt
+    bottom = LEVELS.plate_top + CASE.keycap_pressed_bottom
+    return Pos(0, 0, bottom) * extrude(RectangleRounded(width, width, corner_radius), 1.0)
+
+
 def keycap_sweep() -> Part:
     """Everything a keycap can touch on its way down: full width, from pressed bottom to rest top."""
     z_range = (LEVELS.plate_top + CASE.keycap_pressed_bottom, LEVELS.plate_top + CASE.keycap_top)
@@ -119,8 +128,9 @@ def encoder(centre: tuple[float, float]) -> Part:
 
 
 def display_parts() -> dict[str, Part]:
-    """nice!view on its socket strip, in three solids so the pictures can colour them:
-    the module board with its socket and solder tails, the LCD glass, and the visible pixel area."""
+    """nice!view on its socket strip, in three solids so the pictures can colour them: the module
+    board with its socket, its header pins trimmed short and its solder tails, the LCD glass, and the
+    visible pixel area."""
     module = BOARD.display
     glass_top = BOARD.stack.display_glass_top
     module_bottom = glass_top - CASE.display_thickness
@@ -130,10 +140,11 @@ def display_parts() -> dict[str, Part]:
     header_centre = (module.header_x, module.y)
     socket_strip = centred_box(header_centre, (module.header_pitch, header_length), (0, module_bottom))
     tails = centred_box(header_centre, (1.2, header_length), (LEVELS.pcb_bottom - SOLDER_TAIL, LEVELS.pcb_bottom))
+    pins = centred_box(header_centre, (1.2, header_length), (board_top, board_top + CASE.header_pin_height))
     window_centre = (module.window_x, module.window_y)
     pixels = centred_box(window_centre, (module.window_length, module.window_width), (glass_top - 0.1, glass_top))
     glass = centred_box(window_centre, CASE.display_glass, (board_top, glass_top)) - pixels
-    return {"display": board + socket_strip + tails, "display_glass": glass, "display_pixels": pixels}
+    return {"display": board + socket_strip + tails + pins, "display_glass": glass, "display_pixels": pixels}
 
 
 def usb_receptacle() -> Part:
@@ -179,33 +190,34 @@ def button(centre: tuple[float, float]) -> Part:
     return centred_box(centre, (width, width), (LEVELS.pcb_bottom - height, LEVELS.pcb_bottom))
 
 
-def screw(centre: tuple[float, float]) -> Part:
-    """M2 x 10 socket-head screw, head in the base counterbore. Above the PCB it is drawn at the
-    thread's core diameter, because there it cuts its own thread into the top."""
+def screw(centre: tuple[float, float], variant: str) -> Part:
+    """M2 socket-head screw of the variant's length, head in the base counterbore. Above the PCB it is
+    drawn at the thread's root diameter, because there its thread is inside the wall of the hole."""
     head_diameter, head_height = CASE.screw_head
-    seat = LEVELS.counterbore_top
+    seat = screw_seat(variant)
     head = cylinder(centre, head_diameter, (seat - head_height, seat))
     hex_socket = cylinder(centre, 1.7, (seat - head_height - 0.01, seat - head_height + 1.0))
     shank = cylinder(centre, 2.0, (seat, 0))
-    core = cylinder(centre, CASE.screw_thread_core, (0, seat + CASE.screw_length))
+    core = cylinder(centre, CASE.screw_thread_core, (0, seat + screw_length(variant)))
     return head - hex_socket + shank + core
 
 
-def components() -> dict[str, Part]:
+def components(variant: str) -> dict[str, Part]:
     """Every bought part by name, for the fit checks."""
-    return _fixed_components() | _switches(switch_housing() + keycap_sweep(), name="switch")
+    return _fixed_components(variant) | _switches(switch_housing() + keycap_sweep(), name="switch")
 
 
-def drawn_components() -> dict[str, Part]:
+def drawn_components(variant: str) -> dict[str, Part]:
     """Every bought part by name, for pictures: keycaps are separate and have their real shape."""
-    return _fixed_components() | _switches(switch_housing(), name="switch") | _switches(keycap(), name="keycap")
+    housings, keycaps = _switches(switch_housing(), name="switch"), _switches(keycap(), name="keycap")
+    return _fixed_components(variant) | housings | keycaps
 
 
 def _switches(shape: Part, name: str) -> dict[str, Part]:
     return {f"{name}_{index}": at(centre, shape) for index, centre in enumerate(key_centres())}
 
 
-def _fixed_components() -> dict[str, Part]:
+def _fixed_components(variant: str) -> dict[str, Part]:
     found = {"pcb": pcb(), **display_parts(), "usb_receptacle": usb_receptacle(), "usb_plug": usb_plug()}
     for index, centre in enumerate(key_centres()):
         found[f"socket_{index}"] = socket(centre)
@@ -218,5 +230,5 @@ def _fixed_components() -> dict[str, Part]:
     for name, centre in buttons().items():
         found[f"button_{name}"] = button(centre)
     for index, centre in enumerate(mounting_holes()):
-        found[f"screw_{index}"] = screw(centre)
+        found[f"screw_{index}"] = screw(centre, variant)
     return found
