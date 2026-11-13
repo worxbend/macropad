@@ -61,7 +61,7 @@ DETAIL_SIZE = (7.0, 8.0)  # model mm shown, across and up
 TABLE_AT = (312.0, 30.0)
 TABLE_LINE = 5.2
 NOTES_AT = 255.0  # sheet Y of the first line of notes on a part sheet
-NOTE_LINE = 4.1
+NOTE_LINE = 3.5
 PREVIEW_NAMES = {"general_arrangement": "general_arrangement", "base": "drawing_base", "top": "drawing_top"}
 
 
@@ -311,7 +311,8 @@ BASE_SHEET = PartSheet(
         f"a {_mm(2 * CASE.cnc_corner_radius)} mm end mill reaches them all.",
         f"45 degree chamfers: {_mm(CASE.underside_chamfer)} on the underside rim, "
         f"{_mm(CASE.seam_chamfer)} on the outer skin's top edge at the gap, "
-        "the flank and ends of the lap ridges, the USB lead-in. The rim inside the gap stays sharp: the top seats on it.",
+        "the flank and ends of the lap ridges, the USB lead-in.",
+        "The rim inside the gap stays sharp: the top seats on it.",
         f"The rim steps in {_mm(CASE.gap_depth)} mm over the top {_mm(CASE.gap_height)} mm, all round: that is the gap. "
         "Cut it with the side of the end mill in setup 1.",
         f"Screw holes go straight through: M2 x {_mm(CASE.cnc_screw_length)} socket head from below.",

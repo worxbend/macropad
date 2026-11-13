@@ -3,8 +3,7 @@ pad and the optional tilt bar."""
 
 from math import cos, radians, tan
 
-from build123d import Axis, Box, Cylinder, Location, Part, Plane, Polygon, Pos, Rot, Sketch, chamfer, fillet, mirror
-from build123d import revolve
+from build123d import Axis, Box, Location, Part, Plane, Polygon, Pos, Rectangle, Rot, Sketch, chamfer, fillet, mirror
 
 from .parts import FAR, WIDTH, base, top
 from .solids import CUT_OVERSHOOT, box, case_outline, centred_rectangle, cylinder, d_profile, rectangle
@@ -13,7 +12,8 @@ from .spec import BACK_ROW, BOARD, CASE, CENTRE_ROW, FRONT_ROW, LEVELS, PRINT, S
 from .spec import foot_span, foot_thickness, grown, led_slot_span, lens_span, screw_rows
 
 BAR_TO_TOP = 0.1  # the light bar ends this far under the top shell
-BORE_END = BOARD.stack.encoder_shaft_top + 0.3  # the knob's bore is this much deeper than the shaft is long
+# The end of the knob's bore sits on the end of the shaft: that sets the knob's height.
+BORE_END = BOARD.stack.encoder_shaft_top
 GROOVE_CUTTER_PAST = 0.2  # the V profile that cuts a knob groove runs this far past the knob's surface
 
 
@@ -26,13 +26,14 @@ def diffuser_left() -> Part:
     fit = CASE.diffuser_fit
     slot_start, slot_end = led_slot_span()
     along = (slot_start + fit, slot_end - fit)
-    x_range = (-(CASE.pcb_gap + CASE.light_channel_reach) + fit, -CASE.pcb_gap)
+    inner_face = -(CASE.diffuser_to_pcb + CASE.light_bar_lip)
+    x_range = (-(CASE.pcb_gap + CASE.light_channel_reach) + CASE.light_bar_skin_fit, inner_face)
     in_the_gap = LEVELS.gap_bottom + fit  # the square part clears the floor of the slot by the fit
     in_the_channel = box(x_range, along, (LEVELS.led_slot_bottom + fit, in_the_gap))
     outer_ends = in_the_channel.edges().filter_by(Axis.Z).group_by(Axis.X)[0]
     shown = box(x_range, along, (in_the_gap, -BAR_TO_TOP))
-    lip = box((-CASE.pcb_gap, -CASE.diffuser_to_pcb), along, (LEVELS.pcb_bottom, -BAR_TO_TOP))
-    return fillet(outer_ends, CASE.light_channel_radius) + shown + lip
+    lip = box((inner_face, -CASE.diffuser_to_pcb), along, (LEVELS.pcb_bottom, -BAR_TO_TOP))
+    return fillet(outer_ends, CASE.light_channel_radius - CASE.light_bar_skin_fit) + shown + lip
 
 
 def diffuser_right() -> Part:
@@ -41,55 +42,57 @@ def diffuser_right() -> Part:
 
 def knob() -> Part:
     """One knob at the origin in X and Y, at its assembled height: a plain cylinder with fine straight
-    grooves round the middle, a flat top, and a pointer dimple on the same side as the flat of the
-    D-shaft (toward the back of the board). Its foot stands in a well in the top face."""
+    grooves round the middle, a flat top, and a radial pointer line on the same side as the flat of the
+    D-shaft (toward the back of the board). The end of its bore sits on the end of the shaft, and its
+    foot stands in a well in the top face."""
     blank = cylinder((0, 0), CASE.knob_diameter, (LEVELS.knob_bottom, LEVELS.knob_top))
     body = chamfer(blank.edges().group_by(Axis.Z)[-1], CASE.chamfer)
     body = chamfer(body.edges().group_by(Axis.Z)[0], CASE.chamfer)
     bushing_pocket_diameter = BOARD.stack.encoder_bushing_diameter + 1.0
-    bushing_pocket = cylinder(
-        (0, 0), bushing_pocket_diameter, (LEVELS.knob_bottom - CUT_OVERSHOOT, LEVELS.bushing_top + 0.5)
-    )
+    bushing_pocket = cylinder((0, 0), bushing_pocket_diameter, (LEVELS.knob_bottom - CUT_OVERSHOOT, LEVELS.knob_bushing_roof))
     clearance = CASE.knob_bore_clearance
     d_bore = d_profile(CASE.shaft_diameter + clearance, CASE.shaft_flat + clearance)
     bore = slab(d_bore, (LEVELS.knob_bottom, BORE_END))
-    return body - bushing_pocket - bore - _knob_grooves() - _knob_pointer() + _knob_crush_ribs()
+    return body - bushing_pocket - bore - _knob_grooves() - _knob_pointer() + knob_crush_ribs()
 
 
 def _knob_grooves() -> list[Part]:
-    """Straight 90 degree V grooves between the two plain bands. Each one runs out at 45 degrees at
-    both ends: its floor rises to the knob's surface instead of ending in a square step."""
+    """Straight 90 degree V grooves between the two plain bands. Each ends square, as a turned band
+    would: the grooved band reads as one ring between two smooth ones."""
     radius, depth, past = CASE.knob_diameter / 2, CASE.knob_groove_depth, GROOVE_CUTTER_PAST
     start, end = LEVELS.knob_bottom + CASE.knob_plain_band, LEVELS.knob_top - CASE.knob_plain_band
     # Counter-clockwise, so the face looks up and `slab` extrudes it upward.
     vee = Polygon((radius - depth, 0), (radius + past, -depth - past), (radius + past, depth + past), align=None)
-    # What the cutter must leave: the knob inside the groove floors, flaring out at both ends.
-    kept = revolve(Plane.XZ * Polygon(
-        (0, start - past), (radius + past, start - past), (radius - depth, start + depth),
-        (radius - depth, end - depth), (radius + past, end + past), (0, end + past), align=None,
-    ), Axis.Z)
-    groove = slab(vee, (start - past, end + past)) - kept
+    groove = slab(vee, (start, end))
     step = 360 / CASE.knob_grooves
     # Half a step off, so a land and not a groove lies in line with the pointer.
     return [Rot(0, 0, (index + 0.5) * step) * groove for index in range(CASE.knob_grooves)]
 
 
-def _knob_crush_ribs() -> list[Part]:
-    """Three low ribs on the round side of the bore. They touch the shaft, so a bore that prints to
-    size still grips it; a bore that prints small crushes them."""
+def knob_crush_ribs() -> list[Part]:
+    """Three low ribs on the round side of the bore, at the knob's place over the origin. Each reaches
+    `knob_rib_interference` into the shaft, so a bore that prints to size still grips it; a bore that
+    prints small crushes them."""
     width, length = CASE.knob_crush_rib
-    shaft_radius, bore_radius = CASE.shaft_diameter / 2, (CASE.shaft_diameter + CASE.knob_bore_clearance) / 2
+    inner = CASE.shaft_diameter / 2 - CASE.knob_rib_interference
+    bore_radius = (CASE.shaft_diameter + CASE.knob_bore_clearance) / 2
     into_the_wall = 0.3  # so the rib and the knob are one body
-    rib = Pos((shaft_radius + bore_radius + into_the_wall) / 2, 0, BORE_END - length / 2) * Box(
-        bore_radius + into_the_wall - shaft_radius, width, length
+    rib = Pos((inner + bore_radius + into_the_wall) / 2, 0, BORE_END - length / 2) * Box(
+        bore_radius + into_the_wall - inner, width, length
     )
     # The flat of the bore faces +Y; the ribs sit opposite it and 60 degrees to either side.
     return [Rot(0, 0, angle) * rib for angle in (210, 270, 330)]
 
 
+def knob_pointer_outline() -> Sketch:
+    """The pointer line on the knob's top, seen from above."""
+    width, _, start, end = CASE.knob_pointer
+    return Pos(0, (start + end) / 2) * Rectangle(width, end - start)
+
+
 def _knob_pointer() -> Part:
-    diameter, depth, from_axis = CASE.knob_pointer
-    return Pos(0, from_axis, LEVELS.knob_top) * Cylinder(diameter / 2, 2 * depth)
+    depth = CASE.knob_pointer[1]
+    return slab(knob_pointer_outline(), (LEVELS.knob_top - depth, LEVELS.knob_top + CUT_OVERSHOOT))
 
 
 def knobs() -> list[Part]:

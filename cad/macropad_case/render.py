@@ -31,7 +31,7 @@ MATERIALS = {
     "diffuser": Material((0.96, 0.94, 0.89), gloss=0.1),
     "keycap": Material((0.93, 0.92, 0.90), gloss=0.12),
     # Black-printed glass: no broad highlight, only the band of a window mirrored in it.
-    "lens": Material((0.03, 0.03, 0.04), gloss=0.0, sheen=0.35),
+    "lens": Material((0.03, 0.03, 0.04), gloss=0.0, sheen=0.1),
     "foot_strip": Material((0.06, 0.06, 0.06), gloss=0.05),
     "centre_pad": Material((0.06, 0.06, 0.06), gloss=0.05),
     "tilt_strip": Material((0.06, 0.06, 0.06), gloss=0.05),
@@ -76,7 +76,8 @@ COLOURWAYS = {
 FROM_BELOW = Lighting(key_direction=(-0.45, -0.35, -0.82), key=1.15, ambient=0.6, fill=0.35)
 FROM_BEHIND = Lighting(key_direction=(-0.45, 0.6, 0.66))  # the default light only grazes the back wall
 RAKING = Lighting(key_direction=(-0.85, -0.3, 0.45), key=1.25, ambient=0.36, fill=0.3)  # low: for the knob grooves
-OVERHEAD = Lighting(key_direction=(-0.10, 0.06, 0.99))  # high, so the knobs' shadows stay off the lens
+# High, so the knobs' shadows stay off the lens; dimmer, because it falls square on the top face.
+OVERHEAD = Lighting(key_direction=(-0.10, 0.06, 0.99), key=0.62, ambient=0.34)
 NIGHT = Lighting(key=0.22, fill=0.06, ambient=0.10, background_top=(0.05, 0.05, 0.07),
                  background_bottom=(0.09, 0.09, 0.12), bloom=0.55, edge_ink=0.25)
 

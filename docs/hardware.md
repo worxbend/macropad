@@ -138,7 +138,7 @@ Heights from `board.toml`, measured from the PCB top face.
 | Encoder body top | 6.5 mm |
 | Display glass top | 7.0 mm (`MEASURE`: nice!view on low-profile sockets) |
 | Top face of the case | 8.5 mm |
-| Lens underside | 7.48 mm (0.48 mm above the glass) |
+| Lens underside | 7.38 mm (0.38 mm above the glass) |
 | Encoder shaft top | 20.0 mm |
 
 <img src="images/cad/section_usb_display.png" alt="Cut through the USB port, the lens, the display and the centre screws" width="48%"> <img src="images/cad/section_light_line.png" alt="Cut through one LED, the PCB edge and the light bar" width="48%">
@@ -149,26 +149,38 @@ Nothing below has been printed or milled. The model passes its own checks, and t
 
 <img src="images/cad/hero.png" alt="The printed variant: light top, dark base" width="48%"> <img src="images/cad/hero_aluminium.png" alt="The milled variant, drawn as silver aluminium" width="48%">
 
-- **Shape.** A 90.0 x 90.0 mm slab, 17.5 mm tall, with one flat top face. The base rim steps in under
-  the top, so a 1.2 mm shadow gap runs all round the case where the two shells meet.
+- **Shape.** A 90.0 x 90.0 mm slab, 17.5 mm tall, with one flat top face and no text on it. The base
+  rim steps in under the top, so a 1.5 mm shadow gap runs all round the case where the two shells meet.
+  A 2.0 mm chamfer under the dark base makes it recede.
 - **Two shells.** The base holds the PCB on six bosses. The top is the switch plate, the deck and the
-  skirt in one piece. Six M2 x 10 screws go in from below and are hidden under the feet.
+  skirt in one piece. Six M2 screws go in from below and are hidden under the feet: M2 x 10 cutting
+  their own thread in a printed top, M2 x 8 in tapped holes in a milled one.
+- **PCB thickness.** The board is ordered 1.6 mm thick; board houses allow about 10 %. On a 1.76 mm
+  board the top rides 0.16 mm higher, the gap reads 1.66 mm and the lap joint still overlaps 0.44 mm.
+  On a thin board the PCB is loose until the screws pull it down. Both are checked, neither is measured.
 - **Corners.** The milled outline has continuous-curvature corners (one quintic Bezier each). The
   printed outline has R 6.4 arcs through the same apex, because the top prints standing on a side wall
   and the flatter curve would hang too far over the bed.
-- **Key dish.** The keys stand in a dish with 45° walls. The flat frame around it is 4.775 mm wide on
+- **Key dish.** The keys stand in a dish with 45° walls. The flat frame around it is 4.275 mm wide on
   the left, the right and in front.
-- **Lens.** A clear 39.0 x 14.6 x 1.0 mm lens with a black mask lies flush in the top face over the
-  display, taped on two ledges. Its thickness and the 0.13 mm tape are guesses.
+- **Lens.** A 39.0 x 14.6 x 1.0 mm cover glass with a black mask lies 0.12 mm under the top face over
+  the display, taped on two ledges. A 5 N press bends it 0.06 mm; acrylic would bend 1.4 mm onto the
+  display. Its thickness, its stiffness and the 0.13 mm tape are guesses. A foam pad holds the display
+  level under it.
 - **Lap joint.** Ridges 0.6 mm tall on the base rim enter grooves in the top. They centre the top and
   close the straight path for light through the joint. The 0.2 mm fit is a guess until a test print.
 - **Light line.** One light bar per side stands in a channel in the base wall, behind a 1.0 mm skin, and
-  is held by the PCB edge. It shows only in the gap: a line 1.1 mm tall. The gap runs all round, but it
-  lights only along these two 46.5 mm stretches. How bright and how even is a guess.
-- **Knobs.** 16 mm, 36 fine grooves, flat top with a pointer dimple. They stand 1.0 mm above the deck.
-- **Underside.** Two foot strips and a centre pad cover all six screws. A label field holds the mark.
+  is held by the PCB edge. It shows only in the gap: a line 1.4 mm tall, 0.7 mm of it still in sight
+  from 45° above. The gap runs all round, but it lights only along these two 46.5 mm stretches. How
+  bright and how even is a guess.
+- **Knobs.** 14.4 mm, 30 fine grooves, flat top with a pointer dimple. Each stands in a shallow well in
+  the top face, so no bushing shows. Printed in both variants.
+- **Underside.** Two foot strips and a centre pad cover all six screws. The mark is engraved in the flat
+  face of a printed base and laser-marked on a milled one.
+- **USB-C.** A 13.5 x 7.5 mm opening: a plug overmould up to 13.0 x 7.0 mm fits. The PCB edge shows in
+  it; a black solder mask hides it.
 - **Size.** 90.0 x 90.0 x 17.5 mm, 31.0 mm from the underside to the top of the knobs. The foot strips
-  add 1.0 mm.
+  add 1.2 mm.
 - **Two variants.** `cad/exports/print/` for FDM printing, `cad/exports/cnc/` for 3-axis milling with a
   3 mm end mill and a chamfer mill. Light bars, knobs, foot strips and the tilt bar are always printed;
   the lens is cut from sheet.

@@ -75,6 +75,8 @@ def run() -> list[dict]:
         ("foot_on_a_flat_bears", measure.bearing_share(*_foot_on_a_block(hole=0.0)), "more than", 0.99),
         ("ledge_between_walls_found", _longest_bridge(_ledged_wall(sloped=False)), "more than", CASE.max_bridge),
         ("sloped_ledge_prints", _longest_bridge(_ledged_wall(sloped=True)), "less than", CASE.max_bridge),
+        ("face_between_layers_found", measure.misaligned_faces(_stepped_block(1.5)), "equal to", 1),
+        ("faces_on_layers_pass", measure.misaligned_faces(_stepped_block(1.6)), "equal to", 0),
     ]
     return [_verdict(*case) for case in cases]
 
@@ -122,6 +124,11 @@ def _ledged_wall(sloped: bool) -> Part:
     profile = Plane.YZ * Polygon((1, 7), (0, 7), (0, 6), underside, align=None)
     ledge = Pos(-LEDGE_SPAN / 2, 0, 0) * extrude(profile, LEDGE_SPAN)
     return wall + posts + ledge
+
+
+def _stepped_block(step: float) -> Part:
+    """A block 2 mm tall with a step at the given height: one horizontal face besides the top and the bed."""
+    return Pos(0, 0, 1) * Box(10, 10, 2) - Pos(2.5, 0, step + 1) * Box(5, 12, 2)
 
 
 def _verdict(name: str, found: float, relation: str, limit: float) -> dict:

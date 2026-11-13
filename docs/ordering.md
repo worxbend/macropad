@@ -44,7 +44,7 @@ Skip this if you did not change anything.
 | Layers | 4 | Detected from the files |
 | Quantity | 5 (the minimum) | First run |
 | Thickness | 1.6 mm | The case model assumes it (`board.thickness` in `board.toml`) |
-| Colour | Any | |
+| Colour | Any; black if the case matters to you | The PCB edge shows inside the USB opening. Black solder mask hides it; the case pictures draw it black. Green works the same. |
 | Surface finish | ENIG if the price is acceptable, otherwise HASL | ENIG is flatter, which is kinder to the 0.4 mm pitch QFN-60 |
 | Copper weight | Default (1 oz outer) | No high-current track |
 | Impedance control | No | Full-speed USB over 15 mm. No impedance was calculated for this board. |
@@ -114,8 +114,9 @@ JLCPCB does not place these. Buy them yourself. Numbers and notes are in [parts.
 2. 1 x 5-pin socket for the display, or use the one that comes with the nice!view.
 3. 1 x nice!view.
 4. 12 x MX-style switches and 12 x 1u keycaps.
-5. 6 x M2 x 10 socket-head cap screws, a 1.0 mm clear acrylic lens and thin double-sided tape. The
-   feet are printed.
+5. 6 x M2 socket-head cap screws (M2 x 10 for a printed case, M2 x 8 for a milled one), a 1.0 mm
+   cover glass lens with a printed black mask, thin double-sided tape and a small foam pad. The feet
+   are printed.
 
 JLCPCB can also solder the encoders and the socket as through-hole parts. They sit on the top face,
 so that makes it a two-sided assembly order. This repository's placement list does not include them.

@@ -85,7 +85,8 @@ Unplug the board first.
 
 1. Solder the 5-pin socket J2 on the top face. Keep it square to the board.
 2. If your nice!view came with a loose pin header, solder the header to the module. Guess: most
-   shops ship it loose. Follow the shop's instructions for the low-profile pins.
+   shops ship it loose. Follow the shop's instructions for the low-profile pins. Trim the pins on
+   the glass side to 1.5 mm above the module's board: the lens lies 0.78 mm above trimmed pins.
 3. Check the pin order before you plug the display in. The board expects, from the back edge to the
    front: MOSI, SCK, 3V3, GND, CS. This order is a `MEASURE` value from a community footprint.
    Compare it with the labels on your module. A module with another order must not be plugged in.
@@ -94,9 +95,10 @@ Unplug the board first.
 5. Plug in the USB cable. Expected: a splash screen with the firmware version, then the MEDIA
    layer with its key labels.
 
-The display is held only by its header. If its free end rattles, put a thin foam pad under it.
-The case leaves 0.48 mm between the glass and the lens, on the assumption that the glass is 7.0 mm
-above the board.
+The display is held only by its header. Stick a foam pad, about 8 x 10 mm and 4 mm thick (a guess),
+on the PCB under the display's free end, between X 48 and 58 mm. It is not optional: without it one
+degree of tilt lifts the free end 0.6 mm, and the case leaves 0.38 mm between the glass and the lens,
+on the assumption that the glass is 7.0 mm above the board.
 
 ## 6. Prepare the case parts
 
@@ -105,30 +107,37 @@ Print or mill the parts first: [cad/README.md](../cad/README.md#printing).
 <img src="images/cad/exploded.png" alt="Exploded view of the whole pad" width="60%">
 
 1. Clean the six screw holes in the top and the two light channels in the base of strings and burrs.
+   Printed base: cut the one-layer skin out of each of the six counterbores (a 2 mm drill by hand, or
+   a knife). Printed top: a screw must start in each hole by hand; if one does not, run a 1.7 mm drill
+   4.2 mm deep through all six. A milled top has tapped M2 holes.
 2. Try the top on the base without the board. The lap ridges on the base rim must enter the grooves
    in the top without force. The 0.2 mm fit is a guess; a tight printer may need a light pass with
    a file on the ridges.
 3. Try a light bar in its channel. It must drop in from above, lip up and toward the inside.
 4. Try a switch in one plate cut-out. It must clip in.
-5. Try the lens in its recess. It must drop in and lie just under the top face. The lens is clear
-   1.0 mm acrylic cut to `cad/exports/drawings/lens.dxf`, with the black mask of `lens_mask.dxf`
-   painted or printed on its underside.
+5. Try the lens in its recess. It must drop in and lie just under the top face. The lens is 1.0 mm
+   cover glass cut to `cad/exports/drawings/lens.dxf`, with the black mask of `lens_mask.dxf`
+   screen-printed on its underside. Measure its thickness: up to 1.1 mm still ends under flush with
+   0.13 mm tape. A thinner sheet may take 0.2 mm tape.
 
 ## 7. Close the case
 
 <img src="images/cad/section_light_line.png" alt="Cut through one LED, the PCB edge and the light bar" width="48%"> <img src="images/cad/shells_inside.png" alt="Both shells from inside" width="48%">
 
-1. Stand one light bar in each side channel of the base, lip up and toward the inside.
+1. Stand one light bar in each side channel of the base, lip up and toward the inside. Hold each
+   against the outer skin with a strip of tape over the gap: until the board is in, nothing stops a
+   bar tipping inward, and the board's edge LEDs pass the lip with 0.15 mm to spare.
 2. Lower the board onto the six bosses, USB port toward the opening at the back. The board edges
    now hold the bars in.
 3. Check through the base holes that the BOOT and RESET buttons sit behind their holes.
 4. Stick a piece of thin double-sided tape (0.13 mm, a guess) on each of the two lens ledges in the
    top. Press the lens in, mask down, window toward the right knob.
 5. Put the top on. The lap ridges centre it. The knob shafts must pass through their holes without
-   touching, and the display must sit under the lens.
-6. Turn the pad over. Fit the six M2 x 10 screws from below: four in the corners, two in the middle.
+   touching, and the display must sit under the lens. Peel off the tape over the gap.
+6. Turn the pad over. Fit the six screws from below: four in the corners, two in the middle. Printed
+   case: M2 x 10. Milled case: M2 x 8; a 10 mm screw bottoms in its tapped hole.
 7. Tighten each screw until the head is seated, no further. In a printed top the screws cut their
-   own thread in 1.7 mm holes and strip easily.
+   own thread in 1.8 mm holes and strip easily.
 
 ## 8. Switches, keycaps, knobs, feet
 
@@ -136,13 +145,14 @@ Print or mill the parts first: [cad/README.md](../cad/README.md#printing).
 2. Press each switch through the plate into its socket. Press straight down, near the middle of the
    board first. The board rests on six bosses only, so do not use force.
 3. Fit the keycaps.
-4. Push the knobs onto the shafts. The pointer dimple goes on the side of the shaft's flat.
-   A pressed knob stops 0.5 mm above the deck.
+4. Push the knobs onto the shafts. The pointer dimple goes on the side of the shaft's flat. Three
+   ribs in the bore grip the shaft; they may need a firm push. A pressed knob stops 0.3 mm above the
+   floor of its well.
 5. Run the final test below before the next step.
 6. Stick the two foot strips and the centre pad into their recesses on the underside, last. They
    cover all six screws.
 
-<img src="images/cad/underside.png" alt="Underside with the two foot strips, the centre pad, the label field and the BOOT and RESET holes" width="60%">
+<img src="images/cad/underside.png" alt="Underside with the two foot strips, the centre pad, the mark and the BOOT and RESET holes" width="60%">
 
 Optional tilt bar: leave the back foot strip off, glue or tape the bar's tongue into the back recess,
 and stick that strip onto the bar. Details in [cad/README.md](../cad/README.md#tilt-bar).

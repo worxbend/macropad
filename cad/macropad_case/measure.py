@@ -15,7 +15,7 @@ from .components import pcb
 from .parts import lap_ridges
 from .raster import DEPTH_MAP_SIZE, mesh_of, Material, rasterise
 from .solids import box, cylinder, overlap_volume, rectangle
-from .spec import BOARD, CASE, LEVELS, case_bounds, led_slot_span, mounting_holes
+from .spec import BOARD, CASE, LEVELS, case_bounds, corner_holes, led_slot_span, mounting_holes
 
 WALL_SAMPLES = 3000  # surface points probed per part
 WALL_MESH_TOLERANCE = 0.1
@@ -46,6 +46,13 @@ FAR = 500.0
 SIGHT_STEP = 0.05  # mm between the rays that look into the gap
 SIGHT_START = 5.0  # mm outside the case
 PORT_BOX = (6.0, 6.0)  # mm; how far the symmetry check reaches beside the USB plug and into the case
+LAYER = 0.2  # mm; the layer height the printed parts are drawn for
+LAYER_TOLERANCE = 0.02
+FRAME_SAMPLES = 400  # points along the rim of the key dish where the frame's width is taken
+OUTER_FACE_DEPTH = 0.6  # mm; a face this close to the outline, and facing out, is part of the outside
+FACING_OUT = 0.5  # cosine between a face's normal and the outline's outward normal, in plan
+SUPPORT_REACH = 0.5  # mm; a chair this close under an overhanging face carries it
+INSERT_STEP = 0.5  # mm between the heights a part is tried at while it is lowered into place
 
 
 def row(name: str, value: float, limit: float, kind: str = "min", unit: str = "mm") -> dict:
@@ -123,6 +130,70 @@ def outline_corners(part: Part, z: float) -> tuple[float, float]:
 def _curvature(edge: Edge, at: float) -> float:
     first, second = edge.derivative_at(at, 1), edge.derivative_at(at, 2)
     return first.cross(second).length / first.length ** 3
+
+
+def misaligned_faces(posed: Part) -> int:
+    """How many horizontal faces of a part in its bed pose lie off the 0.2 mm layer grid, counted from
+    the bed. A face off the grid is rounded by the slicer, and a feature thinner than a layer is lost."""
+    bed = posed.bounding_box().min.Z
+    off_grid = 0
+    for face in posed.faces().filter_by(GeomType.PLANE):
+        if abs(face.normal_at().Z) < 0.999:
+            continue
+        height = face.center().Z - bed
+        off_grid += abs(height - round(height / LAYER) * LAYER) > LAYER_TOLERANCE + 1e-6
+    return off_grid
+
+
+def frame_swell(top: Part) -> float:
+    """How much wider the flat frame round the key dish is at its widest than at its narrowest: zero
+    when the dish rim runs concentric with the outline. Taken from points along the front half of the
+    rim to the outer edge of the top face; behind the keys the frame is the deck, wide on purpose."""
+    top_face = max(top.faces().group_by(Axis.Z)[-1], key=lambda face: face.area)
+    rim = max(top_face.inner_wires(), key=lambda wire: wire.bounding_box().diagonal)
+    outer = top_face.outer_wire()
+    middle = rim.bounding_box().center().Y
+    points = [rim.position_at(step / FRAME_SAMPLES) for step in range(FRAME_SAMPLES)]
+    widths = [outer.distance_to(point) for point in points if point.Y < middle]  # model Y runs toward the back
+    return max(widths) - min(widths)
+
+
+def steepest_unsupported_outer_face(posed: Part, chairs: Part, outward_in_plan) -> float:
+    """Largest angle from vertical, in degrees, of a downward face on the outside of a part in its bed
+    pose that no chair carries. `outward_in_plan(triangle centres)` gives, in the bed frame, the
+    outline's outward normal and how deep inside the outline each centre lies; faces deeper than
+    `OUTER_FACE_DEPTH`, or not facing out, belong to the inside and are left out."""
+    mesh = mesh_of(posed, ANY_MATERIAL)
+    triangles = mesh.triangles
+    normal = np.cross(triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0])
+    area = np.linalg.norm(normal, axis=1)
+    normal = normal / np.where(area == 0, 1.0, area)[:, None]
+    centres = triangles.mean(axis=1)
+    outward, depth = outward_in_plan(centres)
+    off_the_bed = triangles[:, :, 2].max(axis=1) > posed.bounding_box().min.Z + PROBE
+    on_the_outside = (depth < OUTER_FACE_DEPTH) & ((normal * outward).sum(axis=1) > FACING_OUT) & (area > 1e-9) & off_the_bed
+    downward = on_the_outside & (normal[:, 2] < -1e-6)
+    if not downward.any():
+        return 0.0
+    chosen = np.flatnonzero(downward)
+    chair_triangles = mesh_of(chairs, ANY_MATERIAL).triangles
+    down = np.broadcast_to((0.0, 0.0, -1.0), (len(chosen), 3))
+    carried = np.zeros(len(chosen), dtype=bool)
+    for start in range(0, len(chosen), RAYS_PER_BATCH):
+        batch = slice(start, start + RAYS_PER_BATCH)
+        distance, _ = _first_hit(centres[chosen[batch]], down[batch], chair_triangles)
+        carried[batch] = distance <= SUPPORT_REACH
+    angles = np.degrees(np.arcsin(np.clip(-normal[chosen, 2], 0, 1)))
+    return float(angles[~carried].max(initial=0.0))
+
+
+def insertion_clearance(part: Part, height: float, obstacles: list[Part]) -> float:
+    """Smallest gap in mm between a part and the obstacles while it is lowered straight down from
+    `height` above its place, tried every `INSERT_STEP`, its seated place left out."""
+    steps = np.arange(INSERT_STEP, height + INSERT_STEP / 2, INSERT_STEP)
+    return float(min(
+        (Pos(0, 0, lift) * part).distance_to(obstacle) for lift in steps for obstacle in obstacles
+    ))
 
 
 def frame_widths(top: Part) -> dict[str, float]:
@@ -227,12 +298,12 @@ def asymmetry_at_usb(shell: Part) -> float:
     return sum(solid.volume for difference in (as_built - mirrored, mirrored - as_built) for solid in difference.solids())
 
 
-def boss_wall(part: Part, hole_diameter: float, z: float) -> float:
+def boss_wall(part: Part, hole_diameter: float, z: float, holes: list[tuple[float, float]] | None = None) -> float:
     """Thinnest wall around a screw hole, measured on the horizontal cut at height `z`:
     the distance from each hole's edge to the nearest other edge of the cut."""
     edges = section(part, section_by=Plane.XY.offset(z)).edges()
     thinnest = np.inf
-    for x, y in mounting_holes():
+    for x, y in holes or mounting_holes():
         centre = Vector(x, -y, z)
         around_hole = [edge for edge in edges if _is_circle_at(edge, centre, hole_diameter / 2)]
         if not around_hole:
@@ -391,7 +462,7 @@ def machinability(name: str, part: Part) -> list[dict]:
 
 
 def boss_walls(base: Part, top: Part) -> list[dict]:
-    under_the_pcb = (LEVELS.boss_root_top + LEVELS.pcb_bottom) / 2
+    under_the_pcb = (LEVELS.boss_root_top + LEVELS.base_boss_top) / 2
     in_the_root = (LEVELS.floor_top + LEVELS.boss_root_top) / 2
     in_the_top = CASE.pilot_depth / 2
     clearance_hole = BOARD.mounting.hole_diameter
@@ -399,4 +470,6 @@ def boss_walls(base: Part, top: Part) -> list[dict]:
         row("base_boss_wall_under_pcb", boss_wall(base, clearance_hole, under_the_pcb), 1.2),
         row("base_boss_wall_at_floor", boss_wall(base, clearance_hole, in_the_root), 2.0),
         row("top_boss_wall", boss_wall(top, CASE.pilot_diameter, in_the_top), 1.2),
+        # The corner bosses print with their hole along the layers, where a thread-cutting screw splits them.
+        row("top_corner_boss_wall", boss_wall(top, CASE.pilot_diameter, in_the_top, corner_holes()), 1.5),
     ]

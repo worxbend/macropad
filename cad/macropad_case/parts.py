@@ -6,22 +6,29 @@ level by level. The print variant adds what only a printer can make (45 degree f
 
 from math import radians, sqrt, tan
 
-from build123d import Align, Circle, Cone, Part, Plane, Polygon, Pos, Rectangle, RectangleRounded, Sketch, extrude
+from build123d import Align, Axis, Circle, Cone, Part, Plane, Polygon, Pos, Rectangle, RectangleRounded, Sketch
+from build123d import extrude, fillet, offset
 
 from . import signature
 from .solids import CUT_OVERSHOOT, box, case_outline, chamfered_slab, cylinder, discs, legend, millable, pcb_outline
 from .solids import rectangle, rounded_rectangle, slab, stadium
-from .spec import BOARD, CASE, CNC, LEVELS, PRINT, buttons, case_bounds, deck_pocket_front, dish_floor, encoder_centres
-from .spec import foot_span, grown, key_centres, knob_well_diameter, label_field, lap_runs, led_slot_span
-from .spec import lens_opening, lens_recess, lens_rib_spans, mounting_holes, rib_lines, screw_rows, screw_seat
+from .spec import BOARD, CASE, CENTRE_ROW, CNC, LEVELS, PRINT, buttons, bushing_hole, case_bounds, deck_pocket_front
+from .spec import dish_floor, dish_floor_radius, encoder_centres, foot_span, grown, key_centres, knob_well_diameter
+from .spec import label_field, lap_runs, led_slot_span, lens_opening, lens_recess, lens_rib_spans, mounting_holes
+from .spec import rib_lines, screw_rows, screw_seat, skin_chamfer, socket_posts, top_boss_diameters, usb_opening_size
+from .spec import usb_pad_span
 
 FAR = 500.0
 WIDTH = BOARD.board.width
 HEIGHT = BOARD.board.height
-# Text sizes for a 0.4 mm nozzle: the thinnest stroke of each must be wider than one line (checked).
-LEGEND_SIZE = 3.4
+# The text is engraved into the face that lies on the bed, where the first layer is squeezed into
+# every slot. Each glyph is drawn bolder by `*_GROW` on every side, so its thinnest stroke is at least
+# 0.7 mm (checked). OCCT fails to offset some glyph outlines by other amounts close to these.
+LEGEND_SIZE = 4.4
+LEGEND_GROW = 0.05
 UNDERSIDE_MARK = "worxbend / macropad"
-UNDERSIDE_MARK_SIZE = 5.2  # 4.6 gave a 0.42 mm stroke
+UNDERSIDE_MARK_SIZE = 5.1
+UNDERSIDE_MARK_GROW = 0.145
 
 
 def base(variant: str) -> Part:
@@ -47,25 +54,58 @@ def base_body(variant: str) -> Part:
     """The finished base before any text is engraved, with its screw holes open."""
     body = _base_blank(variant)
     cavity = pcb_outline(CASE.pcb_gap)
+    bosses = cavity - discs(mounting_holes(), CASE.base_boss_diameter)
+    posts = socket_post_outlines()
+    post_top = socket_post_top()
     pockets = [
-        (cavity, (LEVELS.pcb_bottom, CUT_OVERSHOOT)),
-        (cavity - discs(mounting_holes(), CASE.base_boss_diameter), (LEVELS.boss_root_top, LEVELS.pcb_bottom)),
-        (cavity - discs(mounting_holes(), CASE.boss_root_diameter), (LEVELS.floor_top, LEVELS.boss_root_top)),
+        (cavity, (LEVELS.base_boss_top, CUT_OVERSHOOT)),
+        (bosses, (post_top, LEVELS.base_boss_top)),
+        (bosses - posts, (LEVELS.boss_root_top, post_top)),
+        (cavity - discs(mounting_holes(), CASE.boss_root_diameter) - posts, (LEVELS.floor_top, LEVELS.boss_root_top)),
     ]
     # One boolean for every pocket: cut one at a time, the 0.01 mm overlaps between levels upset OCCT.
     body -= [slab(millable(pocket, variant), (bottom, top + CUT_OVERSHOOT)) for pocket, (bottom, top) in pockets]
     return body + lap_ridges() - _base_cuts(variant)
 
 
+def socket_post_outlines() -> Sketch:
+    """The posts under the hot-swap sockets, seen from above."""
+    return Sketch() + [
+        rounded_rectangle(_centred_span((x, y), CASE.socket_post), 1.0)
+        for x, y in socket_posts()
+    ]
+
+
+def _centred_span(centre: tuple[float, float], size: tuple[float, float]) -> tuple[tuple, tuple]:
+    return (centre[0] - size[0] / 2, centre[0] + size[0] / 2), (centre[1] - size[1] / 2, centre[1] + size[1] / 2)
+
+
+def socket_post_top() -> float:
+    """Z of the top of the posts: a little under the bottom of the sockets."""
+    return LEVELS.pcb_bottom - BOARD.stack.socket_depth - CASE.socket_post_gap
+
+
 def _base_blank(variant: str) -> Part:
     """The outside of the base: the full outline up to the gap, then a rim set back by the gap depth.
     The two shells meet at the back of that gap, so the joint is a shadow line and not a seam.
-    The rim's top edge stays sharp: it is the seat of the top, and nobody sees it."""
+    Round the USB opening the rim runs out flush to the outline instead, so the opening sits in a
+    plain pad. The rim's top edge stays sharp: it is the seat of the top, and nobody sees it."""
+    chamfer_at_gap = skin_chamfer(variant)
     skin = chamfered_slab(
         case_outline(variant), (LEVELS.floor_bottom, LEVELS.gap_bottom), bottom=CASE.underside_chamfer,
-        top=CASE.seam_chamfer,
+        top=chamfer_at_gap,
     )
-    return skin + slab(case_outline(variant, -CASE.gap_depth), (LEVELS.gap_bottom, 0))
+    back = case_bounds()[1][0]
+    pad = rectangle(usb_pad_span(), (back - FAR, back + CASE.gap_depth + 1.0))
+    # The step that makes the gap, as a pocket open to the outside: a mill leaves its tool radius
+    # where the step ends against the pad.
+    step = case_outline(variant, 5.0) - case_outline(variant, -CASE.gap_depth) - pad
+    rim = slab(case_outline(variant) - millable(step, variant), (LEVELS.gap_bottom, 0))
+    body = skin + rim
+    if chamfer_at_gap:
+        # The skin's chamfer stops at the pad, which runs on flush.
+        body += slab(case_outline(variant) & pad, (LEVELS.gap_bottom - chamfer_at_gap, LEVELS.gap_bottom))
+    return body
 
 
 def lap_ridges() -> Part:
@@ -124,19 +164,33 @@ def _base_cuts(variant: str) -> list[Part]:
 
 
 def button_legends() -> Sketch:
-    """A name beside each button hole, drawn as seen from above."""
-    label_offset = CASE.button_hole_diameter / 2 + LEGEND_SIZE / 2 + 1.2
-    labels = [
-        legend(name.upper(), LEGEND_SIZE, (x, y + label_offset), read_from_below=True)
-        for name, (x, y) in buttons().items()
-    ]
+    """A name beside each button hole, drawn as seen from above. The legends, the mark and the centre
+    pad stand on one line with equal gaps between them, so the legends' height follows from the other two."""
+    mark_back, mark_front = _board_y_range(underside_mark())
+    pad_back = foot_span(CENTRE_ROW)[1][0]
+    gap = pad_back - mark_front
+    labels = []
+    for name, (x, _) in buttons().items():
+        label = _bolder(legend(name.upper(), LEGEND_SIZE, (x, 0.0), read_from_below=True), LEGEND_GROW)
+        label_back, label_front = _board_y_range(label)
+        labels.append(Pos(0, -(mark_back - gap - label_front)) * label)
     return Sketch() + labels
+
+
+def _board_y_range(artwork: Sketch) -> tuple[float, float]:
+    box = artwork.bounding_box()
+    return -box.max.Y, -box.min.Y  # sketch Y is board Y negated
+
+
+def _bolder(artwork: Sketch, grow: float) -> Sketch:
+    return offset(artwork, amount=grow)
 
 
 def underside_mark() -> Sketch:
     """The mark in the middle of the label field, drawn as seen from above."""
     (x_low, x_high), (y_low, y_high) = label_field()
-    return legend(UNDERSIDE_MARK, UNDERSIDE_MARK_SIZE, ((x_low + x_high) / 2, (y_low + y_high) / 2), read_from_below=True)
+    mark = legend(UNDERSIDE_MARK, UNDERSIDE_MARK_SIZE, ((x_low + x_high) / 2, (y_low + y_high) / 2), read_from_below=True)
+    return _bolder(mark, UNDERSIDE_MARK_GROW)
 
 
 def underside_artwork() -> Sketch:
@@ -151,19 +205,32 @@ def printed_text() -> dict[str, Sketch]:
 
 def usb_cutout() -> Part:
     """Opening for the plug overmould, with a 45 degree lead-in on the outside. It is taller than
-    the base wall above the receptacle, so the base and the top both take a bite of it."""
-    width = CASE.usb_plug[0] + 2 * CASE.usb_margin
-    height = CASE.usb_plug[1] + 2 * CASE.usb_margin
+    the base wall above the receptacle, so the base and the top both take a bite of it. Seen from
+    behind its corners are rounded: the lower pair in the base, the upper pair inside the top's bite."""
+    width, height = usb_opening_size()
     back_face = case_bounds()[1][0]
     # The tunnel floor is a little lower than the case floor. Its inner end is rounded like a milled
     # pocket, so that shallow step has no sharp corner; the rounding starts past the plug.
     radius = CASE.cnc_corner_radius
     plan = rectangle((BOARD.usb.x - width / 2, BOARD.usb.x + width / 2), (back_face - 2 * radius, radius))
-    tunnel = slab(millable(plan, CNC), (LEVELS.usb_centre - height / 2, LEVELS.usb_centre + height / 2))
+    z_range = (LEVELS.usb_centre - height / 2, LEVELS.usb_centre + height / 2)
+    # On the outer face of the back wall, centred on the receptacle; its normal points into the case.
+    # (A `Pos` in front of a plane would move it in the plane's own axes, not the model's.)
+    at_the_port = Plane(origin=(BOARD.usb.x, -(back_face - CUT_OVERSHOOT), LEVELS.usb_centre), x_dir=(1, 0, 0),
+                        z_dir=(0, -1, 0))
+    profile = usb_opening_profile()
+    tunnel = extrude(at_the_port * profile, radius - back_face + CUT_OVERSHOOT) & slab(millable(plan, CNC), z_range)
     flare = CASE.usb_mouth_chamfer
-    outer_wall_face = Plane.XZ.offset(back_face - CUT_OVERSHOOT)  # its normal points into the case
-    mouth = Pos(BOARD.usb.x, 0, LEVELS.usb_centre) * outer_wall_face * Rectangle(width + 2 * flare, height + 2 * flare)
-    return tunnel + extrude(mouth, flare, taper=45)
+    return tunnel + extrude(at_the_port * offset(profile, amount=flare), flare, taper=45)
+
+
+def usb_opening_profile() -> Sketch:
+    """The opening seen from behind, centred on the receptacle: X across, Y up."""
+    width, height = usb_opening_size()
+    lower, upper = CASE.usb_corner_radii
+    outline = Rectangle(width, height)
+    outline = fillet(outline.vertices().group_by(Axis.Y)[0], lower)
+    return fillet(outline.vertices().group_by(Axis.Y)[-1], upper)
 
 
 def _light_channel(left: bool) -> Part:
@@ -185,7 +252,7 @@ def top(variant: str) -> Part:
     """The top. Its face carries no text in either variant."""
     # The dish goes first and the pockets go in one boolean: in any other order OCCT returns the
     # CNC top in pieces.
-    body = _top_blank(variant) - key_dish()
+    body = _top_blank(variant) - key_dish(variant)
     body -= [slab(millable(pocket, variant), z_range) for pocket, z_range in _top_pockets(variant)]
     if variant == PRINT:
         body += _print_gussets() + _print_boss_webs() + _print_lens_fillers()
@@ -211,10 +278,10 @@ def _top_blank(variant: str) -> Part:
     return chamfered_slab(case_outline(variant), (0, LEVELS.deck_top), bottom=CASE.seam_chamfer, top=CASE.chamfer)
 
 
-def key_dish() -> Part:
+def key_dish(variant: str) -> Part:
     """What is cut away for the keys: a flat floor on the plate and 45 degree walls up to the top
     face. The walls print without support when the top stands on its side, and a chamfer mill cuts them."""
-    floor = rounded_rectangle(dish_floor(), CASE.dish_floor_radius)
+    floor = rounded_rectangle(dish_floor(), dish_floor_radius(variant))
     depth = LEVELS.deck_top - LEVELS.plate_top
     return Pos(0, 0, LEVELS.plate_top) * extrude(floor, depth + CUT_OVERSHOOT, taper=-45)
 
@@ -222,10 +289,9 @@ def key_dish() -> Part:
 def _top_pockets(variant: str) -> list[tuple[Sketch, tuple[float, float]]]:
     """Every pocket of the top as (outline, Z range), lowest first. Levels that stand on each other
     meet exactly; a pocket runs past a face only where it opens it."""
-    cavity = pcb_outline(CASE.pcb_gap) - discs(mounting_holes(), CASE.top_boss_diameter)
+    cavity = pcb_outline(CASE.pcb_gap) - top_bosses()
     under_the_deck = cavity & rectangle((-FAR, FAR), (-FAR, deck_pocket_front()))
     lens_ribs = Sketch() + [rectangle(span, (-FAR, FAR)) for span in lens_rib_spans()]
-    bushing_hole = BOARD.stack.encoder_bushing_diameter + CASE.bushing_clearance
     above = LEVELS.deck_top + CUT_OVERSHOOT
     opening = rectangle(*lens_opening(variant))
     return [
@@ -236,9 +302,29 @@ def _top_pockets(variant: str) -> list[tuple[Sketch, tuple[float, float]]]:
         (_switch_cutouts(variant), (LEVELS.plate_bottom, LEVELS.plate_top + CUT_OVERSHOOT)),
         (opening, (LEVELS.lens_rib_bottom, above)),
         (lens_recess_outline(variant), (LEVELS.lens_seat, above)),
-        (discs(encoder_centres(), bushing_hole), (LEVELS.deck_bottom, above)),
+        (discs(encoder_centres(), bushing_hole(variant)), (LEVELS.deck_bottom, above)),
         (discs(encoder_centres(), knob_well_diameter()), (LEVELS.knob_well_floor, above)),
     ]
+
+
+def top_bosses() -> Sketch:
+    """The screw bosses of the top, seen from above: wider at the four corners."""
+    return Sketch() + [Pos(x, -y) * Circle(diameter / 2) for (x, y), diameter in top_boss_diameters()]
+
+
+def top_chairs() -> Part:
+    """Print only, and not part of the top: two break-away chairs under the corners that leave the bed
+    while the top prints standing on its left side. Each fills the room between the bed, the corner
+    and the 45 degree tangent of the corner, with `chair_gap` to the part, and is printed with it.
+    Without them the first millimetres of each corner start at up to 90 degrees."""
+    (left, _), (back, front) = case_bounds()
+    reach = CASE.print_corner_radius
+    room = [
+        Polygon((left, -back), (left, -(back + reach)), (left + reach, -(back + reach)), align=None),
+        Polygon((left, -front), (left, -(front - reach)), (left + reach, -(front - reach)), align=None),
+    ]
+    profile = Sketch() + room - case_outline(PRINT, CASE.chair_gap)
+    return slab(profile, (0, LEVELS.deck_top))
 
 
 def lens_recess_outline(variant: str) -> Sketch:
@@ -299,9 +385,9 @@ def _print_boss_webs() -> list[Part]:
     """What carries the screw bosses while the top prints on its left side wall. Without it each boss
     is a cylinder that sticks out of the plate sideways. A corner boss gets a web to the back or front
     wall with a 45 degree underside; a centre boss stands on a rib and only needs a fin below the rib."""
-    radius = CASE.top_boss_diameter / 2
     webs = []
-    for x, y in mounting_holes():
+    for (x, y), diameter in top_boss_diameters():
+        radius = diameter / 2
         on_a_rib = any(abs(y - line) < CASE.rib_width / 2 for line in rib_lines())
         if on_a_rib:
             fin_y = (y - CASE.rib_width / 2, y + CASE.rib_width / 2)

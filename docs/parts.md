@@ -52,19 +52,20 @@ These are not in the BOM file. The board's top silkscreen names them: `ENC1`, `E
 | Part | Qty | Where to buy | Note |
 |---|---|---|---|
 | nice!view | 1 | Keyboard shops (Typeractive, splitkb, and others) | Sharp LS011B7DH03 on a small board, 36 x 14 mm, 5 pins |
-| MX-style switches | 12 | Any keyboard shop | 3-pin or 5-pin. They clip into the 1.5 mm plate and plug into the sockets. |
-| Keycaps, 1u | 12 | Any keyboard shop | The renders show DSA. The case check assumes the skirt stays 2.0 mm above the plate when pressed (`MEASURE`). |
+| MX-style switches | 12 | Any keyboard shop | 3-pin or 5-pin. They clip into the 1.5 mm plate and plug into the sockets. With the Chalk colourway, pick switches with light (white or milky) housings: 2.5 mm of housing shows under each keycap. |
+| Keycaps, 1u | 12 | Any keyboard shop | The renders show DSA. The case check assumes the skirt stays 2.0 mm above the plate when pressed (`MEASURE`), and that it is no wider than 18.3 mm with corners of 0.3 mm or more. |
 
 ## Case hardware
 
 | Part | Qty | Note |
 |---|---|---|
-| M2 x 10 socket-head cap screw, ISO 4762 | 6 | 3.8 mm head. They cut their own thread in the printed top. For a milled aluminium top, tap M2. |
+| M2 socket-head cap screw, ISO 4762 | 6 | 3.8 mm head. Printed case: M2 x 10; they cut their own thread in the printed top. Milled case: M2 x 8 in holes drilled 1.6 mm and tapped M2 to 3.0 mm of full thread (see the top drawing). |
 | Printed or milled base and top | 1 each | `cad/exports/print/` or `cad/exports/cnc/`. 90.0 x 90.0 x 17.5 mm closed, 31.0 mm to the knob tops. Printed corners are R 6.4 arcs; milled corners have continuous curvature. Print the base dark. |
-| Printed light bar | 2 | Smoke-grey translucent PETG, 100 % infill (the material is a guess). `cad/exports/diffuser.stl`. The gap round the case lights only along the two 46.5 mm bars. |
-| Printed knob | 2 | `cad/exports/knob.stl`. For a 6 mm D-shaft. 16 mm wide, 36 grooves. |
-| Lens | 1 | Clear cast acrylic, 39.0 x 14.6 x 1.0 mm, corners R 2.0, cut to `cad/exports/drawings/lens.dxf`. Black mask on the underside as in `lens_mask.dxf`. The thickness is a guess. |
-| Double-sided tape, 0.13 mm | 2 pieces of about 1 x 14 mm | Holds the lens on its two ledges. The thickness is a guess: thicker tape leaves the lens proud. |
+| Printed light bar | 2 | Natural (clear or milky) translucent PETG, 100 % infill (the material is a guess). `cad/exports/diffuser.stl`. The gap round the case lights only along the two 46.5 mm bars. |
+| Printed knob | 2 | `cad/exports/knob.stl`, in both builds. For a 6 mm D-shaft. 14.4 mm wide, 30 grooves. |
+| Lens | 1 | Cover glass, soda-lime or chemically strengthened, 39.0 x 14.6 x 1.0 mm, corners R 2.5, cut to `cad/exports/drawings/lens.dxf`. Black mask screen-printed on the underside as in `lens_mask.dxf`. The thickness is a guess. Acrylic of the same size bends onto the display under a light press; use it only with the foam pad and a light touch. |
+| Double-sided tape, 0.13 mm or 0.2 mm | 2 pieces of about 1.3 x 14.6 mm | Holds the lens on its two ledges. Measure the lens, then pick the tape that leaves it just under the top face (the thicknesses are guesses). |
+| Foam pad | 1, about 8 x 10 x 4 mm | Under the display's free end, on the PCB. Holds the display level under the lens (a guess). |
 | Printed foot strip | 2 | TPU, or cut from 1.6 mm sheet (a guess). `cad/exports/foot_strip.stl`. They cover the four corner screws. |
 | Printed centre pad | 1 | As the strips, 1.4 mm thick. `cad/exports/centre_pad.stl`. It covers the two centre screws. |
 | Printed tilt bar (optional) | 1 | `cad/exports/tilt_bar.stl` |
@@ -98,6 +99,6 @@ parts per order. It usually costs more than JLCPCB for a board this small and ta
 
 ## Board order settings
 
-4 layers, 1.6 mm, any colour, HASL or ENIG (ENIG is kinder to the 0.4 mm pitch QFN).
+4 layers, 1.6 mm, any colour (black hides the PCB edge in the case's USB opening), HASL or ENIG (ENIG is kinder to the 0.4 mm pitch QFN).
 Assembly on the bottom side only. Minimum track and gap on the board: 0.15 mm. Smallest drill: 0.3 mm.
 The full walk-through is in [ordering.md](ordering.md).

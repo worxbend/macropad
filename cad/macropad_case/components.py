@@ -190,6 +190,22 @@ def button(centre: tuple[float, float]) -> Part:
     return centred_box(centre, (width, width), (LEVELS.pcb_bottom - height, LEVELS.pcb_bottom))
 
 
+def boss_ring(centre: tuple[float, float]) -> Part:
+    """Foam ring on a base boss, under the PCB, squeezed to the room left for it on a 1.6 mm board."""
+    _, room, diameter = CASE.boss_ring
+    z_range = (LEVELS.base_boss_top, LEVELS.base_boss_top + room)
+    return cylinder(centre, diameter, z_range) - cylinder(centre, CASE.boss_ring_hole, (z_range[0] - 1, z_range[1] + 1))
+
+
+def display_foam() -> Part:
+    """Foam pad on the PCB under the free end of the display module, squeezed to the room there."""
+    module = BOARD.display
+    module_bottom = BOARD.stack.display_glass_top - CASE.display_thickness
+    _, side = CASE.display_foam
+    free_end = module.x + module.length / 2 - side / 2 - 2.0
+    return centred_box((free_end, module.y), (side, side), (0, module_bottom))
+
+
 def screw(centre: tuple[float, float], variant: str) -> Part:
     """M2 socket-head screw of the variant's length, head in the base counterbore. Above the PCB it is
     drawn at the thread's root diameter, because there its thread is inside the wall of the hole."""
@@ -231,4 +247,6 @@ def _fixed_components(variant: str) -> dict[str, Part]:
         found[f"button_{name}"] = button(centre)
     for index, centre in enumerate(mounting_holes()):
         found[f"screw_{index}"] = screw(centre, variant)
+        found[f"boss_ring_{index}"] = boss_ring(centre)
+    found["display_foam"] = display_foam()
     return found

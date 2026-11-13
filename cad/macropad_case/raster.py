@@ -39,7 +39,7 @@ STUDIO_KEY_SHARE = 0.6  # how much of the key light counts toward the brightness
 # A glossy sheet mirrors one window as a soft band across it. The band runs along this direction in
 # plan, lies off the middle of the sheet by a share of its half-length, and is that wide.
 SHEEN_ACROSS = (0.8, 0.6, 0.0)
-SHEEN_PLACE = (-0.3, 0.3)
+SHEEN_PLACE = (-0.3, 0.22)
 MESH_ANGLE = 0.15
 
 

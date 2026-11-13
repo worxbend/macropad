@@ -39,17 +39,30 @@ class Case:
     pcb_gap: float = 0.3
     floor: float = 2.4
     chamfer: float = 0.5  # top rim, knob rims, USB lead-in
-    # Makes the dark base recede. Not larger: 2.5 would leave no land between the chamfer and the
-    # ends of the foot strip recesses.
-    underside_chamfer: float = 2.0
-    seam_chamfer: float = 0.3  # the two outer edges at the gap; the rim inside the gap stays sharp, it is the seat
-    # The line round the case: the base rim steps in under the top. 1.5 puts the top of the outer skin
-    # almost level with the LEDs' upper edge, so more of the light bar shows from a seated position.
-    gap_height: float = 1.5
+    # Makes the dark base recede. Not larger: on the corner curves, 2.0 left less than 0.6 mm of flat
+    # between the chamfer and the ends of the foot strip recesses.
+    underside_chamfer: float = 1.7
+    # The lower outer edge of the top, and (print only) the upper edge of the base's outer skin. The rim
+    # inside the gap stays sharp: it is the seat. The milled base keeps that skin edge sharp, so the gap is
+    # the only line between two masses.
+    seam_chamfer: float = 0.3
+    # The line round the case: the base rim steps in under the top. 1.6, not 1.5: the top of the outer
+    # skin then lies on a 0.2 mm layer when the base prints.
+    gap_height: float = 1.6
     gap_depth: float = 1.0
-    corner_setback: float = 10.0  # CNC: where a corner curve leaves the straight side
+    # The gap stops this far short of each side of the USB opening: there the base runs up flush to the
+    # top, so the opening sits in a plain pad and the gap does not jog into it.
+    usb_pad_margin: float = 2.0
+    # CNC: where a corner curve leaves the straight side. Gives the same apex as the print's arc.
+    corner_setback: float = 10.935
     corner_handles: tuple[float, float] = (0.6, 0.2)  # CNC: inner control points of the curve, as shares of the setback
-    print_corner_radius: float = 6.4  # same apex as the CNC corner; the top prints standing, so it must be an arc
+    # The top prints standing, so its corners must be arcs. 7.0 brings the corner closer to concentric
+    # with the key dish; larger would leave under 0.8 mm of rim wall at the corners in the gap, and under
+    # 0.6 mm of flat beside the foot strip recesses.
+    print_corner_radius: float = 7.0
+    # Print only: break-away chairs under the two corners that leave the bed while the top prints standing
+    # on its left side. Gap to the part, in plan.
+    chair_gap: float = 0.25
     min_wall: float = 0.8  # two passes of a 0.4 mm nozzle; nothing thinner is allowed
     # Lap joint: ridges on the base rim, inside the wall, that enter grooves in the top's skirt. They
     # centre the two shells on each other and close the straight path for light through the seam.
@@ -64,7 +77,15 @@ class Case:
     base_boss_diameter: float = 5.5  # as wide as the hot-swap sockets next to the centre bosses allow
     boss_root_diameter: float = 8.0  # the boss is wider below the sockets, where it joins the floor
     boss_root_height: float = 2.4
-    top_boss_diameter: float = 4.5
+    top_boss_diameter: float = 4.5  # centre bosses: they stand on the ribs, between switch bodies
+    # Corner bosses: wider, because their pilot hole lies along the layers while the top prints standing,
+    # and a screw that cuts its own thread splits a thin printed boss along a layer.
+    corner_boss_diameter: float = 5.0
+    # Guess: a closed-cell foam ring (0.8 mm, about 5 mm across) on each base boss, under the PCB. The top
+    # rests on the base rim; the rings press the PCB up against the top's bosses on any board from
+    # 1.44 mm to 1.76 mm thick, so a thin board does not rattle.
+    boss_ring: tuple[float, float, float] = (0.8, 0.4, 5.0)  # free thickness, room for it on a 1.6 mm board, diameter
+    boss_ring_hole: float = 2.4
     # Print: M2 x 10 cuts its own thread. CNC: M2 x 8 in a tapped blind hole, because a tap does not
     # thread a hole to its end. The counterbores differ so that each screw ends where its hole allows.
     screw_length: float = 10.0
@@ -97,28 +118,41 @@ class Case:
     keycap_profile: tuple[float, float, float] = (12.7, 7.4, 0.6)  # DSA: top width, height, dish depth
     switch_body: float = 13.95
     dish_floor_margin: float = 8.65  # outer key centres to the foot of the dish wall: the MX rim (7.8) and 0.85
-    dish_floor_radius: float = 1.5
+    dish_floor_radius: float = 1.5  # CNC: the end mill that clears the floor
+    # Print: almost sharp, so the rim (this plus the dish depth) lies nearly concentric with the corners.
+    print_dish_floor_radius: float = 0.2
     deck_front_wall: float = 1.85  # between the dish wall and the pocket under the deck, level with the deck skin
 
     encoder_body: tuple[float, float] = (12.4, 13.4)  # MEASURE: X, Y
     bushing_length: float = 7.0  # MEASURE: threaded bushing above the encoder body
-    bushing_clearance: float = 0.4
+    # On the diameter. Leaves room for the board's screw holes, the encoder on its pads and a printed
+    # hole that comes out small.
+    bushing_clearance: float = 0.6
+    print_bushing_clearance: float = 0.7
     shaft_diameter: float = 6.0
     shaft_flat: float = 4.5  # MEASURE: D-shaft thickness across the flat
 
     knob_diameter: float = 14.4  # the smallest that still covers the bushing hole by 3 mm under its grooves
-    knob_to_well_floor: float = 0.8  # knob underside above the floor of its well, not pressed
+    # Knob underside above the floor of its well, not pressed. The knob seats on the end of the shaft,
+    # so this is set by the shaft; 1.2 makes the knob 13.0 mm tall, a whole number of 0.2 mm layers.
+    knob_to_well_floor: float = 1.2
     knob_well_depth: float = 0.7  # each knob stands in a shallow well, so no bushing shows under it
     knob_well_reveal: float = 0.55  # between the knob and the wall of its well
-    knob_grooves: int = 30  # guess: the land between two grooves is wider than one 0.4 mm line
-    knob_groove_depth: float = 0.45  # a 90 degree V, so twice as wide as deep; it runs out at 45 degrees at both ends
-    knob_plain_band: float = 1.5  # smooth band under and over the grooves
-    knob_pointer: tuple[float, float, float] = (0.8, 0.4, 5.5)  # dimple diameter, depth, distance from the axis
-    knob_cap: float = 2.0
+    knob_grooves: int = 36  # guess: the land between two grooves is wider than one 0.4 mm line
+    knob_groove_depth: float = 0.35  # a 90 degree V, so twice as wide as deep; it ends square, like a turned band
+    knob_plain_band: float = 1.6  # smooth band under and over the grooves
+    # A radial line on the top, on the side of the flat of the D-shaft: width, depth, and where it starts
+    # and ends, measured from the axis. Wide enough to stay open on the face that prints on the bed.
+    knob_pointer: tuple[float, float, float, float] = (0.9, 0.4, 2.0, 6.0)
+    knob_cap: float = 2.0  # above the end of the bore, which seats on the end of the shaft
     knob_bore_clearance: float = 0.2
-    # Guess: three ribs in the bore that touch the shaft, so a bore printed to size still grips it.
-    knob_crush_rib: tuple[float, float] = (1.0, 6.0)  # width, length down from the end of the bore
+    # Guess: three ribs in the bore that press on the shaft, so a bore printed to size still grips it.
+    knob_crush_rib: tuple[float, float] = (1.0, 5.0)  # width, length down from the end of the bore, to above the bushing
+    knob_rib_interference: float = 0.12  # guess for PETG or PLA: how far each rib reaches into the shaft
     encoder_press_travel: float = 0.5
+    shaft_length_tolerance: float = 0.3  # guess: a shaft this much shorter lets the knob sit this much lower
+    # Room above the bushing inside the knob: the press travel, the shaft tolerance and a margin.
+    knob_bushing_room: float = 1.3
 
     display_thickness: float = 2.9  # MEASURE: nice!view module, PCB bottom to glass top
     display_glass: tuple[float, float] = (30.0, 13.6)  # MEASURE: LCD glass on the module, length and width
@@ -128,11 +162,14 @@ class Case:
     lens_modulus: float = 70_000.0  # MPa; guess: soda-lime glass. Cast acrylic is about 3000
     lens_press_load: float = 5.0  # N; guess: a fingertip on the middle of the lens
     lens_fit: float = 0.1  # CNC: the recess is this much larger than the lens on every side
-    print_lens_fit: float = 0.2
+    print_lens_fit: float = 0.15  # the recess is then 14.9 mm across, a bridge 0.1 mm under the limit
     # Guess: how far a bridged edge hangs down in a print. The top prints standing on its left wall,
     # so the high-X edge of every opening is such a bridge.
     print_bridge_sag: float = 0.2
-    print_lens_end_room: float = 0.1  # extra room at the bridged end of the print's lens recess
+    # Extra room at the bridged end of the print's lens recess: as much as the bridge sags, so the
+    # reveal round the lens comes out the same on all four sides.
+    # 0.17, not 0.2: the recess must keep 1.0 mm to the right knob's well.
+    print_lens_end_room: float = 0.17
     lens_tape: float = 0.13  # guess: double-sided tape between the lens and its two ledges
     lens_recess_depth: float = 1.25  # leaves a 1.0 mm lens 0.12 under the top face, and a 1.1 mm one 0.02
     lens_opening_length: float = 36.6  # through opening over the whole display module, between the two ledges
@@ -143,12 +180,20 @@ class Case:
     usb_body: tuple[float, float] = (8.94, 7.35)  # receptacle width, depth
     usb_plug: tuple[float, float] = (12.5, 6.5)  # plug overmould width, height
     usb_margin: float = 0.5  # round the overmould: a 13.0 x 7.0 plug still enters
-    usb_mouth_chamfer: float = 0.5
+    usb_mouth_chamfer: float = 0.3  # a fine lead-in that reads as a bright line, not a bevel
+    # Corners of the opening as seen from behind: the lower ones in the base (a bull-nose cutter from
+    # above), the upper ones in the top (the same from below), which takes only a 0.5 mm bite.
+    usb_corner_radii: tuple[float, float] = (1.0, 0.5)
 
     button_hole_diameter: float = 2.5
     button_body: tuple[float, float] = (5.1, 1.5)  # tact switch width, height
     foot_strip: tuple[float, float] = (7.0, 1.6)  # guess: printed TPU or cut from sheet; width, thickness
     centre_pad_thickness: float = 1.4  # lower than the strips, so the pad never makes the case rock
+    # Under each hot-swap socket: a post from the floor, so pressing a switch in does not bend the PCB.
+    socket_post: tuple[float, float] = (4.0, 3.0)  # X, Y
+    socket_post_offset: tuple[float, float] = (-0.6, -3.75)  # from the key centre: the middle of the socket body
+    socket_post_gap: float = 0.15  # under the socket; the post top then lies on a 0.2 mm layer
+    display_foam: tuple[float, float] = (5.0, 10.0)  # guess: open-cell foam under the display's free end, free thickness, side
     foot_recess_depth: float = 0.4
     foot_recess_fit: float = 0.2  # a recess is this much larger than its strip on every side
     label_field: tuple[float, float] = (66.0, 8.0)  # the flat area kept free for the mark: length, width
@@ -171,7 +216,9 @@ class Case:
     # that it is bright and even enough to read as a line.
     light_channel_reach: float = 1.7  # from the cavity wall into the side wall; the rest is the outer skin
     light_channel_radius: float = 1.5  # outer plan corners of the channel and of the light bar
-    diffuser_fit: float = 0.15
+    diffuser_fit: float = 0.15  # at the ends and under the bar
+    light_bar_skin_fit: float = 0.25  # outer face to the skin: the bar and its lip are then 1.6 mm, 8 layers
+    light_bar_lip: float = 0.2  # one layer: the lip stands this far off the bar's inner face
     diffuser_to_pcb: float = 0.15  # the bar's lip to the PCB edge; the PCB outline may be this much large
 
     socket_box: tuple[float, float, float, float] = (-8.4, 7.2, -6.9, -0.5)  # hot-swap socket, from key centre
@@ -226,6 +273,8 @@ class Levels:
     knob_bottom: float
     knob_top: float
     bushing_top: float
+    knob_bushing_roof: float
+    base_boss_top: float
     foot_recess_roof: float
     lens_seat: float
     lens_bottom: float
@@ -257,6 +306,8 @@ def levels() -> Levels:
         knob_bottom=stack.deck_top - CASE.knob_well_depth + CASE.knob_to_well_floor,
         knob_top=stack.encoder_shaft_top + CASE.knob_cap,
         bushing_top=stack.encoder_body_top + CASE.bushing_length,
+        knob_bushing_roof=stack.encoder_body_top + CASE.bushing_length + CASE.knob_bushing_room,
+        base_boss_top=pcb_bottom - CASE.boss_ring[1],
         foot_recess_roof=floor_bottom + CASE.foot_recess_depth,
         lens_seat=lens_seat,
         lens_bottom=lens_seat + CASE.lens_tape,
@@ -330,6 +381,20 @@ def knob_well_diameter() -> float:
     return CASE.knob_diameter + 2 * CASE.knob_well_reveal
 
 
+def bushing_hole(variant: str) -> float:
+    clearance = CASE.print_bushing_clearance if variant == PRINT else CASE.bushing_clearance
+    return BOARD.stack.encoder_bushing_diameter + clearance
+
+
+def dish_floor_radius(variant: str) -> float:
+    return CASE.print_dish_floor_radius if variant == PRINT else CASE.dish_floor_radius
+
+
+def skin_chamfer(variant: str) -> float:
+    """The upper outer edge of the base's skin, at the gap: chamfered in print, sharp when milled."""
+    return CASE.seam_chamfer if variant == PRINT else 0.0
+
+
 def screw_length(variant: str) -> float:
     return CASE.cnc_screw_length if variant == CNC else CASE.screw_length
 
@@ -338,6 +403,34 @@ def screw_seat(variant: str) -> float:
     """Z of the counterbore's roof, which the screw head seats on."""
     depth = CASE.cnc_counterbore_depth if variant == CNC else CASE.counterbore_depth
     return LEVELS.floor_bottom + depth
+
+
+def usb_opening_size() -> tuple[float, float]:
+    """Width and height of the USB opening: the plug overmould and a margin all round."""
+    width, height = CASE.usb_plug
+    return width + 2 * CASE.usb_margin, height + 2 * CASE.usb_margin
+
+
+def usb_pad_span() -> tuple[float, float]:
+    """Board X range where the base runs flush up to the top round the USB opening."""
+    half = usb_opening_size()[0] / 2 + CASE.usb_mouth_chamfer + CASE.usb_pad_margin
+    return BOARD.usb.x - half, BOARD.usb.x + half
+
+
+def socket_posts() -> list[tuple[float, float]]:
+    """Board positions of the posts under the hot-swap sockets."""
+    dx, dy = CASE.socket_post_offset
+    return [(x + dx, y + dy) for x, y in key_centres()]
+
+
+def corner_holes() -> list[tuple[float, float]]:
+    """The four screw holes at the corners: the ones not on a plate rib."""
+    return [hole for hole in mounting_holes() if not any(abs(hole[1] - line) < CASE.rib_width / 2 for line in rib_lines())]
+
+
+def top_boss_diameters() -> list[tuple[tuple[float, float], float]]:
+    return [(hole, CASE.corner_boss_diameter if hole in corner_holes() else CASE.top_boss_diameter)
+            for hole in mounting_holes()]
 
 
 def led_slot_span() -> tuple[float, float]:
