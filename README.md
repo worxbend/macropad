@@ -38,9 +38,9 @@ Checked on 2026-11-13 by running the commands in the last column on this reposit
 
 | Part | State | How it was checked |
 |---|---|---|
-| Circuit | Done. 51 nets, 69 machine-placed parts. | `make pcb-test`: netlist self-check, 34 unit tests pass |
+| Circuit | Done. 51 nets, 71 machine-placed parts. | `make pcb-test`: netlist self-check, 34 unit tests pass |
 | Schematic | Done. Generated KiCad 9 sheet. ERC: 0 errors, 0 warnings. | `make pcb-place` (report in `pcb/.build/erc.rpt`) |
-| PCB layout | **Fully routed.** 775 tracks, 158 vias, 0 unrouted pads. DRC: 0 violations, 0 unconnected, 0 differences from the schematic. | `make pcb-check` |
+| PCB layout | **Fully routed.** 797 tracks, 160 vias, 0 unrouted pads. DRC: 0 violations, 0 unconnected, 0 differences from the schematic. | `make pcb-check` |
 | Order files | Written: 11 Gerbers, 2 drill files, BOM, placement list. They agree with the board and with each other. | `make pcb-fab` |
 | Case | Done. 383 part pairs per variant, 0 clashes. Every named clearance and measurement inside its limit. Printed and milled variant. | `make test` |
 | Firmware | Builds. 220 tests pass. UF2 in `firmware/dist/`. | `make test`, `make firmware` |
@@ -226,7 +226,7 @@ No check here replaces a prototype. They catch the mistakes a computer can catch
 | PCB | Schematic ERC, every severity | 0 errors, 0 warnings |
 | PCB | DRC with board-against-schematic compare | 0 violations, 0 unconnected, 0 parity issues |
 | PCB | Length limits on the USB pair, crystal and regulator nets; no via on the sensitive ones | pass (D+ 15.43 mm, D- 14.26 mm) |
-| PCB | Order files agree: Gerbers newer than the board, one drill hit per via, BOM = placement list = circuit | 69 parts, pass |
+| PCB | Order files agree: Gerbers newer than the board, one drill hit per via, BOM = placement list = circuit | 71 parts, pass |
 | Case | Self-test: the measuring checks must catch 15 known-bad and sound shapes | 15 of 15 |
 | Case | Interference, every part against every other, both variants | 383 pairs each, 0 clashes |
 | Case | Wall thickness, screw bosses, diffuser retention, lap joint, key and knob travel | all inside limits |
@@ -266,10 +266,8 @@ These are open. None is hidden by a green check.
 **Electrical**
 
 - **Crystal.** Not Raspberry Pi's reference part (that one had 1 piece in stock). The board uses a
-  common 12 MHz crystal rated for 20 pF load with 15 pF capacitors. A guess until the oscillator is
-  measured. If USB does not enumerate, look here first. See [docs/parts.md](docs/parts.md).
-- **Capacitance on VBUS.** About 31 µF sits behind the fuse. USB 2.0 allows 10 µF at plug-in. Most
-  hosts tolerate this; it is outside the specification.
+  12 MHz crystal with the same 10 pF load rating, and the reference 15 pF capacitors and 1 kΩ.
+  Not measured. If USB does not enumerate, look here first. See [docs/parts.md](docs/parts.md).
 - **USB pair.** Two short tracks, 15.4 and 14.3 mm, not a tuned differential pair. No impedance was
   calculated. Normal for full-speed USB over this length; nobody measured it.
 - **Regulator inductor.** Its marked end must face VREG_LX. Not verified against Raspberry Pi's

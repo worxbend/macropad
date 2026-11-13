@@ -56,9 +56,9 @@ The KiCad file is `pcb/kicad/macropad.kicad_sch`.
   with no via: D+ 15.43 mm and D- 14.26 mm from connector to MCU. No impedance was calculated.
 - **Power.** VBUS through the fuse is the 5 V rail (LEDs, level shifter). An AP2112K makes 3.3 V.
   The RP2354A makes its own 1.1 V core supply with the on-chip switching regulator and L1.
-  About 31 µF sits on the 5 V rail; USB 2.0 allows 10 µF at plug-in. See [the PCB notes](../pcb/README.md).
+  About 7.5 µF sits on the 5 V rail; USB 2.0 allows 10 µF at plug-in.
 - **Clock.** 12 MHz crystal with a 1 kΩ series resistor on XOUT and 15 pF load capacitors.
-  The crystal is a substitute; see [parts](parts.md).
+  The crystal is a substitute with the reference load rating (10 pF); see [parts](parts.md).
 - **Flashing.** BOOT pulls QSPI_SS low through 1 kΩ, which starts the ROM USB bootloader.
   RESET pulls RUN low. Both buttons are on the bottom face and reached through holes in the case floor.
 - **Keys and knobs.** Each switch connects one GPIO to ground. The firmware turns on the internal
@@ -121,7 +121,7 @@ Design rules: 0.15 mm track and gap, 0.6 mm via with a 0.3 mm drill, 0.3 mm copp
 Pictures of each layer: [top](images/pcb/copper-top.svg), [ground](images/pcb/copper-ground.svg),
 [power](images/pcb/copper-power.svg), [bottom](images/pcb/copper-bottom.svg).
 
-Routing: 775 tracks, 158 vias, 1301.2 mm of track, 0 unrouted pads. The router is a small grid
+Routing: 797 tracks, 160 vias, 1305.5 mm of track, 0 unrouted pads. The router is a small grid
 router in `pcb/gen/router.py`; the routing plan is `pcb/gen/route.py`. No third-party autorouter is used.
 
 ## Mechanical stack

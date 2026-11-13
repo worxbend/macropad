@@ -29,7 +29,7 @@ LCSC = {
     "AP2112K-3.3": "C51118",
     "USBLC6-2SC6": "C7519",
     "74LVC1T45": "C168856",
-    "12MHz": "C9002",
+    "12MHz": "C50430",  # X322512MMB4SI, 10 pF load: the load the 15 pF capacitors and 1 k are sized for
     "3.3uH": "C42411119",
     "USB-C": "C165948",
     "nSMD050": "C69688",
@@ -41,6 +41,7 @@ LCSC = {
     "100nF": "C1525",
     "1uF": "C52923",
     "4.7uF": "C23733",
+    "2.2uF": "C23630",
     "10uF": "C19702",
     "15pF": "C1548",
     "1k": "C11702",
@@ -144,9 +145,14 @@ MCU_FIXED_SIGNALS = {
     21: "XIN", 22: "XOUT", 24: "SWCLK", 25: "SWDIO", 26: "RUN",
     51: "USB_DM", 52: "USB_DP", 60: "QSPI_SS",
 }
-# One 100 nF per supply pin; ADC_AVDD (44) shares the capacitor of IOVDD pin 45 next to it,
-# and QSPI_IOVDD (54) shares the one of USB_OTP_VDD (53).
-DECOUPLED_PINS = [1, 6, 11, 20, 23, 30, 38, 39, 45, 53]
+# One 100 nF in front of each of these supply pins: capacitor -> MCU pin.
+DECOUPLING_CAPS = {"C1": 1, "C2": 6, "C3": 11, "C4": 20, "C5": 23, "C6": 30, "C7": 38, "C8": 39, "C9": 45,
+                   "C10": 53}
+DECOUPLED_PINS = list(DECOUPLING_CAPS.values())
+# ADC_AVDD (44) and QSPI_IOVDD (54) are each tied to the 3.3 V pin beside them (45, 53) and reach that
+# pin's capacitor. Their own 100 nF has no room in front of the pin, where signals leave the chip. It
+# sits as near as it fits: capacitor -> MCU pin.
+SECOND_SUPPLY_CAPS = {"C32": 44, "C33": 54}
 # Sideways shift (x, y) of a capacitor away from the spot straight in front of its pin. Some would
 # sit on a neighbour there. Pins 1 and 11 move theirs outward along the row instead, to open a fifth
 # track lane for the four signal pins between two capacitors (2-5 and 7-10).
@@ -202,16 +208,19 @@ def outward(pin: int) -> tuple[int, int]:
 
 def _decoupling_caps() -> list[Part]:
     caps = []
-    for number, pin in enumerate(DECOUPLED_PINS, start=1):
+    for ref, pin in DECOUPLING_CAPS.items():
         pad_x, pad_y = mcu_pin_xy(pin)
         out_x, out_y = _OUTWARD[_mcu_side(pin)]
         shift_x, shift_y = DECOUPLING_SHIFT.get(pin, (0.0, 0.0))
         caps.append(Part(
-            f"C{number}", "100nF", "C0402",
+            ref, "100nF", "C0402",
             pad_x + out_x * DECOUPLING_DISTANCE + shift_x, pad_y + out_y * DECOUPLING_DISTANCE + shift_y,
             rotation=_RADIAL_ROTATION[_mcu_side(pin)],
             nets={"1": MCU_POWER_PINS[pin], "2": GND},
         ))
+    # C32 behind C9, on the 3.3 V plane. C33 beside C10, between the USB protection and the chip.
+    caps.append(Part("C32", "100nF", "C0402", 34.65, 14.7, 0, nets={"1": V3, "2": GND}))
+    caps.append(Part("C33", "100nF", "C0402", 45.2, 12.9, 180, nets={"1": V3, "2": GND}))
     return caps
 
 
@@ -280,7 +289,9 @@ def _usb_and_power() -> list[Part]:
         Part("F1", "nSMD050", "F1206", 33.0, 3.4, 90, nets={"1": VBUS, "2": V5}),
         Part("U2", "AP2112K-3.3", "SOT23-5", 31.0, 9.4, 90,
              nets={"1": V5, "2": GND, "3": V5, "4": NO_NET, "5": V3}),
-        Part("C17", "10uF", "C0603", 29.0, 5.6, 0, nets={"1": V5, "2": GND}),
+        # 5 V rail: 2.2 uF here and at each LED row, plus nine 100 nF, is 7.5 uF behind the fuse.
+        # USB 2.0 allows a device 10 uF at plug-in.
+        Part("C17", "2.2uF", "C0603", 29.0, 5.6, 0, nets={"1": V5, "2": GND}),
         Part("C18", "10uF", "C0603", 31.0, 12.4, 0, nets={"1": V3, "2": GND}),
         # Probe pads for bring-up, each in a free spot over its own plane: 5 V beside the debug pads,
         # 3.3 V at the left end of the 3.3 V island.
@@ -343,8 +354,8 @@ def _leds() -> list[Part]:
              nets={"1": V3, "2": GND, "3": "LED_DATA_3V3", "4": "LED_D0", "5": V3, "6": V5}),
         Part("C20", "100nF", "C0402", 52.4, 8.4, 90, nets={"1": V3, "2": GND}),
         Part("C21", "100nF", "C0402", 58.0, 8.4, 90, nets={"1": V5, "2": GND}),
-        Part("C22", "10uF", "C0603", 79.6, 23.4, 0, nets={"1": V5, "2": GND}),
-        Part("C23", "10uF", "C0603", 4.4, 23.4, 0, nets={"1": V5, "2": GND}),
+        Part("C22", "2.2uF", "C0603", 79.6, 23.4, 0, nets={"1": V5, "2": GND}),
+        Part("C23", "2.2uF", "C0603", 4.4, 23.4, 0, nets={"1": V5, "2": GND}),
     ]
     for i, (x, y, rotation) in enumerate(chain):
         is_last = i == len(chain) - 1

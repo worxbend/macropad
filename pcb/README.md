@@ -151,7 +151,7 @@ again with that net moved to the front, until every net connects. The order it f
 | Length limits: VREG_LX, USB_DM, USB_DP, XIN, XOUT, VREG_AVDD; USB pair mismatch under 2 mm; no via on VREG_LX, on USB D+ from connector to chip, or on D- after its resistor | `route.py:check_sensitive_lengths` | yes |
 | KiCad DRC at every severity: no warning either (loose track end, silkscreen over a pad or the edge). One named exception: J1 differs from its library copy, because its silkscreen is cut at the board edge | `build.py:_check_no_warnings` | yes |
 | Every real part has a 3D model; no bottom-side model is taller than the gap to the case floor | `layout.py:write_models` | yes |
-| Order files: all 11 Gerbers present and newer than the board, drill file has one hole per via, BOM and placement list name the same 69 parts as `circuit.py`, every BOM line has a JLCPCB number | `fab.py:check_outputs` | yes, in `make pcb-fab` |
+| Order files: all 11 Gerbers present and newer than the board, drill file has one hole per via, BOM and placement list name the same 71 parts as `circuit.py`, every BOM line has a JLCPCB number | `fab.py:check_outputs` | yes, in `make pcb-fab` |
 | Schematic ERC at every severity, and schematic netlist equals `circuit.py` | `build.py:write_schematic` | yes |
 | `circuit.py` pins against KiCad's library symbols; chip footprints against the symbols' footprints | `schematic.py` | yes |
 | Board equals schematic: footprints, values, pad nets (`--schematic-parity`) | `build.py:_check_no_warnings` | yes |
@@ -165,10 +165,14 @@ again with that net moved to the front, until every net connects. The order it f
   bottom layer with no via. Near the connector D- changes layer twice: a USB-C receptacle has two
   pads per line and one line has to cross the other. No impedance was calculated. This is normal for
   full-speed USB (12 Mbit/s) over 15 mm; it would not be for high-speed.
-- **Capacitance on VBUS.** About 31 µF sits behind the fuse on the 5 V rail (three 10 µF and ten
-  100 nF). The USB 2.0 specification allows a device 10 µF at plug-in. Most hosts tolerate this and
-  many hobby boards do the same, but it is outside the specification. The two 10 µF by the LED rows
-  (C22, C23) are the ones to shrink if a host complains.
+- **Capacitance on VBUS.** About 7.5 µF sits behind the fuse on the 5 V rail (three 2.2 µF: C17,
+  C22, C23, and nine 100 nF). The USB 2.0 specification allows a device 10 µF at plug-in. The LED
+  rows now have 2.2 µF each instead of 10 µF; the firmware caps LED current at about 200 mA.
+  Nobody has looked at the 5 V rail with a scope while the LEDs switch.
+- **Decoupling.** Each MCU supply pin has its own 100 nF. Ten sit 2 mm in front of their pin.
+  Two do not fit there: C33 (QSPI_IOVDD, pin 54) sits beside C10 and is tracked to it; C32
+  (ADC_AVDD, pin 44) sits 4 mm away behind C9 and connects through the 3.3 V plane. Pins 44 and 54
+  are also tracked to the pin beside them, so each reaches that pin's capacitor.
 - **Test pads.** Six 1 mm pads on the bottom face, each named in silkscreen: SWCLK, SWDIO, GND
   (between the first two key rows), 5V (next to them), 3V3 (right of the BOOT button, seen from the
   bottom) and 1V1 (beside the inductor). The 1V1 pad hangs on the regulator output track. Nobody has
@@ -178,7 +182,7 @@ again with that net moved to the front, until every net connects. The order it f
   verified against Raspberry Pi's hardware design guide.
 - **Crystal.** It sits 5 mm below XIN, as close as the two hot-swap sockets allow. The 15 pF load
   capacitors are the reference design's values for the reference crystal. This crystal is a
-  different part (see `docs/parts.md`): the values are a guess until the oscillator is measured.
+  different part with the same 10 pF load rating (see `docs/parts.md`). The oscillator is not measured.
 - **Thermal reliefs** are on for through-hole pads only (encoders, display socket, USB shell).
 - **No teardrops.** KiCad 9's Python interface can switch teardrops on per via, but only the editor
   draws them: tried here, a filled and saved board had none. Open the board in KiCad and run

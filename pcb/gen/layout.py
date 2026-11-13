@@ -269,11 +269,11 @@ def check_placement(placed: dict[str, pcbnew.FOOTPRINT]) -> None:
             # The pads are at the back of a side-emitter, so they must sit inboard of the body.
             assert abs(pad_x - width / 2) < abs(body_x - width / 2), f"{ref} shines into the board"
 
-    for number, pin in enumerate(circuit.DECOUPLED_PINS, start=1):
-        cap = placed[f"C{number}"]
+    for ref, pin in (circuit.DECOUPLING_CAPS | circuit.SECOND_SUPPLY_CAPS).items():
+        cap = placed[ref]
         pin_xy = circuit.mcu_pin_xy(pin)
         near, far = _pads(cap, "1")[0], _pads(cap, "2")[0]
-        assert math.dist(near, pin_xy) < math.dist(far, pin_xy), f"C{number} is reversed"
+        assert math.dist(near, pin_xy) < math.dist(far, pin_xy), f"{ref} is reversed"
 
     # The crystal's load capacitors: the signal pad faces the crystal pad it loads.
     for cap_ref, crystal_pad in (("C15", "1"), ("C16", "3")):

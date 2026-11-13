@@ -120,11 +120,12 @@ _MCU = Block(
     notes=(Note("QSPI_SCLK, QSPI_SD0-3: the flash is inside the package. Leave open.", 2, 99),),
 )
 
-_DECOUPLING_PITCH = 8
+_DECOUPLING_PITCH = 7
+_DECOUPLING_PINS = circuit.DECOUPLING_CAPS | circuit.SECOND_SUPPLY_CAPS
 _DECOUPLING = Block(
-    "MCU decoupling: one 100 nF at each supply pin", 82, 114, 88, 30,
-    places=tuple(Place(f"C{n}", 8 + _DECOUPLING_PITCH * (n - 1), 14) for n in range(1, 11)),
-    notes=tuple(Note(f"pin {pin}", 6 + _DECOUPLING_PITCH * n, 27) for n, pin in enumerate(circuit.DECOUPLED_PINS)),
+    "MCU decoupling: one 100 nF for each supply pin", 82, 114, 88, 30,
+    places=tuple(Place(ref, 6 + _DECOUPLING_PITCH * n, 14) for n, ref in enumerate(_DECOUPLING_PINS)),
+    notes=tuple(Note(f"pin {pin}", 4 + _DECOUPLING_PITCH * n, 27) for n, pin in enumerate(_DECOUPLING_PINS.values())),
 )
 
 _CORE_REGULATOR = Block(

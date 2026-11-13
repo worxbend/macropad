@@ -13,8 +13,8 @@ Read [Before you order](../README.md#before-you-order) first. Parts and stock: [
 | File | What it is |
 |---|---|
 | `pcb/fab/macropad-gerbers.zip` | 11 Gerber layers and 2 drill files |
-| `pcb/fab/bom-jlcpcb.csv` | Bill of materials: 21 lines, 69 parts, each with its JLCPCB part number |
-| `pcb/fab/cpl-jlcpcb.csv` | Placement list: position, side and rotation of the 69 parts |
+| `pcb/fab/bom-jlcpcb.csv` | Bill of materials: 22 lines, 71 parts, each with its JLCPCB part number |
+| `pcb/fab/cpl-jlcpcb.csv` | Placement list: position, side and rotation of the 71 parts |
 
 The files in the repository belong to the board in `pcb/kicad/`. `make pcb-fab` checks that: every
 Gerber is newer than the board file, the drill file has one hole per via, and the BOM, the placement
@@ -26,7 +26,7 @@ Skip this if you did not change anything.
 
 1. Run `make pcb-check`. It must end with `Found 0 violations` and `Found 0 unconnected items`.
 2. Run `make pcb-fab`. It must end with
-   `assembly files: 69 machine-placed parts; Gerbers, drill file, BOM and placement list agree`.
+   `assembly files: 71 machine-placed parts; Gerbers, drill file, BOM and placement list agree`.
 3. Open `pcb/kicad/macropad.kicad_pcb` in KiCad 9 and look at it. A person's eyes are a check too.
 
 ## 2. Upload the Gerbers
@@ -69,7 +69,7 @@ The board uses 0.15 mm tracks and gaps and 0.3 mm via drills. That is inside JLC
 1. Upload `bom-jlcpcb.csv` as the BOM. Its columns are `Comment, Designator, Footprint, LCSC Part #`.
 2. Upload `cpl-jlcpcb.csv` as the placement file. Its columns are
    `Designator, Mid X, Mid Y, Layer, Rotation`.
-3. On the parts page, every one of the 21 lines must be matched and in stock.
+3. On the parts page, every one of the 22 lines must be matched and in stock.
 4. If a part is short, do not let the site pick a replacement on its own. Look at
    [parts.md](parts.md#substitutions-i-made-and-what-to-check) first. Three parts have no drop-in
    replacement: the RP2354A, the SK6812 SIDE-A and the hot-swap socket.
@@ -102,7 +102,7 @@ fix belongs in `pcb/gen/fab.py`, not in a hand-edited CSV. The CSV is generated.
 
 1. The layer count, the size and the quantities are right.
 2. Assembly side is Bottom.
-3. All 21 BOM lines are confirmed.
+3. All 22 BOM lines are confirmed.
 4. You looked at every row of the table in step 6.
 5. You accept that this is an untested design.
 

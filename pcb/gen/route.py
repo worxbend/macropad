@@ -168,15 +168,18 @@ class _Plan:
 
     def mcu_supply(self) -> None:
         """Every MCU supply pin with its capacitor, and the vias to the planes."""
-        for number, pin in enumerate(circuit.DECOUPLED_PINS, start=1):
-            self._decouple(number, pin)
+        for ref, pin in circuit.DECOUPLING_CAPS.items():
+            self._decouple(ref, pin)
+        self.pair(V3, "C33.1", "C10.1")
+        for pad in ("C32.1", "C32.2", "C33.2"):  # no pin in front of it: straight into the planes
+            self.fan_out(self.pad(pad))
         self.pair(V3, "U1.44", "U1.45")
         self.pair(V3, "U1.54", "U1.53")
         self.pair(V3, "U1.49", "C11.1")
         self.pair(GND, "U1.47", "U1.61")
         self.fan_out(self.pad("U1.50"))  # VREG_FB senses the core voltage at the island
 
-    def _decouple(self, number: int, pin: int) -> None:
+    def _decouple(self, ref: str, pin: int) -> None:
         """Supply via, capacitor, ground via on one line pointing away from the chip.
 
         Hand-placed: left to the search, these vias land beside the capacitor, in the lanes the
@@ -185,7 +188,7 @@ class _Plan:
         """
         net = circuit.MCU_POWER_PINS[pin]
         out_x, out_y = circuit.outward(pin)
-        supply_pad, ground_pad = self.pad(f"C{number}.1"), self.pad(f"C{number}.2")
+        supply_pad, ground_pad = self.pad(f"{ref}.1"), self.pad(f"{ref}.2")
         centre_x = (supply_pad.centre[0] + ground_pad.centre[0]) / 2
         centre_y = (supply_pad.centre[1] + ground_pad.centre[1]) / 2
         to_supply_via = circuit.DECOUPLING_DISTANCE - circuit.SUPPLY_VIA_DISTANCE

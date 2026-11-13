@@ -21,7 +21,7 @@ Parts: see [parts.md](parts.md).
 
 ## What is already on the board
 
-JLCPCB places all 69 parts on the bottom face. You solder three parts on the top face. The top
+JLCPCB places all 71 parts on the bottom face. You solder three parts on the top face. The top
 silkscreen says so: `hand-solder on this side: ENC1, ENC2, J2`.
 
 <img src="images/pcb/assembled-top.png" alt="Populated board, top face" width="48%"> <img src="images/pcb/assembled-bottom.png" alt="Populated board, bottom face" width="48%">

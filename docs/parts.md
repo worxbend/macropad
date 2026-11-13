@@ -10,14 +10,14 @@ This board has 10 extended parts. The fee and the prices are not listed here, be
 
 ## Machine-placed (JLCPCB assembly, bottom face)
 
-69 parts in 21 BOM lines. The table matches `pcb/fab/bom-jlcpcb.csv`, which `make pcb-fab` checks
+71 parts in 22 BOM lines. The table matches `pcb/fab/bom-jlcpcb.csv`, which `make pcb-fab` checks
 against the circuit.
 
 | Part | Value | Qty | JLCPCB # | Type | Stock | Why this one |
 |---|---|---|---|---|---|---|
 | MCU | RP2354A, QFN-60 | 1 | C41378174 | Extended | 1 448 | RP2350 with flash inside: no flash chip, no QSPI routing |
 | Regulator inductor | AOTA-B201610S3R3-101-T, 3.3 µH | 1 | C42411119 | Extended | 810 | The part Raspberry Pi specifies for the on-chip 1.1 V regulator |
-| Crystal | X322512MSB4SI, 12 MHz, 3225 | 1 | C9002 | Basic | 495 199 | See the crystal note below |
+| Crystal | X322512MMB4SI, 12 MHz, 10 pF, 3225 | 1 | C50430 | Extended | 9 762 | See the crystal note below |
 | 3.3 V regulator | AP2112K-3.3, SOT-23-5 | 1 | C51118 | Extended | 5 795 | 600 mA, stable with small ceramic capacitors |
 | USB ESD | USBLC6-2SC6 | 1 | C7519 | Extended | 45 001 | |
 | Level shifter | 74LVC1T45, SOT-26 | 1 | C168856 | Extended | 45 825 | 3.3 V data to the 5 V LEDs |
@@ -26,10 +26,11 @@ against the circuit.
 | Buttons | TS-1187A | 2 | C318884 | Basic | 828 738 | BOOT and RESET |
 | RGB LED | SK6812SIDE-A, 4 x 1.6 mm | 8 | C5378721 | Extended | 111 190 | Side-emitting: shines out of the PCB edge |
 | Hot-swap socket | Kailh CPG151101S11-2 | 12 | C49352235 | Extended | 29 766 | |
-| Capacitor | 100 nF 0402 | 20 | C1525 | Basic | 33 M | |
+| Capacitor | 100 nF 0402 | 22 | C1525 | Basic | 33 M | |
 | Capacitor | 1 µF 0402 | 1 | C52923 | Basic | 10 M | |
 | Capacitor | 4.7 µF 0402 | 4 | C23733 | Basic | 717 287 | |
-| Capacitor | 10 µF 0603 | 4 | C19702 | Basic | 9.8 M | |
+| Capacitor | 2.2 µF 0603 | 3 | C23630 | Basic | 3.1 M | 5 V rail: regulator input and one per LED row |
+| Capacitor | 10 µF 0603 | 1 | C19702 | Basic | 9.8 M | 3.3 V regulator output |
 | Capacitor | 15 pF C0G 0402 | 2 | C1548 | Basic | 1 M | |
 | Resistor | 1 kΩ 0402 | 2 | C11702 | Basic | 32 M | |
 | Resistor | 10 kΩ 0402 | 1 | C25744 | Basic | 22 M | |
@@ -70,10 +71,10 @@ The M7 nuts and washers that come with the encoders are not used. The PCB holds 
 ## Substitutions I made, and what to check
 
 1. **Crystal.** Raspberry Pi's design uses the Abracon ABM8-272-T3 (C20625731). JLCPCB had 1 piece.
-   The board uses the common X322512MSB4SI with 15 pF load capacitors and the same 1 kΩ series resistor.
-   Its rated load is 20 pF, so it will run slightly fast: far inside the USB tolerance, but this pairing
-   is not from the Raspberry Pi guide. If USB does not enumerate on the first boards, look here first.
-   27 pF capacitors would be closer to the rated load; that value was not checked against JLCPCB stock.
+   The board uses the YXC X322512MMB4SI (C50430, 9 762 in stock on 2026-11-13): same 3225 package and
+   the same 10 pF load rating, with the reference 15 pF load capacitors and 1 kΩ series resistor.
+   Its series resistance is listed as 80 Ω; the reference part's was not compared. Nobody has measured
+   the oscillator. If USB does not enumerate on the first boards, look here first.
    The firmware side of the same question: embassy-rp waits for the crystal with a startup delay
    multiplier of 128 (the Pico SDK uses 64 for the reference crystal). It is set through the clock
    settings of `embassy_rp::config::Config`.

@@ -7,14 +7,15 @@ Checked in every Markdown file of the repository:
 - code spans that name a path from the repository root, like `pcb/gen/circuit.py`;
 - `#section` anchors into a Markdown file: the heading must exist.
 
-Not checked: web links, paths with wildcards or braces.
+Not checked: web links, paths with wildcards or braces, paths into build output (`cad/.venv`,
+`pcb/.build`): a fresh checkout does not have them.
 """
 import re
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-# Build output and third-party trees: their Markdown is not ours.
+# Build output and third-party trees: their Markdown is not ours, and a fresh checkout lacks them.
 SKIPPED_DIRECTORIES = {".git", ".venv", ".build", "target", "node_modules", "__pycache__"}
 TOP_LEVEL = ("pcb", "cad", "firmware", "docs", "tools", ".github")
 
@@ -62,7 +63,8 @@ def link_problem(markdown: Path, target: str) -> str | None:
 def root_paths(line: str) -> list[str]:
     """Code spans that name a repository path. `file.py:symbol` counts as `file.py`."""
     spans = (span.split(":")[0].strip() for span in CODE_SPAN.findall(line))
-    return [span for span in spans if ROOT_PATH.match(span)]
+    return [span for span in spans
+            if ROOT_PATH.match(span) and not SKIPPED_DIRECTORIES.intersection(Path(span).parts)]
 
 
 def missing_in(markdown: Path) -> list[str]:
@@ -91,6 +93,7 @@ def self_check() -> None:
     assert link_problem(this_file, this_file.name + "#anything") is None  # anchors only in Markdown
     assert root_paths("see `pcb/gen/layout.py:check_placement` and `make test`") == ["pcb/gen/layout.py"]
     assert root_paths("`cad/exports/print/base.*` `gen/circuit.py` `docs/`") == []
+    assert root_paths("`cad/.venv` `pcb/.build/erc.rpt` `firmware/target/x`") == []
     assert [n for n, _ in prose_lines("a\n```\nb\n```\nc")] == [1, 5]
 
 

@@ -61,9 +61,9 @@ After a firmware change run `make firmware` and flash again.
 | Symptom | Check |
 |---|---|
 | Nothing at all, no drive even with BOOT held | 1. Another cable: many USB-C cables carry power only. 2. Measure the `5V` pad against `GND`. No 5 V: the fuse F1, the USB-C port's solder joints, the CC resistors R5 and R6 (a USB-C to USB-C cable gives no power without them). 3. Measure `3V3`. Missing: the regulator U2 and its rotation. 4. Measure `1V1`. Missing: the inductor L1 and its polarity, see [parts.md](parts.md). |
-| 5 V, 3.3 V and 1.1 V are right, still no `RP2350` drive | 1. The crystal. It is not the reference part and its load capacitors are a guess; see [parts.md](parts.md). The bootloader needs it for USB. 2. The USB data path: U3 rotation, R7 and R8, the port's data pins. 3. Hold BOOT and measure QSPI_SS at R4: it must be low. |
+| 5 V, 3.3 V and 1.1 V are right, still no `RP2350` drive | 1. The crystal. It is not the reference part, only one with the same load rating; see [parts.md](parts.md). The bootloader needs it for USB. 2. The USB data path: U3 rotation, R7 and R8, the port's data pins. 3. Hold BOOT and measure QSPI_SS at R4: it must be low. |
 | The drive appears, the copy works, then nothing | 1. Was the file built for this chip? `make firmware` prints `bootable RP2350 image`. 2. The crystal again: the firmware waits for it, then starts USB. The startup wait is embassy-rp's clock setting (`delay_multiplier` in `embassy_rp::config::Config`). |
-| The host drops the pad at plug-in, or a hub port shuts off | About 31 µF sits on the 5 V rail; USB allows 10 µF. Try a different port or a powered hub. The lasting fix is smaller capacitors at C22 and C23; see [the PCB notes](../pcb/README.md). |
+| The host drops the pad at plug-in, or a hub port shuts off | About 7.5 µF sits on the 5 V rail, inside the 10 µF USB allows. Try a different port or cable, then look for a short on the 5 V pad. |
 | The pad dies when the computer sleeps | The LEDs go off in suspend but the MCU keeps running, above the 2.5 mA a sleeping device may draw. Not fixed in this firmware. |
 | The pad restarts by itself | The watchdog restarts a firmware that hangs for 500 ms. Note what you did just before and open an issue. |
 
