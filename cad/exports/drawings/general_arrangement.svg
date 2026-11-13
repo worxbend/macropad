@@ -35,9 +35,9 @@
 <path class="cut" fill="#6d6d6d" fill-rule="evenodd" d="M376.48,163.76 L365.28,163.76 L365.28,166.32 L376.48,166.32 Z"/>
 <path class="cut" fill="#6d6d6d" fill-rule="evenodd" d="M254.72,163.76 L243.52,163.76 L243.52,166.32 L254.72,166.32 Z"/>
 <path class="cut" fill="#6d6d6d" fill-rule="evenodd" d="M315.16,163.76 L273.48,163.76 L273.48,166.00 L315.16,166.00 Z"/>
-<path class="cut" fill="#9cc5a9" fill-rule="evenodd" d="M280.84,150.00 L280.84,152.56 L307.80,152.56 L307.80,150.00 Z"/>
 <path class="cut" fill="#9cc5a9" fill-rule="evenodd" d="M244.00,150.00 L244.00,152.56 L277.32,152.56 L277.32,150.00 Z"/>
 <path class="cut" fill="#9cc5a9" fill-rule="evenodd" d="M311.32,150.00 L311.32,152.56 L376.00,152.56 L376.00,150.00 Z"/>
+<path class="cut" fill="#9cc5a9" fill-rule="evenodd" d="M280.84,150.00 L280.84,152.56 L307.80,152.56 L307.80,150.00 Z"/>
 <path class="cut" fill="#9fb1d1" fill-rule="evenodd" d="M369.60,141.84 L347.20,141.84 L347.20,143.44 L369.60,143.44 Z"/>
 <path class="cut" fill="#c9d6dc" fill-rule="evenodd" d="M348.80,138.80 L347.52,138.80 L347.52,141.84 L369.28,141.84 L369.28,138.80 L368.00,138.80 L368.00,138.96 L348.80,138.96 Z"/>
 <path class="cut" fill="#9fb1d1" fill-rule="evenodd" d="M368.00,138.80 L348.80,138.80 L348.80,138.96 L368.00,138.96 Z"/>
@@ -69,6 +69,6 @@
 <text class="title" x="41.56" y="211.60">FRONT</text>
 <text class="title" x="237.56" y="211.60">RIGHT</text>
 <text class="title" x="237.56" y="103.60">SECTION A-A (through the USB port, the lens and two screws)</text>
-<path class="centre" d="M114.00,33.24 V191.64"/><text class="title" x="108.00" y="38.94">A</text><text class="title" x="108.00" y="190.14">A</text>
+<path class="centre" d="M114.00,33.24 V191.64"/><text class="title" x="108.00" y="46.44">A</text><text class="title" x="108.00" y="190.14">A</text>
 <text class="title" x="232" y="24.0">macropad case, general arrangement</text><text class="note" x="232" y="30.5">Scale 1.6:1 on A3. Dimensions in mm, computed from board.toml and spec.py.</text><text class="note" x="232" y="37.0">Third-angle projection. Print variant shown, keys not pressed. Heights in FRONT are from the desk.</text><text class="note" x="232" y="43.5">Not built or measured yet: values tagged MEASURE in the sources are from datasheets.</text>
 </svg>
