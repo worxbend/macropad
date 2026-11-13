@@ -104,7 +104,8 @@ def outline_corners(part: Part, z: float) -> tuple[float, float]:
         _curvature(edge, end) for edge in curved for end in (0.0, 1.0)
         if any((edge @ end - point).length < SAME_POINT for point in straight_ends)
     ]
-    tightest = max(_curvature(edge, step / CURVE_SAMPLES) for edge in curved for step in range(CURVE_SAMPLES + 1))
+    along_the_curves = [step / CURVE_SAMPLES for step in range(CURVE_SAMPLES + 1)]
+    tightest = max(_curvature(edge, at) for edge in curved for at in along_the_curves)
     return max(at_joins, default=0.0), 1 / tightest
 
 

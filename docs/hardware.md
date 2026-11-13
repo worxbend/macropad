@@ -10,13 +10,13 @@ Related pages: [parts](parts.md), [ordering](ordering.md), [assembly](assembly.m
 
 | | nyxilab | this board |
 |---|---|---|
-| Size | 159 x 98 mm | 89.6 x 88.1 mm |
+| Size | 159 x 98 mm | 90.0 x 90.0 mm |
 | Wiring | Hand-wired matrix with diodes | 4-layer PCB, one GPIO per key |
 | Brain | Pico 2 board | Bare RP2354A on the PCB |
 | Keys | 12 MX | 12 MX, hot-swap |
 | Centre control | Thumbstick or one knob | Two knobs |
 | Screens | Two colour ST7789 | One nice!view (monochrome, always-on, sunlight readable) |
-| Light | 16 LEDs on the base | 8 side-emitting LEDs behind strips in the case sides |
+| Light | 16 LEDs on the base | 8 side-emitting LEDs behind two light bars in the case sides |
 | Firmware | C++ / PlatformIO | Rust / embassy |
 
 ## Layout
@@ -137,26 +137,46 @@ Heights from `board.toml`, measured from the PCB top face.
 | Switch plate top | 5.0 mm (plate 1.5 mm thick, 14.0 mm cut-outs) |
 | Encoder body top | 6.5 mm |
 | Display glass top | 7.0 mm (`MEASURE`: nice!view on low-profile sockets) |
-| Deck over knobs and display | 8.5 mm |
+| Top face of the case | 8.5 mm |
+| Lens underside | 7.48 mm (0.48 mm above the glass) |
 | Encoder shaft top | 20.0 mm |
 
-<img src="images/cad/section_usb_display.png" alt="Cut through the USB port, the display window and the centre screws" width="48%"> <img src="images/cad/section_light_strip.png" alt="Cut through one LED, the PCB edge and the diffuser strip" width="48%">
+<img src="images/cad/section_usb_display.png" alt="Cut through the USB port, the lens, the display and the centre screws" width="48%"> <img src="images/cad/section_light_line.png" alt="Cut through one LED, the PCB edge and the light bar" width="48%">
 
 ## Case
 
-- **Two shells.** The base holds the PCB on six bosses. The top is the switch plate, the raised deck
-  and the skirt in one piece. Six M2 x 10 screws go in from below.
+Nothing below has been printed or milled. The model passes its own checks, and that is all.
+
+<img src="images/cad/hero.png" alt="The printed variant: light top, dark base" width="48%"> <img src="images/cad/hero_aluminium.png" alt="The milled variant, drawn as silver aluminium" width="48%">
+
+- **Shape.** A 90.0 x 90.0 mm slab, 17.5 mm tall, with one flat top face. The base rim steps in under
+  the top, so a 1.2 mm shadow gap runs all round the case where the two shells meet.
+- **Two shells.** The base holds the PCB on six bosses. The top is the switch plate, the deck and the
+  skirt in one piece. Six M2 x 10 screws go in from below and are hidden under the feet.
+- **Corners.** The milled outline has continuous-curvature corners (one quintic Bezier each). The
+  printed outline has R 6.4 arcs through the same apex, because the top prints standing on a side wall
+  and the flatter curve would hang too far over the bed.
+- **Key dish.** The keys stand in a dish with 45° walls. The flat frame around it is 4.775 mm wide on
+  the left, the right and in front.
+- **Lens.** A clear 39.0 x 14.6 x 1.0 mm lens with a black mask lies flush in the top face over the
+  display, taped on two ledges. Its thickness and the 0.13 mm tape are guesses.
 - **Lap joint.** Ridges 0.6 mm tall on the base rim enter grooves in the top. They centre the top and
-  close the straight path for light through the seam. The 0.2 mm fit is a guess until a test print.
-- **Light strips.** One diffuser per side drops into a slot in the base and is held by the PCB edge.
-  It stands 0.5 mm out of the wall.
-- **Size.** 89.6 x 88.1 mm, 90.6 mm over the light strips. 13.6 mm tall at the keys, 17.1 mm at the
-  deck, 30.6 mm to the top of the knobs. The feet add 1.0 mm.
+  close the straight path for light through the joint. The 0.2 mm fit is a guess until a test print.
+- **Light line.** One light bar per side stands in a channel in the base wall, behind a 1.0 mm skin, and
+  is held by the PCB edge. It shows only in the gap: a line 1.1 mm tall. The gap runs all round, but it
+  lights only along these two 46.5 mm stretches. How bright and how even is a guess.
+- **Knobs.** 16 mm, 36 fine grooves, flat top with a pointer dimple. They stand 1.0 mm above the deck.
+- **Underside.** Two foot strips and a centre pad cover all six screws. A label field holds the mark.
+- **Size.** 90.0 x 90.0 x 17.5 mm, 31.0 mm from the underside to the top of the knobs. The foot strips
+  add 1.0 mm.
 - **Two variants.** `cad/exports/print/` for FDM printing, `cad/exports/cnc/` for 3-axis milling with a
-  3 mm end mill. Diffusers, knobs and the tilt bar are always printed.
-- **Tilt.** An optional bar under the back feet tilts the pad by 6°.
+  3 mm end mill and a chamfer mill. Light bars, knobs, foot strips and the tilt bar are always printed;
+  the lens is cut from sheet.
+- **Tilt.** An optional bar under the back of the base tilts the pad by 6°.
 
 <img src="images/cad/exploded.png" alt="Exploded view" width="48%"> <img src="images/cad/shells_inside.png" alt="Both shells from inside" width="48%">
+
+<img src="images/cad/side_profile.png" alt="From the left: the gap between top and base" width="48%"> <img src="images/cad/light_line.png" alt="The left light line drawn glowing; colour and brightness are guesses" width="48%">
 
 Drawings with dimensions: [general arrangement](images/cad/general_arrangement.png),
 [CNC base](images/cad/drawing_base.png), [CNC top](images/cad/drawing_top.png).

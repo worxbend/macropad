@@ -310,8 +310,10 @@ BASE_SHEET = PartSheet(
     "base", "macropad case: base, CNC variant", "url(#hatch)", -1.5,
     (
         "3-axis, two setups: inside up, then underside up.",
-        f"Every pocket corner is R{_mm(CASE.cnc_corner_radius)} or larger: a {_mm(2 * CASE.cnc_corner_radius)} mm end mill reaches them all.",
-        f"45 degree chamfers: {_mm(CASE.underside_chamfer)} on the underside rim, {_mm(CASE.seam_chamfer)} on the two rims at the gap, "
+        f"Every pocket corner is R{_mm(CASE.cnc_corner_radius)} or larger: "
+        f"a {_mm(2 * CASE.cnc_corner_radius)} mm end mill reaches them all.",
+        f"45 degree chamfers: {_mm(CASE.underside_chamfer)} on the underside rim, "
+        f"{_mm(CASE.seam_chamfer)} on the two rims at the gap, "
         "the flank and ends of the lap ridges, the cones under the foot recesses, the USB lead-in.",
         f"The rim steps in {_mm(CASE.gap_depth)} mm over the top {_mm(CASE.gap_height)} mm, all round: that is the gap. "
         "Cut it with the side of the end mill in setup 1.",
@@ -323,7 +325,8 @@ TOP_SHEET = PartSheet(
     "top", "macropad case: top, CNC variant", "url(#hatch-back)", 1.5,
     (
         "3-axis, two setups: underside up, then top side up.",
-        f"Every pocket corner is R{_mm(CASE.cnc_corner_radius)} or larger; the switch cut-outs have corner reliefs of that radius.",
+        f"Every pocket corner is R{_mm(CASE.cnc_corner_radius)} or larger; "
+        "the switch cut-outs have corner reliefs of that radius.",
         f"Switch cut-outs {_mm(BOARD.stack.switch_cutout)} square in a {_mm(BOARD.stack.plate_thickness)} mm plate. "
         "Take their tolerance from the Cherry MX datasheet.",
         f"Key dish: flat floor on the plate, walls at 45 degrees, {_mm(LEVELS.deck_top - LEVELS.plate_top)} deep. "
@@ -396,8 +399,12 @@ def _top_features() -> list[tuple[str, tuple[float, float], str]]:
     pilot = f"\u2300{_mm(CASE.pilot_diameter)} x {_mm(CASE.pilot_depth)} deep from below"
     pilots = [(f"S{index + 1}", hole, pilot) for index, hole in enumerate(mounting_holes())]
     bushing = BOARD.stack.encoder_bushing_diameter + CASE.bushing_clearance
-    encoders = [(f"E{index + 1}", centre, f"\u2300{_mm(bushing)} through") for index, centre in enumerate(encoder_centres())]
-    cutout = f"{_mm(BOARD.stack.switch_cutout)} square through, first of {len(key_centres())} on a {_mm(BOARD.keys.pitch)} grid"
+    through = f"\u2300{_mm(bushing)} through"
+    encoders = [(f"E{index + 1}", centre, through) for index, centre in enumerate(encoder_centres())]
+    cutout = (
+        f"{_mm(BOARD.stack.switch_cutout)} square through, first of {len(key_centres())} "
+        f"on a {_mm(BOARD.keys.pitch)} grid"
+    )
     lens_text = (
         f"lens recess {_span_size(lens_recess())}, R{_mm(CASE.lens_corner_radius + CASE.lens_fit)}, "
         f"{_mm(CASE.lens_recess_depth)} deep from above\nopening {_span_size(lens_opening())} through, in its middle"
@@ -440,8 +447,10 @@ def _lap_detail(sheet: PartSheet, part: Part) -> str:
     wall_middle = -(BOARD.board.height + CASE.pcb_gap + CASE.front_wall / 2)
     across, up = DETAIL_SIZE
     window = Pos(SECTION_X, wall_middle, sheet.detail_height) * Box(2.0, across, up)
-    frame = Frame(DETAIL_AT[0] - DETAIL_SCALE * (wall_middle - CENTRE[1]), DETAIL_AT[1] + DETAIL_SCALE * sheet.detail_height,
-                  DETAIL_SCALE)
+    frame = Frame(
+        DETAIL_AT[0] - DETAIL_SCALE * (wall_middle - CENTRE[1]), DETAIL_AT[1] + DETAIL_SCALE * sheet.detail_height,
+        DETAIL_SCALE,
+    )
     outer, inner = _side_point(FRONT_SIDE, 0)[0], _side_point(BOARD.board.height + CASE.pcb_gap, 0)[0]
     if sheet.name == "base":
         crest_outer = inner - CASE.lap_crest
@@ -528,7 +537,8 @@ def _part_labels(sheet: PartSheet) -> list[str]:
     notes = (
         f"Scale {PLAN_ABOVE.scale:g}:1 plans, {PART_CUT.scale:g}:1 section, {DETAIL_SCALE:g}:1 detail, on A3. "
         "Dimensions in mm, computed from the model.",
-        "Datum A: back-left corner of the box round the outline, seen from above. X to the right, Y toward the front.",
+        "Datum A: back-left corner of the box round the outline, seen from above. "
+        "X to the right, Y toward the front.",
         *sheet.notes,
     )
     block = "".join(
@@ -541,7 +551,8 @@ def _part_labels(sheet: PartSheet) -> list[str]:
         title(PLAN_ABOVE, plan_left, plan_back + 15, "FROM ABOVE"),
         title(PLAN_BELOW, plan_left, plan_back + 15, "FROM BELOW (mirrored left to right)"),
         title(PART_CUT, _side_point(FRONT_SIDE, 0)[0], 14, "SECTION B-B"),
-        f'<text class="title" x="{detail_x - 34:.1f}" y="{detail_y - 44:.1f}">GAP AND LAP JOINT, front wall, {DETAIL_SCALE:g}:1</text>',
+        f'<text class="title" x="{detail_x - 34:.1f}" y="{detail_y - 44:.1f}">'
+        f"GAP AND LAP JOINT, front wall, {DETAIL_SCALE:g}:1</text>",
         datum, block,
     ]
 

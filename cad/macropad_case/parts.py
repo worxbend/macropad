@@ -27,8 +27,11 @@ UNDERSIDE_MARK_SIZE = 3.6
 
 def base(variant: str) -> Part:
     body = base_body(variant)
-    under_signature = (LEVELS.floor_bottom - CUT_OVERSHOOT, LEVELS.floor_bottom + signature.GROOVE_DEPTH)
-    body -= slab(signature.artwork(), under_signature)
+    if variant == CNC:
+        # Milled only. Printed underside down, the groove's roof is one winding overhang that the
+        # printability check counts as a 24 mm span.
+        under_signature = (LEVELS.floor_bottom - CUT_OVERSHOOT, LEVELS.floor_bottom + signature.GROOVE_DEPTH)
+        body -= slab(signature.artwork(), under_signature)
     if variant == PRINT:
         under = LEVELS.floor_bottom - CUT_OVERSHOOT
         body -= slab(button_legends(), (under, LEVELS.floor_bottom + CASE.engraving_depth))
@@ -106,7 +109,9 @@ def _lap_footprint(run: tuple[str, float, float], outward: float, along: float) 
 def _base_cuts() -> list[Part]:
     under = LEVELS.floor_bottom - CUT_OVERSHOOT
     screw_holes = [cylinder(hole, BOARD.mounting.hole_diameter, (under, 0)) for hole in mounting_holes()]
-    counterbores = [cylinder(hole, CASE.counterbore_diameter, (under, LEVELS.counterbore_top)) for hole in mounting_holes()]
+    counterbores = [
+        cylinder(hole, CASE.counterbore_diameter, (under, LEVELS.counterbore_top)) for hole in mounting_holes()
+    ]
     button_holes = [
         cylinder(centre, CASE.button_hole_diameter, (under, LEVELS.floor_top + CUT_OVERSHOOT))
         for centre in buttons().values()
@@ -177,7 +182,8 @@ def _light_channel(left: bool) -> Part:
     outer = CASE.pcb_gap + CASE.light_channel_reach
     inner = CASE.light_channel_radius
     x_range = (-outer, inner) if left else (WIDTH - inner, WIDTH + outer)
-    pocket = slab(rounded_rectangle((x_range, led_slot_span()), CASE.light_channel_radius), (LEVELS.led_slot_bottom, LEVELS.gap_bottom))
+    plan = rounded_rectangle((x_range, led_slot_span()), CASE.light_channel_radius)
+    pocket = slab(plan, (LEVELS.led_slot_bottom, LEVELS.gap_bottom))
     past_the_rim = CASE.gap_depth + CUT_OVERSHOOT
     slot_x = (x_range[0] - past_the_rim, x_range[1]) if left else (x_range[0], x_range[1] + past_the_rim)
     return pocket + box(slot_x, led_slot_span(), (LEVELS.gap_bottom, CUT_OVERSHOOT))

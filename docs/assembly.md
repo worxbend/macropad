@@ -95,7 +95,7 @@ Unplug the board first.
    layer with its key labels.
 
 The display is held only by its header. If its free end rattles, put a thin foam pad under it.
-The case leaves 0.4 mm between the glass and the deck, on the assumption that the glass is 7.0 mm
+The case leaves 0.48 mm between the glass and the lens, on the assumption that the glass is 7.0 mm
 above the board.
 
 ## 6. Prepare the case parts
@@ -104,25 +104,30 @@ Print or mill the parts first: [cad/README.md](../cad/README.md#printing).
 
 <img src="images/cad/exploded.png" alt="Exploded view of the whole pad" width="60%">
 
-1. Clean the six screw holes in the top and the slots in the base of strings and burrs.
+1. Clean the six screw holes in the top and the two light channels in the base of strings and burrs.
 2. Try the top on the base without the board. The lap ridges on the base rim must enter the grooves
    in the top without force. The 0.2 mm fit is a guess; a tight printer may need a light pass with
    a file on the ridges.
-3. Try a diffuser in its slot. It must drop in from inside, flange behind the wall.
+3. Try a light bar in its channel. It must drop in from above, lip up and toward the inside.
 4. Try a switch in one plate cut-out. It must clip in.
+5. Try the lens in its recess. It must drop in and lie just under the top face. The lens is clear
+   1.0 mm acrylic cut to `cad/exports/drawings/lens.dxf`, with the black mask of `lens_mask.dxf`
+   painted or printed on its underside.
 
 ## 7. Close the case
 
-<img src="images/cad/section_light_strip.png" alt="Cut through one LED, the PCB edge and the diffuser" width="48%"> <img src="images/cad/shells_inside.png" alt="Both shells from inside" width="48%">
+<img src="images/cad/section_light_line.png" alt="Cut through one LED, the PCB edge and the light bar" width="48%"> <img src="images/cad/shells_inside.png" alt="Both shells from inside" width="48%">
 
-1. Drop one diffuser into each side slot of the base, flange inside.
+1. Stand one light bar in each side channel of the base, lip up and toward the inside.
 2. Lower the board onto the six bosses, USB port toward the opening at the back. The board edges
-   now hold the diffusers in.
+   now hold the bars in.
 3. Check through the base holes that the BOOT and RESET buttons sit behind their holes.
-4. Put the top on. The lap ridges centre it. The knob shafts and the display must pass through
-   their openings without touching.
-5. Turn the pad over. Fit the six M2 x 10 screws from below: four in the corners, two in the middle.
-6. Tighten each screw until the head is seated, no further. In a printed top the screws cut their
+4. Stick a piece of thin double-sided tape (0.13 mm, a guess) on each of the two lens ledges in the
+   top. Press the lens in, mask down, window toward the right knob.
+5. Put the top on. The lap ridges centre it. The knob shafts must pass through their holes without
+   touching, and the display must sit under the lens.
+6. Turn the pad over. Fit the six M2 x 10 screws from below: four in the corners, two in the middle.
+7. Tighten each screw until the head is seated, no further. In a printed top the screws cut their
    own thread in 1.7 mm holes and strip easily.
 
 ## 8. Switches, keycaps, knobs, feet
@@ -131,14 +136,16 @@ Print or mill the parts first: [cad/README.md](../cad/README.md#printing).
 2. Press each switch through the plate into its socket. Press straight down, near the middle of the
    board first. The board rests on six bosses only, so do not use force.
 3. Fit the keycaps.
-4. Push the knobs onto the shafts. The pointer groove goes on the side of the shaft's flat.
-   A pressed knob stops 0.5 mm above its well floor.
-5. Stick the four feet into the recesses on the underside.
+4. Push the knobs onto the shafts. The pointer dimple goes on the side of the shaft's flat.
+   A pressed knob stops 0.5 mm above the deck.
+5. Run the final test below before the next step.
+6. Stick the two foot strips and the centre pad into their recesses on the underside, last. They
+   cover all six screws.
 
-<img src="images/cad/underside.png" alt="Underside with screws, feet and the BOOT and RESET holes" width="60%">
+<img src="images/cad/underside.png" alt="Underside with the two foot strips, the centre pad, the label field and the BOOT and RESET holes" width="60%">
 
-Optional tilt bar: leave the two back feet off, glue or tape the bar's pegs into the back recesses,
-and stick those two feet onto the bar. Details in [cad/README.md](../cad/README.md#tilt-bar).
+Optional tilt bar: leave the back foot strip off, glue or tape the bar's tongue into the back recess,
+and stick that strip onto the bar. Details in [cad/README.md](../cad/README.md#tilt-bar).
 
 ## 9. Final test
 
@@ -152,6 +159,8 @@ and stick those two feet onto the bar. Details in [cad/README.md](../cad/README.
 
 1. Pull the knobs and the keycaps.
 2. Pull the switches with a switch puller.
-3. Remove the six screws and lift the top.
+3. Peel the two foot strips and the centre pad off the underside. Keep them flat; fresh tape holds
+   them again.
+4. Remove the six screws and lift the top.
 
 Next: [flashing.md](flashing.md) and [keymap.md](keymap.md).

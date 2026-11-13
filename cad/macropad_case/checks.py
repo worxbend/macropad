@@ -23,7 +23,8 @@ MIN_BED_CONTACT = 100.0  # mm^2 of first layer, so the part stays on the bed
 # The tilt bar's tongue takes the back strip's recess, so that strip moves onto the bar.
 ALTERNATIVES = {frozenset(("tilt_bar", "foot_strip_back"))}
 LENS_PUSH = 0.3  # mm; the lens must hit its ledges before it has moved this far down
-OUTLINE_HEIGHTS = {"base": LEVELS.floor_bottom + 2.0, "top": LEVELS.plate_bottom + 0.5}  # where each shell's outline is whole
+# A height at which each shell's outline is whole: above the underside chamfer, and in the plate.
+OUTLINE_HEIGHTS = {"base": LEVELS.floor_bottom + 2.0, "top": LEVELS.plate_bottom + 0.5}
 MIN_CORNER_RADIUS = 4.66  # mm; the corner curve is drawn for 4.71
 
 # How each part lies on the print bed: a rotation that brings its bed face to the lowest Z.
@@ -196,13 +197,17 @@ def moving_parts(parts: dict[str, Part]) -> list[dict]:
 def measurements() -> list[dict]:
     """Everything measured on the finished solids rather than computed from the dimensions."""
     printed, milled = case_parts(PRINT), case_parts(CNC)
-    shells = {"print_base": printed["base"], "print_top": printed["top"], "cnc_base": milled["base"], "cnc_top": milled["top"]}
+    shells = {
+        "print_base": printed["base"], "print_top": printed["top"], "cnc_base": milled["base"], "cnc_top": milled["top"],
+    }
     bodies = {
-        "print_base": base_body(PRINT), "print_top": top_body(PRINT), "cnc_base": milled["base"],
+        "print_base": base_body(PRINT), "print_top": top_body(PRINT), "cnc_base": base_body(CNC),
         "cnc_top": milled["top"], "diffuser": printed["diffuser_left"], "knob": printed["knob_left"],
         "tilt_bar": printed["tilt_bar"], "foot_strip": printed["foot_strip_back"], "centre_pad": printed["centre_pad"],
     }
-    rows = [measure.row(f"thinnest_wall_{name}", measure.thinnest_wall(body), CASE.min_wall) for name, body in bodies.items()]
+    rows = [
+        measure.row(f"thinnest_wall_{name}", measure.thinnest_wall(body), CASE.min_wall) for name, body in bodies.items()
+    ]
     rows += _soundness(printed, milled)
     rows += _silhouette(shells)
     rows += measure.boss_walls(printed["base"], printed["top"])
@@ -212,13 +217,16 @@ def measurements() -> list[dict]:
     rows += moving_parts(printed)
     rows += _lens_and_feet(printed)
     for name in ("base", "top"):
-        rows += measure.machinability(name, milled[name])
+        # The base before the signature is engraved: that is a second operation with its own cutter
+        # and its own limits (the signature rows of the clearance table).
+        rows += measure.machinability(name, base_body(CNC) if name == "base" else milled[name])
     return rows
 
 
 def _soundness(printed: dict[str, Part], milled: dict[str, Part]) -> list[dict]:
     """Every part must be one valid solid. The small parts are the same in both variants."""
-    parts = {f"print_{name}": part for name, part in printed.items()} | {f"cnc_{name}": milled[name] for name in ("base", "top")}
+    parts = {f"print_{name}": part for name, part in printed.items()}
+    parts |= {f"cnc_{name}": milled[name] for name in ("base", "top")}
     return [
         measure.row(f"solid_is_sound_{name}", measure.soundness_faults(part), 0, kind="max", unit="faults")
         for name, part in parts.items()
@@ -231,10 +239,13 @@ def _silhouette(shells: dict[str, Part]) -> list[dict]:
     sizes = [shell.bounding_box().size for shell in shells.values()]
     frame = measure.frame_widths(shells["print_top"])
     corners = [measure.outline_corners(shells[f"cnc_{name}"], height) for name, height in OUTLINE_HEIGHTS.items()]
+    out_of_square = max(abs(size.X - size.Y) for size in sizes)
+    uneven_frame = max(abs(frame[side] - frame["front"]) for side in ("left", "right"))
+    join_curvature = max(join for join, _ in corners)
     return [
-        measure.row("case_width_minus_depth", max(abs(size.X - size.Y) for size in sizes), 0.01, kind="max"),
-        measure.row("frame_side_minus_front", max(abs(frame[side] - frame["front"]) for side in ("left", "right")), 0.01, kind="max"),
-        measure.row("cnc_corner_curvature_at_join", max(join for join, _ in corners), measure.MAX_JOIN_CURVATURE, kind="max", unit="1/mm"),
+        measure.row("case_width_minus_depth", out_of_square, 0.01, kind="max"),
+        measure.row("frame_side_minus_front", uneven_frame, 0.01, kind="max"),
+        measure.row("cnc_corner_curvature_at_join", join_curvature, measure.MAX_JOIN_CURVATURE, kind="max", unit="1/mm"),
         measure.row("cnc_corner_smallest_radius", min(radius for _, radius in corners), MIN_CORNER_RADIUS),
     ]
 

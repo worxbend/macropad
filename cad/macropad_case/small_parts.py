@@ -146,7 +146,8 @@ def tilt_bar() -> Part:
         stadium(_back_strip_at_origin(CASE.foot_recess_fit)), (-CUT_OVERSHOOT, CASE.foot_recess_depth)
     )
     back_screws = screw_rows()[BACK_ROW]
-    holes = [cylinder(screw, CASE.tilt_hole_diameter, (lowest, LEVELS.floor_bottom + tongue_height + 1)) for screw in back_screws]
+    through = (lowest, LEVELS.floor_bottom + tongue_height + 1)
+    holes = [cylinder(screw, CASE.tilt_hole_diameter, through) for screw in back_screws]
     return slab(plan, (lowest, LEVELS.floor_bottom)) - below_the_slope + tongue - recess - _tilt_cones() - holes
 
 

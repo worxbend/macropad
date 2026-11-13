@@ -1,4 +1,4 @@
-"""The owner's signature, milled or printed into the underside: one flowing line and a caption.
+"""The owner's signature, milled into the underside of the CNC base: one flowing line and a caption.
 
 The line is a single-stroke path, so a mill cuts it in one pass along the centre line with a cutter
 as wide as the groove. Sizes follow the published limits for milled text in aluminium: groove at

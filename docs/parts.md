@@ -60,11 +60,17 @@ These are not in the BOM file. The board's top silkscreen names them: `ENC1`, `E
 | Part | Qty | Note |
 |---|---|---|
 | M2 x 10 socket-head cap screw, ISO 4762 | 6 | 3.8 mm head. They cut their own thread in the printed top. For a milled aluminium top, tap M2. |
-| Stick-on foot, 8 mm wide, 1.6 mm tall | 4 | The size is a `MEASURE` value in the case model. |
-| Printed or milled base and top | 1 each | `cad/exports/print/` or `cad/exports/cnc/` |
-| Printed diffuser | 2 | Clear or natural PETG, 100 % infill. `cad/exports/diffuser.stl` |
-| Printed knob | 2 | `cad/exports/knob.stl`. For a 6 mm D-shaft; the wells are sized for this 16 mm knob. |
+| Printed or milled base and top | 1 each | `cad/exports/print/` or `cad/exports/cnc/`. 90.0 x 90.0 x 17.5 mm closed, 31.0 mm to the knob tops. Printed corners are R 6.4 arcs; milled corners have continuous curvature. Print the base dark. |
+| Printed light bar | 2 | Smoke-grey translucent PETG, 100 % infill (the material is a guess). `cad/exports/diffuser.stl`. The gap round the case lights only along the two 46.5 mm bars. |
+| Printed knob | 2 | `cad/exports/knob.stl`. For a 6 mm D-shaft. 16 mm wide, 36 grooves. |
+| Lens | 1 | Clear cast acrylic, 39.0 x 14.6 x 1.0 mm, corners R 2.0, cut to `cad/exports/drawings/lens.dxf`. Black mask on the underside as in `lens_mask.dxf`. The thickness is a guess. |
+| Double-sided tape, 0.13 mm | 2 pieces of about 1 x 14 mm | Holds the lens on its two ledges. The thickness is a guess: thicker tape leaves the lens proud. |
+| Printed foot strip | 2 | TPU, or cut from 1.6 mm sheet (a guess). `cad/exports/foot_strip.stl`. They cover the four corner screws. |
+| Printed centre pad | 1 | As the strips, 1.4 mm thick. `cad/exports/centre_pad.stl`. It covers the two centre screws. |
 | Printed tilt bar (optional) | 1 | `cad/exports/tilt_bar.stl` |
+| Thin double-sided tape or glue | a little | For the foot strips and the centre pad. |
+
+Nothing in this table has been printed, milled or cut yet.
 
 The M7 nuts and washers that come with the encoders are not used. The PCB holds the encoders.
 

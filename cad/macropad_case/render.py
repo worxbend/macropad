@@ -60,12 +60,14 @@ ASSEMBLY, MILLED, CUT_ALONG, CUT_ACROSS, SHELLS, BED = "assembly", "milled", "cu
 COLOURWAYS = {
     "Chalk, printed": (ASSEMBLY, {}),
     "Graphite, printed": (ASSEMBLY, _two_tone(
-        Material((0.17, 0.18, 0.20), gloss=0.08), Material((0.09, 0.09, 0.10), gloss=0.08), GRAPHITE_KNOB, (0.22, 0.22, 0.24))),
+        Material((0.17, 0.18, 0.20), gloss=0.08), Material((0.09, 0.09, 0.10), gloss=0.08), GRAPHITE_KNOB,
+        (0.22, 0.22, 0.24))),
     "Silver, milled": (MILLED, _two_tone(SILVER, SILVER, SILVER, (0.14, 0.14, 0.15))),
     "Space grey, milled": (MILLED, _two_tone(SPACE_GREY, SPACE_GREY, SPACE_GREY, (0.10, 0.10, 0.11))),
 }
-FROM_BELOW = Lighting(key_direction=(-0.45, -0.35, -0.82), ambient=0.6, fill=0.35)
-RAKING = Lighting(key_direction=(-0.85, -0.3, 0.45), key=1.25, ambient=0.36, fill=0.3)  # low, from the left: for the knob grooves
+FROM_BELOW = Lighting(key_direction=(-0.45, -0.35, -0.82), key=1.15, ambient=0.6, fill=0.35)
+FROM_BEHIND = Lighting(key_direction=(-0.45, 0.6, 0.66))  # the default light only grazes the back wall
+RAKING = Lighting(key_direction=(-0.85, -0.3, 0.45), key=1.25, ambient=0.36, fill=0.3)  # low: for the knob grooves
 NIGHT = Lighting(key=0.22, fill=0.06, ambient=0.10, background_top=(0.05, 0.05, 0.07),
                  background_bottom=(0.09, 0.09, 0.12), bloom=0.55, edge_ink=0.25)
 
@@ -130,8 +132,10 @@ VIEWS = [
          scene=CUT_ALONG, hidden=("tilt_bar",)),
     View("section_light_line", _camera((-40, -200, 46), target=(17.0, -SECTION_Y, 4.5), field_of_view=12),
          scene=CUT_ACROSS, hidden=("tilt_bar", "usb_plug"), ground=None),
-    View("back_usb", _camera((70, 250, 80), target=(CENTRE[0], -20.0, 2.0), field_of_view=19), hidden=()),
-    View("usb_detail", _camera((26, 120, 24), target=(BOARD.usb.x, BACK_FACE, -2.0), field_of_view=13)),
+    View("back_usb", _camera((70, 250, 80), target=(CENTRE[0], -20.0, 2.0), field_of_view=19), lighting=FROM_BEHIND,
+         hidden=()),
+    View("usb_detail", _camera((26, 120, 24), target=(BOARD.usb.x, BACK_FACE, -2.0), field_of_view=13),
+         lighting=FROM_BEHIND),
     View("underside", _camera((-70, -150, -250), field_of_view=22, up=(0.0, 1.0, 0.0)), lighting=FROM_BELOW,
          ground=None),
     View("light_line", _camera((-150, -130, 22), target=(4.0, -50.0, -1.0), field_of_view=17), lighting=NIGHT,

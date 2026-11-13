@@ -114,7 +114,8 @@ JLCPCB does not place these. Buy them yourself. Numbers and notes are in [parts.
 2. 1 x 5-pin socket for the display, or use the one that comes with the nice!view.
 3. 1 x nice!view.
 4. 12 x MX-style switches and 12 x 1u keycaps.
-5. 6 x M2 x 10 socket-head cap screws and 4 x stick-on feet.
+5. 6 x M2 x 10 socket-head cap screws, a 1.0 mm clear acrylic lens and thin double-sided tape. The
+   feet are printed.
 
 JLCPCB can also solder the encoders and the socket as through-hole parts. They sit on the top face,
 so that makes it a two-sided assembly order. This repository's placement list does not include them.
