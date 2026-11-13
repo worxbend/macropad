@@ -27,7 +27,7 @@
   --on-dark-2: #a3a6ad;
   --seam: #1a1c1f;
   --glow: #f6efd8;
-  --laser: #45484e;
+  --laser: #55585e; /* the laser mark in underside_aluminium.png */
 
   /* Data colours from firmware/core/src/keymap.rs: swatches only, never text. */
   --layer-media: #7828ff;
@@ -45,6 +45,12 @@
   --chapter-pad: clamp(4rem, 12vh, 8rem);
   --render-ar: 1.4545; /* 1600 / 1100, the case renders */
   --ease-out: cubic-bezier(.2, .7, .2, 1);
+  /* Soft edges for a render on a ground that is not its own gradient (a flat section colour). */
+  --feather: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent),
+             linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent);
+  /* Top and bottom only: for a render whose rows do not line up with the ground's gradient but
+     whose left and right columns do. A sideways fade there only adds faint dithered stripes. */
+  --feather-y: linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent);
 
   /* Text chapters: light grounds, switched to night in dark mode. */
   --bg: var(--chalk);
@@ -57,6 +63,9 @@
 *,
 *::before,
 *::after { box-sizing: border-box; }
+
+/* Widgets ship hidden and motion.js reveals them; no component rule may show them early. */
+[hidden] { display: none !important; }
 
 html {
   scroll-padding-top: var(--header-h);
@@ -112,6 +121,7 @@ code {
   border-radius: 999px;
 }
 .skip:focus { top: .5rem; }
+.skip:focus-visible { outline-color: var(--ink); }
 
 .column {
   width: 100%;
@@ -232,7 +242,7 @@ figcaption {
   align-items: center;
   gap: .5rem;
   padding: .25rem .75rem;
-  border: 1px solid var(--ink);
+  border: 1px solid currentColor;
   border-radius: 999px;
   font-size: .875rem;
   font-stretch: 92%;
@@ -257,7 +267,18 @@ figcaption {
 }
 .nav-menu summary { white-space: nowrap; }
 
-@media (min-width: 48rem) {
+/* Over the night and simulator sections the header goes dark too (motion.js sets header-dark).
+   The switch is instant: a fade would pass through grey, where the links have no contrast. */
+html.header-dark .top {
+  background: rgb(19 19 25 / .94);
+  color: var(--on-dark);
+  border-bottom-color: rgb(231 227 220 / .12);
+}
+html.header-dark .nav-menu summary { border-color: rgb(231 227 220 / .45); }
+html.header-dark .nav-menu ul { background: var(--night); border-color: rgb(231 227 220 / .2); }
+html.header-dark .pill-dot { box-shadow: none; }
+
+@media (min-width: 64rem) {
   .nav-links { display: flex; gap: 1.5rem; }
   .nav-menu { display: none; }
   .wordmark { margin-right: 0; }
@@ -345,16 +366,14 @@ figcaption {
 }
 .frame .box { position: relative; }
 .frame .box img { width: 100%; }
+/* No mask on a bleed render: the frame's gradient is the render's own background (sampled: both
+   are straight vertical gradients with the same end colours), so the edges cannot show. */
 
 .shot figcaption {
   padding: .75rem var(--gutter) 1.5rem;
   background: var(--studio-lo);
   color: var(--ink);
 }
-.shot figcaption,
-.plain figcaption,
-.detail figcaption { max-width: none; }
-
 .plate {
   display: block;
   overflow: clip;
@@ -414,7 +433,7 @@ li code { overflow-wrap: anywhere; }
 
 @media (min-width: 48rem) {
   .hero-copy { justify-items: center; text-align: center; }
-  .hero h1 { font-size: clamp(2.25rem, min(9vw, 11svh), 9.5rem); }
+  .hero h1 { font-size: clamp(2.25rem, min(8vw, 9.5svh), 7rem); }
   .hero .lede { margin-inline: auto; }
   .actions { justify-content: center; }
   .status-note { text-align: center; }
@@ -433,14 +452,35 @@ li code { overflow-wrap: anywhere; }
     overflow: clip;
     grid-template-rows: 1fr auto;
   }
-  html.motion .hero-copy { grid-area: 1 / 1; align-self: start; z-index: 2; }
-  /* Solid top colour: the zoomed layer's top edge always shows the render's top row, which is this. */
+  html.motion .hero-copy {
+    grid-area: 1 / 1;
+    align-self: start;
+    z-index: 2;
+    padding-top: clamp(1.5rem, 4vh, 3rem);
+    padding-bottom: 1rem;
+    gap: 1.25rem;
+  }
+  /* Two lines instead of three, so the deck is in view under the buttons on the first screen. */
+  html.motion .hero h1 { font-size: clamp(2.25rem, min(5.4vw, 9svh), 7rem); }
+  html.motion .hero h1 span { white-space: nowrap; }
+  html.motion .hero h1 span:nth-child(-n + 2) { display: inline; }
+  html.motion .hero .lede { max-width: 46rem; }
+  /* The start state, before motion.js has measured it: hidden rather than shown at rest and then
+     moved. */
+  html.motion:not(.ready) .hero [data-part="image"] { opacity: 0; }
+  html.motion .hero [data-part="image"] { transition: opacity 300ms linear; }
+  html.motion .hero .stage { background: var(--alu-lo); }
+  /* Solid top colour: the zoomed layer's top edge always shows the render's top row, which is this.
+     The bottom fades out, so the rising product comes up out of the floor instead of being cut
+     by a straight line above the status note. */
   html.motion .hero-frame {
     background: var(--alu-hi);
     grid-area: 1 / 1;
     --max-h: calc(var(--stage-h) - 4.75rem);
     align-self: start;
     z-index: 1;
+    -webkit-mask-image: linear-gradient(#000 calc(100% - 6rem), transparent);
+    mask-image: linear-gradient(#000 calc(100% - 6rem), transparent);
   }
   html.motion .status-note {
     grid-area: 2 / 1;
@@ -449,7 +489,10 @@ li code { overflow-wrap: anywhere; }
     min-height: 4.75rem;
     display: grid;
     align-content: center;
+    background: none;
   }
+  /* The copy fades as the page scrolls; a keyboard user who tabs into it must still see it. */
+  html.motion .hero-copy:focus-within { opacity: 1 !important; transform: none !important; }
 }
 
 /* ------------------------------------------------------------------ manifesto */
@@ -464,6 +507,9 @@ li code { overflow-wrap: anywhere; }
   line-height: 1.08;
 }
 .manifesto .nb { white-space: nowrap; }
+@media (max-width: 30rem) {
+  .words h2 { font-size: 1.4rem; }
+}
 .manifesto-last {
   display: inline-block;
   position: relative;
@@ -506,11 +552,22 @@ li code { overflow-wrap: anywhere; }
 
 .design .split { padding-block: clamp(3rem, 8vw, 6rem) var(--chapter-pad); align-items: center; }
 .plain img { width: 100%; }
+/* A render beside text on the studio ground: its edges fade into the section, so no box shows. */
+.studio-ground .plain img {
+  -webkit-mask-image: var(--feather);
+  -webkit-mask-composite: source-in;
+  mask-image: var(--feather);
+  mask-composite: intersect;
+}
 
 /* ------------------------------------------------------------------ colourways */
 
+.colourway-hero { margin-bottom: clamp(3rem, 8vw, 6rem); }
+.colourway-hero .frame { --max-h: 80svh; }
+.colourway { display: grid; justify-items: center; text-align: center; }
 .colourway-plate {
   position: relative;
+  width: 100%;
   aspect-ratio: 1600 / 1100;
   max-width: 64rem;
   background: var(--alu);
@@ -524,11 +581,12 @@ html.js .colourway-plate picture {
   transition: transform 500ms var(--ease-out);
 }
 html.js .colourway-plate img { width: 100%; height: 100%; }
-.colourway-plate picture { transform: translate(var(--qx, 0%), var(--qy, 0%)); }
+html.js .colourway-plate picture { transform: translate(var(--qx, 0%), var(--qy, 0%)); }
 
 .finishes {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: .5rem;
   margin-top: 1.5rem;
 }
@@ -547,8 +605,11 @@ html.js .colourway-plate img { width: 100%; height: 100%; }
   font-weight: 600;
   cursor: pointer;
 }
-.finish[aria-pressed="true"] { border-color: var(--ink); background: var(--alu-hi); }
+.finish:focus-visible { outline-color: var(--ink); }
+.finish[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--alu-hi); }
 .finish-kind { font-weight: 400; color: var(--ink-2); }
+.finish[aria-pressed="true"] .finish-kind { color: inherit; }
+.finish[aria-pressed="true"] .swatch { box-shadow: 0 0 0 1px var(--alu-hi); }
 .finish-caption { margin-top: 1rem; max-width: 40rem; }
 
 .swatch {
@@ -582,44 +643,71 @@ html.js .colourway-plate img { width: 100%; height: 100%; }
 }
 .detail .clip { overflow: clip; }
 .detail img { width: 100%; }
+/* usb_detail.png has a strip of keycaps along its top edge; enlarge it from the bottom so the clip
+   cuts that strip off. */
+.detail-usb img { transform: scale(1.07); transform-origin: 50% 100%; }
 .detail figcaption { padding-inline: 0; }
 
+.details .shot figcaption { background: var(--studio-lo); color: var(--ink); }
 @media (min-width: 48rem) {
-  .detail-grid { grid-template-columns: repeat(12, 1fr); }
+  .detail-grid { grid-template-columns: repeat(12, 1fr); row-gap: 0; }
   .detail.wide { grid-column: span 7; }
   .detail.narrow { grid-column: span 5; }
-  /* Same height as the wide picture beside it: 5/7 of its width at the render's aspect. */
-  .detail.narrow .clip { aspect-ratio: calc(1600 / 1100 * 5 / 7); }
-  .detail.narrow img { height: 100%; object-fit: cover; }
-  .detail.narrow picture { display: block; height: 100%; }
+  /* Each figure spans a picture row and a caption row of the grid, so the two pictures in a row
+     share one height (the wide one's) and the two captions share one baseline. */
+  .detail { display: grid; grid-row: span 2; grid-template-rows: subgrid; margin-bottom: 1.5rem; }
+  .detail .clip,
+  .detail picture { height: 100%; }
+  .detail picture { display: block; }
+  .detail img { height: 100%; object-fit: cover; }
 }
 
-/* ------------------------------------------------------------------ light */
+/* ------------------------------------------------------------------ light
+   light_line.png is cropped by its camera on the right. The picture is anchored to the right edge
+   of the screen, so that crop falls on the screen edge, and on narrow screens it is made wider than
+   the screen so the light bar still fills the width. */
 
 .light { background: var(--night); color: var(--on-dark); }
 .light .stage { position: relative; padding-top: var(--chapter-pad); }
 .light .scene-title { padding: 0 var(--gutter) clamp(2rem, 5vw, 3rem); color: var(--on-dark); }
-.light-shot figcaption { background: var(--night-lo); color: var(--on-dark-2); }
+.light-shot .frame { background: linear-gradient(var(--night-hi), var(--night), var(--night-lo)); }
+.light-shot .layer { justify-content: flex-end; background: none; }
+.light-shot .box {
+  --light-w: min(100cqw / .8, var(--max-h) * var(--ar));
+  width: var(--light-w);
+  flex: none;
+  -webkit-mask-image: var(--feather-y);
+  mask-image: var(--feather-y);
+}
+.light-shot figcaption { padding: .75rem var(--gutter) 1.5rem; background: none; color: var(--on-dark-2); }
 .night-veil,
-.studio-veil,
 .drawn-line { display: none; }
 
+/* The veil carries the render's own background gradient, so over the empty night it changes
+   nothing and over the pad it darkens. */
+.night-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(var(--night-hi), var(--night), var(--night-lo));
+}
+/* Four segments along the light bar's centre line: (432, 527) to (1082, 592) px of the render,
+   5.7 degrees. Each is a soft core of light that fades out at both ends, and neighbours overlap,
+   so the line reads as light from a slit rather than as bars. Re-measure after a re-render. */
 .drawn-line {
   position: absolute;
-  left: 28.4%;
-  top: 46.9%;
-  width: 37.6%;
-  height: 1.6%;
-  margin-top: -0.8%;
+  left: 27%;
+  top: calc(47.9% - .6%);
+  width: 40.83%;
+  height: 1.2%;
   transform-origin: 0 50%;
-  transform: rotate(5.5deg);
-  gap: 1%;
+  transform: rotate(5.68deg);
 }
 .drawn-line span {
   flex: 1;
+  margin-inline: -2%;
   border-radius: 999px;
-  background: var(--glow);
-  box-shadow: 0 0 12px 2px rgb(246 239 216 / .5), 0 0 40px 6px rgb(246 239 216 / .5);
+  background: linear-gradient(to right, transparent, var(--glow) 15%, var(--glow) 85%, transparent);
+  filter: drop-shadow(0 0 6px rgb(246 239 216 / .7)) drop-shadow(0 0 18px rgb(246 239 216 / .45));
   opacity: 0;
 }
 
@@ -629,14 +717,20 @@ html.js .colourway-plate img { width: 100%; height: 100%; }
 .facts li { padding-left: 1.25rem; position: relative; }
 .facts li::before { content: ""; position: absolute; left: 0; top: .8em; width: .6rem; height: 2px; background: var(--glow); }
 .light .small { margin-top: 1.5rem; color: var(--on-dark-2); }
-.light .shot:not(.light-shot) figcaption { background: var(--studio-lo); color: var(--ink); }
 
-.timeline { padding-block: clamp(3rem, 8vw, 6rem) var(--chapter-pad); display: grid; gap: 1.5rem; }
-.timeline img { width: 100%; }
+.timeline { padding-block: 0 var(--chapter-pad); display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+/* The chart is shown at its own pixel size, where its labels are readable; it scrolls sideways
+   inside its plate when the column is narrower. */
+.timeline-scroll { overflow-x: auto; }
+.timeline-scroll img { width: auto; max-width: none; }
+.timeline-scroll:focus-visible { outline-color: var(--on-dark); }
 .timeline figcaption { color: var(--on-dark-2); }
 .swatches { display: flex; flex-wrap: wrap; gap: .75rem 2rem; font-size: .9375rem; }
 .swatches li { display: inline-flex; align-items: center; gap: .5rem; }
 
+/* With motion: one sticky stage on the night ground. Phones: title, picture, caption from top to
+   bottom. Wide screens: the picture fills the stage and the title and caption sit over the empty
+   night in its lower left. */
 html.motion .light .track { height: 260svh; }
 html.motion .light .stage {
   --scene: 1;
@@ -645,32 +739,27 @@ html.motion .light .stage {
   height: var(--stage-h);
   overflow: clip;
   display: grid;
-  grid-template-rows: auto 1fr;
-  padding-top: clamp(1.5rem, 5vh, 3rem);
-  background: var(--night-hi);
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
+  padding: clamp(1.5rem, 5vh, 3rem) 0 0;
+  background: linear-gradient(var(--night-hi), var(--night), var(--night-lo));
 }
-/* The frame sits under the title on the render's top colour; the caption band below it carries the
-   render's bottom colour to the foot of the stage, so no edge shows. */
-html.motion .light-shot { display: flex; flex-direction: column; }
-html.motion .light-shot figcaption { flex: 1; background: var(--night-lo); }
-html.motion .light-shot .frame { --max-h: calc(var(--stage-h) - 13rem); }
-html.motion .night-veil {
-  display: block;
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  background: var(--night-hi);
-  opacity: 0;
-}
-html.motion .drawn-line { display: flex; z-index: 2; }
-html.motion .studio-veil {
-  display: block;
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  background: var(--studio-lo);
-  opacity: 0;
-  pointer-events: none;
+/* One column: the picture shares its cells with the title and caption instead of being moved to a
+   column of its own by auto-placement. */
+html.motion .light .stage > *,
+html.motion .light-shot > * { grid-column: 1; }
+html.motion .light-shot { display: contents; }
+html.motion .light-shot .frame { grid-row: 2; align-self: center; background: none; --max-h: var(--stage-h); }
+html.motion .light .scene-title { grid-row: 1; position: relative; z-index: 2; }
+html.motion .light-shot figcaption { grid-row: 3; position: relative; z-index: 2; }
+html.motion .night-veil { display: block; opacity: 0; }
+html.motion .drawn-line { display: flex; }
+
+@media (min-width: 48rem) {
+  html.motion .light .stage { grid-template-rows: 1fr auto auto; padding: 0; }
+  html.motion .light-shot .frame { grid-row: 1 / -1; }
+  html.motion .light .scene-title { grid-row: 2; font-size: clamp(2.25rem, 5.5vw, 5rem); padding-bottom: 1rem; }
+  html.motion .light-shot figcaption { grid-row: 3; padding-bottom: clamp(1.5rem, 4vh, 2.5rem); }
 }
 
 /* ------------------------------------------------------------------ exploded */
@@ -684,8 +773,19 @@ html.motion .studio-veil {
   max-width: calc(34rem + 2 * var(--gutter));
 }
 .layers { display: grid; gap: .5rem; font-weight: 550; }
-.layers li { padding-left: 1.25rem; position: relative; }
-.layers li::before { content: ""; position: absolute; left: 0; top: .8em; width: .6rem; height: 2px; background: var(--seam); }
+.layers li { padding-left: 2rem; position: relative; }
+/* The marker grows to full length as its band reaches home (motion.js sets --home). */
+.layers li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: .8em;
+  width: 1.4rem;
+  height: 2px;
+  background: var(--seam);
+  transform-origin: left;
+  transform: scaleX(calc(.3 + .7 * var(--home, 1)));
+}
 
 .exploded-figure { --band-w: min(100% - 2 * var(--gutter), 40rem); }
 .bands-frame { background: linear-gradient(var(--studio-hi), var(--studio), var(--studio-lo)); }
@@ -696,40 +796,24 @@ html.motion .studio-veil {
   margin-inline: auto;
 }
 .band { position: absolute; inset: 0; }
-/* The parts sit between 25% and 78% of the render's width. Fading the band's sides lets the stage's
-   own gradient show there, so a band that is moved out of place has no visible side edges. */
-html.motion .band {
-  --sides: linear-gradient(to right, transparent 8%, #000 22%, #000 80%, transparent 94%);
-  -webkit-mask-image: var(--sides);
-  mask-image: var(--sides);
-}
-/* The outer bands also fade at the picture's top and bottom, beyond the parts (rows 147 to 1604). */
-html.motion .band-knobs {
-  mask-image: var(--sides), linear-gradient(to bottom, transparent 2%, #000 8%);
-  mask-composite: intersect;
-}
-html.motion .band-hardware {
-  mask-image: var(--sides), linear-gradient(to bottom, #000 94.5%, transparent 99%);
-  mask-composite: intersect;
-}
 .band img { width: 100%; height: 100%; }
+/* While the bands move they overlap, and each band's slice of the studio background would hide the
+   parts of the band below it. The build writes a silhouette of the parts (images/exploded-mask.png,
+   from exploded.png), so each band shows only its parts and the stage's own gradient, which is the
+   render's background, shows everywhere else. */
+html.motion .band {
+  -webkit-mask: url(images/exploded-mask.png) 0 0 / 100% 100% no-repeat;
+  mask: url(images/exploded-mask.png) 0 0 / 100% 100% no-repeat;
+}
 /* Five bands cut from one render along the gaps between its part groups. Neighbours share their
-   cut lines exactly, so at rest the bands tile the original picture. Coordinates are image pixels
-   of exploded.png (1300 x 1700) as percentages; re-measure them if the render's camera changes. */
-.band-knobs { z-index: 5; clip-path: polygon(0 0, 100% 0, 100% 16.588%, 0 16.588%); }
-.band-keys { z-index: 4; clip-path: polygon(0 16.588%, 100% 16.588%, 100% 38.706%, 0 38.706%); }
-.band-top {
-  z-index: 3;
-  clip-path: polygon(0 38.706%, 100% 38.706%, 100% 50.588%, 70.769% 51.235%, 68.462% 51.824%, 66.154% 52.412%, 63.846% 52.941%, 61.538% 53.529%, 59.231% 54.118%, 55.846% 53.235%, 55.692% 56.765%, 53.077% 56.765%, 52.923% 53.529%, 50% 54.118%, 47.692% 54.647%, 45.385% 55.118%, 43.077% 57.353%, 40.769% 55.647%, 38.462% 54%, 36.154% 52.353%, 33.846% 50.588%, 31.538% 48.941%, 0 48.824%);
-}
-.band-board {
-  z-index: 2;
-  clip-path: polygon(0 48.824%, 31.538% 48.941%, 33.846% 50.588%, 36.154% 52.353%, 38.462% 54%, 40.769% 55.647%, 43.077% 57.353%, 45.385% 55.118%, 47.692% 54.647%, 50% 54.118%, 52.923% 53.529%, 53.077% 56.765%, 55.692% 56.765%, 55.846% 53.235%, 59.231% 54.118%, 61.538% 53.529%, 63.846% 52.941%, 66.154% 52.412%, 68.462% 51.824%, 70.769% 51.235%, 100% 50.588%, 100% 75.882%, 69.231% 76.471%, 61.538% 77.647%, 52.308% 81.471%, 45.385% 82.353%, 38.462% 79.235%, 0 79.118%);
-}
-.band-hardware {
-  z-index: 1;
-  clip-path: polygon(0 79.118%, 38.462% 79.235%, 45.385% 82.353%, 52.308% 81.471%, 61.538% 77.647%, 69.231% 76.471%, 100% 75.882%, 100% 100%, 0 100%);
-}
+   cut lines exactly, so at rest the bands tile the original picture. Points are image pixels of
+   exploded.png (1300 x 1700) as percentages; check them with ?debug=bands after a re-render.
+   The lower cut keeps every screw, both foot strips and the centre pad in the last band. */
+.band-knobs { z-index: 5; clip-path: polygon(0% 0%, 100% 0%, 100% 16.588%, 0% 16.588%); }
+.band-keys { z-index: 4; clip-path: polygon(0% 16.588%, 100% 16.588%, 100% 38.235%, 56.923% 38.235%, 53.846% 38.118%, 50.769% 37.941%, 49.231% 38.118%, 47.692% 38.353%, 46.154% 38.765%, 44.615% 38.824%, 41.538% 38.235%, 40% 37.647%, 0% 37.647%); }
+.band-top { z-index: 3; clip-path: polygon(0% 37.647%, 40% 37.647%, 41.538% 38.235%, 44.615% 38.824%, 46.154% 38.765%, 47.692% 38.353%, 49.231% 38.118%, 50.769% 37.941%, 53.846% 38.118%, 56.923% 38.235%, 100% 38.235%, 100% 50.588%, 70.769% 51.235%, 68.462% 51.824%, 66.154% 52.412%, 63.846% 52.941%, 61.538% 53.529%, 59.231% 54.118%, 55.846% 53.235%, 55.692% 56.765%, 53.077% 56.765%, 52.923% 53.529%, 50% 54.118%, 47.692% 54.647%, 45.385% 55.118%, 43.077% 57.353%, 40.769% 55.647%, 38.462% 54%, 36.154% 52.353%, 33.846% 50.588%, 31.538% 48.941%, 0% 48.824%); }
+.band-board { z-index: 2; clip-path: polygon(0% 48.824%, 31.538% 48.941%, 33.846% 50.588%, 36.154% 52.353%, 38.462% 54%, 40.769% 55.647%, 43.077% 57.353%, 45.385% 55.118%, 47.692% 54.647%, 50% 54.118%, 52.923% 53.529%, 53.077% 56.765%, 55.692% 56.765%, 55.846% 53.235%, 59.231% 54.118%, 61.538% 53.529%, 63.846% 52.941%, 66.154% 52.412%, 68.462% 51.824%, 70.769% 51.235%, 100% 50.588%, 100% 75.882%, 69.231% 75.882%, 60% 76.118%, 58.462% 76.471%, 55.385% 77.059%, 53.846% 77.647%, 53.077% 77.941%, 50.769% 78%, 49.692% 78.176%, 49.231% 78.529%, 47.692% 78.824%, 46.154% 79.176%, 44.615% 79.235%, 43.077% 78.882%, 40% 78.824%, 38.462% 79.118%, 35.538% 76.471%, 34.385% 74%, 32.923% 73.647%, 0% 73.529%); }
+.band-hardware { z-index: 1; clip-path: polygon(0% 73.529%, 32.923% 73.647%, 34.385% 74%, 35.538% 76.471%, 38.462% 79.118%, 40% 78.824%, 43.077% 78.882%, 44.615% 79.235%, 46.154% 79.176%, 47.692% 78.824%, 49.231% 78.529%, 49.692% 78.176%, 50.769% 78%, 53.077% 77.941%, 53.846% 77.647%, 55.385% 77.059%, 58.462% 76.471%, 60% 76.118%, 69.231% 75.882%, 100% 75.882%, 100% 100%, 0% 100%); }
 .exploded-figure figcaption { padding: 1rem var(--gutter) 1.5rem; background: var(--studio-lo); }
 
 @media (min-width: 48rem) {
@@ -742,30 +826,35 @@ html.motion .band-hardware {
     overflow: clip;
     padding-top: 0;
     display: grid;
-    grid-template-columns: minmax(18rem, 1fr) auto;
+    grid-template-columns: minmax(18rem, 4fr) 8fr;
     align-items: center;
-    --band-h: calc(var(--stage-h) * .92);
-    background: linear-gradient(var(--studio-hi) 4%, var(--studio) 50%, var(--studio-lo) 96%);
+    /* As tall as the stage, unless the width is short (the parts fill 6% to 98% of the render's
+       height, so it cannot be any larger without cutting off the knobs or the feet). The gradient
+       stops sit on the picture's top and bottom rows wherever that puts them. */
+    --band-h: min(var(--stage-h), (66vw - 2rem) * 1700 / 1300);
+    background: linear-gradient(var(--studio-hi) calc(50% - var(--band-h) / 2), var(--studio) 50%, var(--studio-lo) calc(50% + var(--band-h) / 2));
   }
   html.motion .exploded-text { padding-left: var(--gutter); max-width: 34rem; align-self: center; }
   html.motion .bands-frame { background: none; }
+  /* The parts sit right of the render's centre (x 33% to 75%), so the picture starts at the column's
+     left edge and the parts end up in the middle of the right two thirds. */
   html.motion .exploded-figure {
     --band-w: calc(var(--band-h) * 1300 / 1700);
-    position: relative;
     height: var(--stage-h);
     display: grid;
     align-items: center;
-    padding-right: max(var(--gutter), 8vw);
+    justify-items: start;
   }
+  html.motion .bands { transform-origin: 54% 50%; }
+  /* The caption sits under the text column, clear of the parts. */
   html.motion .exploded-figure figcaption {
     position: absolute;
     z-index: 6;
-    right: var(--gutter);
-    bottom: 1rem;
-    max-width: 22rem;
+    left: var(--gutter);
+    bottom: clamp(1rem, 4vh, 2rem);
+    max-width: 26rem;
     padding: 0;
     background: none;
-    text-align: right;
   }
   .exploded-text .scene-title { font-size: clamp(2.25rem, 5.5vw, 5rem); }
 }
@@ -773,6 +862,7 @@ html.motion .band-hardware {
 /* ------------------------------------------------------------------ inside */
 
 .inside .shot { margin-bottom: clamp(3rem, 8vw, 6rem); }
+.inside .shot + .shot { margin-top: calc(-1 * clamp(1.5rem, 4vw, 3rem)); }
 .inside .pair figcaption { margin-top: .75rem; }
 .check-strip {
   margin-top: clamp(2.5rem, 6vw, 4rem);
@@ -796,9 +886,15 @@ html.motion .band-hardware {
 .facts-list { display: grid; gap: 0; margin-top: 2rem; font-variant-numeric: tabular-nums; }
 .facts-list div { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr); gap: 1rem; padding-block: .6rem; border-top: 1px solid rgb(231 227 220 / .2); }
 .facts-list dt { color: var(--on-dark-2); }
+@media (max-width: 30rem) {
+  .facts-list div,
+  .knobs div { grid-template-columns: minmax(0, 1fr); gap: .125rem; }
+}
 .facts-list dd { margin: 0; }
-.board-angle { margin-bottom: clamp(3rem, 8vw, 6rem); }
-.board-angle .plate { max-width: 60rem; }
+.board .split-head { align-items: start; }
+.board-angle { margin-bottom: clamp(3rem, 8vw, 6rem); display: grid; justify-items: center; }
+.board-angle .plate { max-width: 60rem; width: 100%; }
+.board-angle figcaption { text-align: center; }
 .board-angle [data-part="parallax"] img { width: 100%; }
 
 .flip { margin-bottom: clamp(3rem, 8vw, 6rem); }
@@ -807,11 +903,15 @@ html.motion .band-hardware {
 @media (min-width: 48rem) {
   .flip-stage { grid-template-columns: 1fr 1fr; }
 }
-html.js .flip-stage { grid-template-columns: minmax(0, 40rem); position: relative; }
+html.js .flip-stage { grid-template-columns: minmax(0, 40rem); }
 html.js .flip-view { grid-area: 1 / 1; opacity: 0; visibility: hidden; transition: opacity 250ms linear, visibility 0s linear 250ms; }
 html.js .flip-view.is-shown { opacity: 1; visibility: visible; transition: opacity 250ms linear; }
 
-.flip-controls { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; margin-bottom: 1.5rem; }
+.flip-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem 1.5rem; margin-top: 1.5rem; }
+/* With JavaScript: one board at a time, centred, with its switches right under it. */
+html.js .flip { display: flex; flex-direction: column; align-items: center; }
+html.js .flip-stage { width: 100%; justify-content: center; }
+html.js .flip-view figcaption { text-align: center; margin-inline: auto; }
 .flip-controls[hidden] { display: none; }
 .segmented { display: inline-flex; padding: 3px; border: 1px solid rgb(231 227 220 / .35); border-radius: 999px; }
 .segmented button {
@@ -834,10 +934,16 @@ html.js .flip-view.is-shown { opacity: 1; visibility: visible; transition: opaci
 
 .firmware { background: var(--sim); color: var(--on-dark); }
 .firmware .stage { padding-top: var(--chapter-pad); }
-.firmware .scene-title { padding: 0 var(--gutter) clamp(2rem, 5vw, 3rem); }
+.firmware .scene-title {
+  padding: 0 var(--gutter) clamp(2rem, 5vw, 3rem);
+  width: 100%;
+  max-width: calc(var(--text-max) + 2 * var(--gutter));
+  margin-inline: auto;
+}
 .scrubber { padding-inline: var(--gutter); max-width: calc(var(--text-max) + 2 * var(--gutter)); margin-inline: auto; }
 .screen-names { display: none; list-style: none; }
 .bezel { background: var(--bezel); border-radius: 20px; padding: clamp(.75rem, 2vw, 1.5rem); }
+.bezel-label { margin-bottom: .75rem; font-size: .875rem; font-stretch: 92%; color: var(--on-dark-2); }
 .screens { display: grid; gap: 1.5rem; }
 .screens img { width: 100%; image-rendering: pixelated; }
 .screens figcaption { margin-top: .5rem; color: var(--on-dark-2); }
@@ -846,6 +952,7 @@ html.js .flip-view.is-shown { opacity: 1; visibility: visible; transition: opaci
   .screens { grid-template-columns: 1fr 1fr; }
 }
 .status-line {
+  width: 100%;
   padding: 1.5rem var(--gutter) 0;
   max-width: calc(var(--text-max) + 2 * var(--gutter));
   margin-inline: auto;
@@ -897,7 +1004,21 @@ html.js .flip-view.is-shown { opacity: 1; visibility: visible; transition: opaci
     font-stretch: 105%;
     font-weight: 600;
   }
-  html.motion .screen-names li { opacity: .45; }
+  /* Every name keeps AA contrast: the dim ones are --on-dark-2 (7.5:1 on --sim). The current one is
+     --on-dark with a glow marker in the gutter. */
+  html.motion .screen-names li { position: relative; color: var(--on-dark-2); }
+  html.motion .screen-names li.is-on { color: var(--on-dark); }
+  html.motion .screen-names li::before {
+    content: "";
+    position: absolute;
+    left: -.875rem;
+    top: .3em;
+    bottom: .3em;
+    width: 2px;
+    background: var(--glow);
+    opacity: 0;
+  }
+  html.motion .screen-names li.is-on::before { opacity: 1; }
   html.motion .bezel { width: min(52vw, 640px * 1.25 + 3rem); }
   html.motion .screens { display: grid; grid-template-columns: 1fr; }
   html.motion .screens > li { grid-area: 1 / 1; opacity: 0; }
@@ -926,7 +1047,9 @@ html.js .flip-view.is-shown { opacity: 1; visibility: visible; transition: opaci
   font-weight: 650;
   cursor: pointer;
 }
-.layer-tabs button[aria-selected="true"] { border-color: var(--fg); box-shadow: inset 0 0 0 1px var(--fg); }
+.layer-tabs button:focus-visible { outline-color: var(--fg); }
+.layer-tabs button[aria-selected="true"] { border-color: var(--fg); background: var(--fg); color: var(--bg); }
+.layer-tabs button[aria-selected="true"] .swatch { box-shadow: 0 0 0 1px var(--bg); }
 
 .layer-panel { display: grid; gap: 1.5rem; }
 @media (min-width: 48rem) {
@@ -935,6 +1058,8 @@ html.js .flip-view.is-shown { opacity: 1; visibility: visible; transition: opaci
 }
 html.js .layers-browser .layer-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 html.js .layer-panel[hidden] { display: none; }
+/* Before motion.js has made the tabs, show only the first panel, as the tabs will. */
+html.js:not(.ready) [data-panel] + [data-panel] { display: none; }
 
 .keygrid {
   width: 100%;
@@ -979,9 +1104,11 @@ html.js .layer-panel[hidden] { display: none; }
 .code {
   margin: 0 0 1rem;
   padding: 1.25rem;
-  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   border-radius: 8px;
   background: var(--night);
+  border: 1px solid rgb(231 227 220 / .16);
   color: var(--on-dark);
   font-family: var(--mono);
   font-size: .8125rem;
@@ -990,32 +1117,47 @@ html.js .layer-panel[hidden] { display: none; }
 .code code { font-size: inherit; }
 .remap .small { color: var(--fg-2); }
 
-/* ------------------------------------------------------------------ uses */
+/* ------------------------------------------------------------------ uses
+   Each use leads with what the keys do, set large, then names the use and the layer. Each group
+   shows the firmware screen that goes with it at twice its real pixel size. */
 
 .use-group {
   display: grid;
-  gap: 1rem;
+  gap: 1.5rem;
   padding-block: 2rem;
   border-top: 2px solid var(--fg);
 }
+.use-head { display: grid; gap: 1.25rem; align-content: start; }
+.use-screen {
+  width: min(100%, 320px);
+  image-rendering: pixelated;
+  border-radius: 8px;
+  box-shadow: 0 0 0 clamp(.5rem, 1.2vw, .75rem) var(--bezel);
+  margin: clamp(.5rem, 1.2vw, .75rem);
+}
 .use-list { display: grid; }
-.use { padding-block: 1.25rem; border-top: 1px solid var(--rule); display: grid; gap: .35rem; }
+.use { padding-block: 1.5rem; border-top: 1px solid var(--rule); display: grid; gap: .5rem; }
 .use:first-child { border-top: 0; padding-top: 0; }
+.use h4 {
+  font-size: clamp(1.4rem, 2.6vw, 2.1rem);
+  font-stretch: 118%;
+  font-weight: 720;
+  letter-spacing: -.025em;
+  line-height: 1.05;
+}
+/* The first use of each group leads, a size up, so the list has a rhythm instead of an even wall. */
+.use:first-child h4 { font-size: clamp(1.75rem, 3.6vw, 3rem); }
 .use p:last-child { max-width: var(--measure); }
-.use-how { font-size: .875rem; font-stretch: 92%; color: var(--fg-2); }
+.use-how { font-size: .9375rem; font-stretch: 92%; font-weight: 550; color: var(--fg-2); }
 
 @media (min-width: 48rem) {
   .use-group { grid-template-columns: 4fr 8fr; gap: 2rem; }
-  .use-group h3 { position: sticky; top: calc(var(--header-h) + 1.5rem); align-self: start; }
-  .use { grid-template-columns: 14rem 1fr; column-gap: 2rem; }
-  .use h4 { grid-column: 1; }
-  .use-how { grid-column: 1; }
-  .use p:last-child { grid-column: 2; grid-row: 1 / span 2; }
+  .use-head { position: sticky; top: calc(var(--header-h) + 1.5rem); align-self: start; }
 }
 
 /* ------------------------------------------------------------------ signature */
 
-.signature-scene { background: var(--alu-hi); color: var(--ink); --sig-w: min(100cqw, 34rem); }
+.signature-scene { background: var(--alu-hi); color: var(--ink); }
 .signature-scene .stage {
   position: relative;
   display: grid;
@@ -1036,11 +1178,13 @@ html.js .layer-panel[hidden] { display: none; }
 .sig-body { max-width: 30rem; }
 .sig-hairline { display: none; }
 .sig-render .box { position: relative; }
-.sigbox { display: none; }
+.sigbox,
+.sig-patch { display: none; }
 
 .sig-after { padding-block: clamp(3rem, 8vw, 6rem) var(--chapter-pad); align-items: center; background: var(--alu-lo); max-width: none; }
 .sig-after .small { max-width: 30rem; justify-self: end; }
 .sig-after figure { max-width: 40rem; }
+.sig-after img { border-radius: 20px; }
 .sig-after figcaption { color: var(--ink); }
 
 @media (min-width: 48rem) {
@@ -1060,68 +1204,108 @@ html.js .layer-panel[hidden] { display: none; }
 }
 .sig-render { --max-h: 80svh; }
 
-/* With motion: one sticky stage. The signature is drawn large in the middle, then flies onto the
-   render's laser mark. The stage background is the render's gradient, stretched so that its stops
-   sit on the render's top and bottom rows: the picture meets the stage at every row. */
-html.motion .signature-scene .track { height: 320svh; }
-html.motion .signature-scene .stage {
-  --scene: 1;
-  position: sticky;
-  top: var(--header-h);
-  height: var(--stage-h);
-  overflow: clip;
-  padding: 0;
-  gap: 0;
-  --img-h: calc(var(--sig-img-w) * 1100 / 1600);
-  --sig-img-w: min(100vw, (var(--stage-h) - 15rem) * 1.4545);
-  background: linear-gradient(var(--alu-hi) calc(var(--img-top) + 0px), var(--alu) calc(var(--img-top) + var(--img-h) / 2), var(--alu-lo) calc(var(--img-top) + var(--img-h)));
-  --img-top: 7.5rem;
-  grid-template-rows: 7.5rem var(--img-h) auto 1fr;
-  grid-template-columns: 1fr;
-}
-html.motion .sig-text { display: contents; }
-html.motion .sig-text .scene-title { grid-row: 1; align-self: center; padding-inline: var(--gutter); font-size: clamp(2rem, 6vw, 4rem); }
-html.motion .sig-render { grid-row: 2; background: none; justify-self: center; width: var(--sig-img-w); }
-html.motion .sig-render .box { width: 100%; }
-html.motion .sig-edition,
-html.motion .sig-body { grid-row: 3; padding-inline: var(--gutter); align-self: start; padding-top: 1rem; }
-html.motion .sig-body { grid-row: 4; padding-top: .75rem; }
-html.motion .sig-edition { justify-self: start; }
-html.motion .signature {
-  position: absolute;
-  z-index: 4;
-  left: 50%;
-  top: 50%;
-  width: min(88vw, 52rem);
-  transform-origin: 0 0;
-  translate: -50% -50%;
-  pointer-events: none;
-}
-html.motion .sig-hairline {
-  display: block;
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 2px;
-  background: var(--seam);
-  transform: scaleX(0);
-  z-index: 3;
+/* With motion: one sticky stage on the render's gradient. The signature is drawn large in the
+   middle, flies onto the render's laser mark, and then the render and the drawing move in together
+   until the base fills the space beside the text (motion.js). Only on screens tall enough for the
+   text and the base to sit apart: shorter ones (a phone held sideways, a small window) keep the
+   static layout. */
+@media (min-height: 40.0625rem), (min-width: 64rem) and (min-height: 34.0625rem) {
+  html.motion .signature-scene .track { height: 360svh; }
+  html.motion .signature-scene .stage {
+    --scene: 1;
+    position: sticky;
+    top: var(--header-h);
+    height: var(--stage-h);
+    overflow: clip;
+    padding: 0;
+    gap: 0;
+    background: linear-gradient(var(--alu-hi), var(--alu), var(--alu-lo));
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto auto;
+  }
+  html.motion .sig-text { display: contents; }
+  /* The static layout names grid areas on these; the stage grid has none, so reset them. */
+  html.motion .sig-text .scene-title,
+  html.motion .sig-edition,
+  html.motion .sig-body { grid-area: auto; grid-column: 1; position: relative; z-index: 2; padding-inline: var(--gutter); }
+  html.motion .sig-text .scene-title { grid-row: 1; padding-top: clamp(1.5rem, 4vh, 2.5rem); font-size: clamp(2rem, 6vw, 4rem); }
+  /* Only the base is kept (x 392-1218, y 172-945 of 1600 x 1100): a soft-edged box just round it
+     fades the rest of the render out, so the enlarged picture never shows its rectangle, or its
+     lighter background, against the stage. */
+  html.motion .sig-render {
+    grid-row: 2;
+    align-self: center;
+    z-index: 1;
+    background: none;
+    transform-origin: 0 0;
+    opacity: 0;
+    --max-h: 200svh;
+    --slab-mask: linear-gradient(to right, transparent 23.4%, #000 24.9%, #000 76.4%, transparent 77.9%),
+                 linear-gradient(to bottom, transparent 14%, #000 15.9%, #000 86.6%, transparent 88.6%);
+    -webkit-mask-image: var(--slab-mask);
+    -webkit-mask-composite: source-in;
+    mask-image: var(--slab-mask);
+    mask-composite: intersect;
+  }
+  html.motion .sig-render .layer { background: none; }
+  /* Covers the render's own laser mark (x 437-747, y 531-682 of 1600 x 1100, padded) with the
+     base's flat colour, sampled around it, so the drawn line is the only signature on it. */
+  html.motion .sig-patch {
+    display: block;
+    position: absolute;
+    left: 26.3%;
+    top: 46.8%;
+    width: 21.4%;
+    height: 16.7%;
+    background: #989a9e;
+  }
+  html.motion .sig-edition { grid-row: 3; font-size: clamp(1.5rem, 5vw, 2.5rem); }
+  html.motion .sig-body {
+    grid-row: 4;
+    padding-top: .5rem;
+    padding-bottom: clamp(1rem, 3vh, 2rem);
+    max-width: calc(34rem + 2 * var(--gutter));
+    color: var(--ink);
+    font-size: clamp(1.05rem, 1.8vw, 1.5rem);
+    font-weight: 450;
+    line-height: 1.45;
+  }
+  html.motion .signature {
+    grid-area: auto;
+    position: absolute;
+    z-index: 4;
+    left: 50%;
+    top: 50%;
+    width: min(88vw, 52rem);
+    transform-origin: 0 0;
+    translate: -50% -50%;
+    pointer-events: none;
+  }
+  html.motion .sig-hairline {
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 2px;
+    background: var(--seam);
+    transform: scaleX(0);
+    z-index: 3;
+  }
 }
 
-@media (min-width: 48rem) {
+/* Wide screens: the text on the left, the render on the right. After the close-up the base fills
+   the right-hand column and the text stays on the plain background to its left. */
+@media (min-width: 64rem) and (min-height: 34.0625rem) {
   html.motion .signature-scene .stage {
-    --sig-img-w: min(58vw, (var(--stage-h) - 4rem) * 1.4545);
-    --img-top: calc((var(--stage-h) - var(--img-h)) / 2);
     grid-template-rows: auto 1fr auto auto 1fr;
-    grid-auto-columns: 0;
-    grid-template-columns: minmax(18rem, 1fr) var(--sig-img-w);
+    grid-template-columns: minmax(18rem, 1fr) 58vw;
     column-gap: clamp(1.5rem, 4vw, 4rem);
   }
-  html.motion .sig-text .scene-title { grid-row: 1; grid-column: 1; align-self: start; padding-top: clamp(1.5rem, 5vh, 3rem); font-size: clamp(2rem, 4vw, 4rem); }
-  html.motion .sig-edition { grid-row: 3; grid-column: 1; padding-top: 0; }
-  html.motion .sig-body { grid-row: 4; grid-column: 1; padding-top: 1rem; }
-  html.motion .sig-render { grid-row: 1 / -1; grid-column: 2; align-self: center; }
+  html.motion .sig-text .scene-title { grid-row: 1; grid-column: 1; font-size: clamp(2rem, 4vw, 4rem); }
+  html.motion .sig-edition { grid-row: 3; grid-column: 1; font-size: clamp(2rem, 3.4vw, 3.25rem); }
+  html.motion .sig-body { grid-row: 4; grid-column: 1; max-width: calc(min(26rem, 30vw) + var(--gutter)); }
+  html.motion .sig-render { grid-row: 1 / -1; grid-column: 2; }
 }
 
 html.debug-sigbox .sigbox {
@@ -1142,12 +1326,18 @@ html.debug-sigbox .sigbox {
 .spec-list dt { font-weight: 650; }
 .spec-list dd { margin: 0; }
 @media (min-width: 48rem) {
-  .specs .split-head { align-items: start; grid-template-columns: 4fr 8fr; }
+  .specs .split-head { align-items: start; grid-template-columns: 1fr; }
   .spec-list div { grid-template-columns: 12rem 1fr; gap: 1rem; }
+}
+@media (min-width: 64rem) {
+  .specs .split-head { grid-template-columns: 4fr 8fr; }
 }
 .specs .split-head { margin-bottom: 0; }
 
 .status .split-head { margin-bottom: 0; align-items: start; }
+@media (min-width: 48rem) and (max-width: 63.99rem) {
+  .status .split-head { grid-template-columns: 1fr; }
+}
 .status .lede { margin-top: 1.5rem; }
 .status-table { width: 100%; border-collapse: collapse; font-size: 1rem; font-variant-numeric: tabular-nums; }
 .status-table caption { text-align: left; padding-bottom: .75rem; font-size: .875rem; font-stretch: 92%; color: var(--fg-2); }
@@ -1207,6 +1397,9 @@ html.debug-sigbox .sigbox {
 }
 .foot .column { display: grid; gap: 1rem; max-width: calc(48rem + 2 * var(--gutter)); margin-inline: 0; }
 .foot p:last-child { color: var(--on-dark-2); }
+
+/* The browser gets a compositing hint only for scenes near the viewport (motion.js sets is-live). */
+html.motion .is-live [data-part] { will-change: transform, opacity; }
 
 /* ------------------------------------------------------------------ debug and stills */
 

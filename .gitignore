@@ -1,6 +1,6 @@
 .build/
 _site/
-_site.staging/
+_site.staging*/
 .venv/
 __pycache__/
 *.pyc

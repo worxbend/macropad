@@ -28,11 +28,12 @@ jobs:
       - run: make pcb-test
       - run: make docs-check
       # The site build also writes WebP copies with Pillow. The runner's Python is externally
-      # managed, so Pillow goes into a throwaway virtual environment.
+      # managed, so Pillow goes into a throwaway virtual environment. A wheel only, so no package
+      # build script runs.
       - name: make site
         run: |
           python3 -m venv "$RUNNER_TEMP/site-venv"
-          "$RUNNER_TEMP/site-venv/bin/pip" install --disable-pip-version-check pillow==11.3.0
+          "$RUNNER_TEMP/site-venv/bin/pip" install --disable-pip-version-check --only-binary=:all: pillow==11.3.0
           make site SITE_PYTHON="$RUNNER_TEMP/site-venv/bin/python"
 
   firmware:
