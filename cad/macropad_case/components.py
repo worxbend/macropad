@@ -8,7 +8,7 @@ Dimensions marked MEASURE in `spec.py` and here are from datasheets and footprin
 from build123d import Axis, Box, Cylinder, Part, Pos, Rectangle, RectangleRounded, Sphere, chamfer, fillet, loft
 
 from .solids import box, centred_box, cylinder, d_profile, pcb_outline, slab
-from .spec import BOARD, CASE, LEVELS, buttons, encoder_centres, foot_centres, key_centres, mounting_holes
+from .spec import BOARD, CASE, LEVELS, buttons, encoder_centres, key_centres, mounting_holes
 
 # MEASURE: EC11E terminals and mounting tabs, from the KiCad footprint, relative to the encoder centre.
 ENCODER_PINS = [(-7.5, -2.5), (-7.5, 0.0), (-7.5, 2.5), (7.0, -2.5), (7.0, 2.5)]
@@ -183,24 +183,12 @@ def screw(centre: tuple[float, float]) -> Part:
     """M2 x 10 socket-head screw, head in the base counterbore. Above the PCB it is drawn at the
     thread's core diameter, because there it cuts its own thread into the top."""
     head_diameter, head_height = CASE.screw_head
-    seat = LEVELS.floor_bottom + CASE.counterbore_depth
+    seat = LEVELS.counterbore_top
     head = cylinder(centre, head_diameter, (seat - head_height, seat))
     hex_socket = cylinder(centre, 1.7, (seat - head_height - 0.01, seat - head_height + 1.0))
     shank = cylinder(centre, 2.0, (seat, 0))
     core = cylinder(centre, CASE.screw_thread_core, (0, seat + CASE.screw_length))
     return head - hex_socket + shank + core
-
-
-def bumper() -> Part:
-    """A stick-on foot with its sticky face at Z = 0, hanging below it."""
-    diameter, height = CASE.foot
-    body = Pos(0, 0, -height / 2) * Cylinder(diameter / 2, height)
-    return chamfer(body.edges().group_by(Axis.Z)[0], 0.5)
-
-
-def foot(centre: tuple[float, float]) -> Part:
-    """Stick-on bumper in its recess under the base."""
-    return Pos(centre[0], -centre[1], LEVELS.floor_bottom + CASE.foot_depth) * bumper()
 
 
 def components() -> dict[str, Part]:
@@ -231,6 +219,4 @@ def _fixed_components() -> dict[str, Part]:
         found[f"button_{name}"] = button(centre)
     for index, centre in enumerate(mounting_holes()):
         found[f"screw_{index}"] = screw(centre)
-    for index, centre in enumerate(foot_centres()):
-        found[f"foot_{index}"] = foot(centre)
     return found

@@ -8,13 +8,13 @@ from math import cos, pi, sin
 
 import numpy as np
 import trimesh
-from build123d import GeomType, Part, Plane, Pos, Vector, section
+from build123d import Axis, Edge, GeomType, Part, Plane, Pos, Vector, section
 from scipy.ndimage import binary_dilation, binary_opening, grey_closing
 
 from .components import pcb
 from .parts import lap_ridges
 from .raster import DEPTH_MAP_SIZE, mesh_of, Material, rasterise
-from .solids import overlap_volume
+from .solids import cylinder, overlap_volume
 from .spec import BOARD, CASE, LEVELS, mounting_holes
 
 WALL_SAMPLES = 3000  # surface points probed per part
@@ -37,6 +37,10 @@ UNCUT_HEIGHT = 0.1  # mm of material left standing before a cell counts as not c
 UNCUT_NOISE = 0.3  # mm^2; one sharp corner in a 3 mm pocket already leaves 0.48
 SLOPED = (0.05, 0.995)  # |normal Z| of a face a flat end mill does not cut: chamfers and tapers
 ANY_MATERIAL = Material((0.5, 0.5, 0.5))
+MAX_JOIN_CURVATURE = 0.01  # per mm, where a corner curve meets a straight side
+CURVE_SAMPLES = 40  # places along a corner curve where its radius is taken
+SAME_POINT = 1e-6  # mm
+COVER_SLICE = 0.1  # mm; thickness of the disc that stands for a counterbore mouth
 
 
 def row(name: str, value: float, limit: float, kind: str = "min", unit: str = "mm") -> dict:
@@ -82,6 +86,51 @@ def _first_hit(origins: np.ndarray, directions: np.ndarray, triangles: np.ndarra
     return distance[np.arange(len(origins)), nearest], nearest
 
 
+def soundness_faults(part: Part) -> int:
+    """How many things are wrong with a part as one body: every solid besides the one expected,
+    an invalid shape, no volume. A boolean that went wrong shows up as one of these."""
+    return abs(len(part.solids()) - 1) + (not part.is_valid) + (part.volume <= 0)
+
+
+def outline_corners(part: Part, z: float) -> tuple[float, float]:
+    """On the part's outer outline at height `z`: the largest curvature (1/mm) at a place where a
+    curved edge meets a straight one, and the smallest radius (mm) along the curved edges. An arc
+    meets a straight side with a curvature of 1/radius; a continuous-curvature corner meets it with zero."""
+    cut = section(part, section_by=Plane.XY.offset(z))
+    outline = max(cut.faces(), key=lambda face: face.area).outer_wire().edges()
+    straight_ends = [edge @ end for edge in outline.filter_by(GeomType.LINE) for end in (0, 1)]
+    curved = [edge for edge in outline if edge.geom_type != GeomType.LINE]
+    at_joins = [
+        _curvature(edge, end) for edge in curved for end in (0.0, 1.0)
+        if any((edge @ end - point).length < SAME_POINT for point in straight_ends)
+    ]
+    tightest = max(_curvature(edge, step / CURVE_SAMPLES) for edge in curved for step in range(CURVE_SAMPLES + 1))
+    return max(at_joins, default=0.0), 1 / tightest
+
+
+def _curvature(edge: Edge, at: float) -> float:
+    first, second = edge.derivative_at(at, 1), edge.derivative_at(at, 2)
+    return first.cross(second).length / first.length ** 3
+
+
+def frame_widths(top: Part) -> dict[str, float]:
+    """Width of the flat top face to the left of, to the right of and in front of the key dish.
+    The dish rim is the largest opening in the top face."""
+    top_face = max(top.faces().group_by(Axis.Z)[-1], key=lambda face: face.area)  # not the island inside a letter
+    rim = max(top_face.inner_wires(), key=lambda wire: wire.bounding_box().diagonal).bounding_box()
+    outside = top.bounding_box()
+    # Model Y runs toward the back, so the front of the case is at the low end.
+    return {"left": rim.min.X - outside.min.X, "right": outside.max.X - rim.max.X, "front": rim.min.Y - outside.min.Y}
+
+
+def uncovered_screw_area(feet: list[Part]) -> float:
+    """Area in mm^2 of the six counterbore mouths that no foot strip or pad lies over."""
+    roof = LEVELS.foot_recess_roof
+    mouths = [cylinder(hole, CASE.counterbore_diameter, (roof - COVER_SLICE, roof)) for hole in mounting_holes()]
+    uncovered = sum(mouth.volume - sum(overlap_volume(mouth, foot) for foot in feet) for mouth in mouths)
+    return uncovered / COVER_SLICE
+
+
 def boss_wall(part: Part, hole_diameter: float, z: float) -> float:
     """Thinnest wall around a screw hole, measured on the horizontal cut at height `z`:
     the distance from each hole's edge to the nearest other edge of the cut."""
@@ -104,7 +153,7 @@ def _is_circle_at(edge, centre: Vector, radius: float) -> bool:
 
 
 def diffuser_retention(diffuser: Part, base: Part, top: Part) -> list[dict]:
-    """Push the left diffuser 0.6 mm each way out of its seat and see what stops it."""
+    """Push the left light bar 0.6 mm each way out of its seat and see what stops it."""
     stops = {
         "outward": (Pos(-RETENTION_PUSH, 0, 0), base),
         "inward": (Pos(RETENTION_PUSH, 0, 0), pcb()),

@@ -3,12 +3,13 @@
 from pathlib import Path
 
 import matplotlib
-from build123d import Axis, Box, Circle, Cylinder, Kind, Part, Plane, Pos, Rectangle, RectangleRounded, Sketch, Text
-from build123d import chamfer, extrude, loft, mirror, offset
+from build123d import Axis, Bezier, Box, Circle, Cylinder, Kind, Line, Part, Plane, Pos, Rectangle, RectangleRounded
+from build123d import Sketch, Text, Wire, chamfer, extrude, loft, make_face, mirror, offset
 
-from .spec import BOARD, CASE, CNC
+from .spec import BOARD, CASE, CNC, PRINT, Span, case_bounds, grown
 
 CUT_OVERSHOOT = 0.01  # cuts run past the face they open so no zero-thickness skin is left
+STADIUM_FLAT = 1e-4  # a rounded rectangle needs a side between its corners, however short
 # DejaVu Sans Bold ships inside matplotlib, so the engraved text is the same on every machine.
 LEGEND_FONT = Path(matplotlib.get_data_path()) / "fonts" / "ttf" / "DejaVuSans-Bold.ttf"
 
@@ -49,6 +50,55 @@ def d_profile(diameter: float, across_flat: float) -> Sketch:
     flat_offset = across_flat - radius
     keep = Pos(0, (flat_offset - radius) / 2) * Rectangle(diameter, flat_offset + radius)
     return Circle(radius) & keep
+
+
+def rounded_rectangle(span: Span, radius: float) -> Sketch:
+    (x_low, x_high), (y_low, y_high) = span
+    return Pos((x_low + x_high) / 2, -(y_low + y_high) / 2) * RectangleRounded(x_high - x_low, y_high - y_low, radius)
+
+
+def stadium(span: Span) -> Sketch:
+    """A slot shape: a rectangle whose two short sides are half circles."""
+    (x_low, x_high), (y_low, y_high) = span
+    return rounded_rectangle(span, min(x_high - x_low, y_high - y_low) / 2 - STADIUM_FLAT)
+
+
+def case_outline(variant: str, grow: float = 0.0) -> Sketch:
+    """The case seen from above, grown outward by `grow`.
+
+    Print: circular corners. The top prints standing on a side wall, and a corner that starts flatter
+    than this arc hangs too far over the bed. CNC: each corner is one curve whose curvature is zero
+    where it meets the straight sides, so no highlight breaks there. Both corners have the same apex."""
+    if variant == PRINT:
+        return rounded_rectangle(grown(case_bounds(), grow), CASE.print_corner_radius + grow)
+    outline = _continuous_outline(case_bounds())
+    return offset(outline, amount=grow) if grow else outline
+
+
+def _continuous_outline(span: Span) -> Sketch:
+    (x_low, x_high), (y_low, y_high) = span
+    corners = [(x_low, -y_low), (x_high, -y_low), (x_high, -y_high), (x_low, -y_high)]
+    curves = [
+        _corner_curve(corners[index - 1], corner, corners[(index + 1) % len(corners)])
+        for index, corner in enumerate(corners)
+    ]
+    sides = [Line(curve @ 1, following @ 0) for curve, following in zip(curves, curves[1:] + curves[:1])]
+    return Sketch() + make_face(Wire(curves + sides))
+
+
+def _corner_curve(before: tuple[float, float], corner: tuple[float, float], after: tuple[float, float]) -> Bezier:
+    """A quintic Bezier round `corner`. Three control points lie on each side, which is what makes
+    the curvature zero at both ends."""
+    def toward(point: tuple[float, float], share: float) -> tuple[float, float]:
+        length = abs(point[0] - corner[0]) + abs(point[1] - corner[1])  # the sides are parallel to the axes
+        step = CASE.corner_setback * share / length
+        return corner[0] + (point[0] - corner[0]) * step, corner[1] + (point[1] - corner[1]) * step
+
+    near, far = CASE.corner_handles[1], CASE.corner_handles[0]
+    return Bezier(
+        toward(before, 1.0), toward(before, far), toward(before, near),
+        toward(after, near), toward(after, far), toward(after, 1.0),
+    )
 
 
 def pcb_outline(grow: float = 0.0) -> Sketch:

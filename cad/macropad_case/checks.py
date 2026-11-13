@@ -2,25 +2,29 @@
 finished solids, and printability. `run_all` gathers them; `failures` lists what did not pass."""
 
 from itertools import combinations
+from math import pi, sqrt
 
 import numpy as np
 import trimesh
 from build123d import Box, Part, Pos, Rot
 
 from . import measure, printsim, selftest
-from .components import at, components, keycap
-from .parts import base_body, top_body, usb_cutout
-from .small_parts import case_parts, desk_plane_drop
+from .components import MX_FLANGE, at, components, keycap
+from .parts import base_body, label_field_outline, top_body, underside_mark, usb_cutout
+from .small_parts import BAR_TO_TOP, case_parts, desk_plane_drop
 from .solids import overlap_volume
-from .spec import BOARD, CASE, CNC, LEVELS, PRINT, VARIANTS, buttons, deck_front, foot_centres, key_centres
-from .spec import mounting_holes
+from .spec import BOARD, CASE, CNC, LEVELS, PRINT, VARIANTS, buttons, dish_rim, encoder_centres
+from .spec import key_centres, lens_opening, lens_recess
 
 CLASH_VOLUME = 0.05  # mm^3; below this two solids only touch
 OVERHANG_COSINE = 0.72  # faces steeper than about 46 degrees from vertical need something under them
 BED_TOLERANCE = 0.05
 MIN_BED_CONTACT = 100.0  # mm^2 of first layer, so the part stays on the bed
-# The tilt bar takes over the two back foot recesses, so the back feet move onto it.
-ALTERNATIVES = {("tilt_bar", "foot_0"), ("tilt_bar", "foot_1")}
+# The tilt bar's tongue takes the back strip's recess, so that strip moves onto the bar.
+ALTERNATIVES = {frozenset(("tilt_bar", "foot_strip_back"))}
+LENS_PUSH = 0.3  # mm; the lens must hit its ledges before it has moved this far down
+OUTLINE_HEIGHTS = {"base": LEVELS.floor_bottom + 2.0, "top": LEVELS.plate_bottom + 0.5}  # where each shell's outline is whole
+MIN_CORNER_RADIUS = 4.66  # mm; the corner curve is drawn for 4.71
 
 # How each part lies on the print bed: a rotation that brings its bed face to the lowest Z.
 PRINT_POSES = {
@@ -28,6 +32,8 @@ PRINT_POSES = {
     "top": Rot(0, -90, 0),  # standing on its left side wall
     "diffuser_left": Rot(0, -90, 0),  # outer face down
     "knob_left": Rot(0, 0, 0),
+    "foot_strip_back": Rot(0, 0, 0),
+    "centre_pad": Rot(0, 0, 0),
     "tilt_bar": Rot(CASE.tilt_angle, 0, 0),  # sloped underside down
 }
 
@@ -36,7 +42,7 @@ def interference(variant: str) -> dict:
     parts = case_parts(variant)
     bought = components()
     pairs = [(part, component) for part in parts for component in bought] + list(combinations(parts, 2))
-    pairs = [pair for pair in pairs if pair not in ALTERNATIVES]
+    pairs = [pair for pair in pairs if frozenset(pair) not in ALTERNATIVES]
     solids = parts | bought
     clashes = []
     for first, second in pairs:
@@ -57,11 +63,10 @@ def clearances() -> list[dict]:
         display.length / 2 - abs(display.window_x - display.x) - display.window_length / 2,
         display.width / 2 - abs(display.window_y - display.y) - display.window_width / 2,
     )
-    deck_skin = stack.plate_thickness - CASE.display_relief
     measured = [
         ("usb_plug_to_opening", _usb_opening_margin(), 0.2),
-        ("keycap_to_deck", BOARD.keys.first_y - CASE.keycap_width / 2 - deck_front(), 0.4),
-        ("display_glass_under_deck", LEVELS.deck_bottom + CASE.display_relief - stack.display_glass_top, 0.2),
+        ("keycap_to_deck", BOARD.keys.first_y - CASE.keycap_width / 2 - dish_rim()[1][0], 0.4),
+        ("display_glass_under_deck", LEVELS.lens_bottom - stack.display_glass_top, 0.2),
         ("display_window_inside_module", window_margin, 0.5),
         ("encoder_body_under_deck", LEVELS.deck_bottom - stack.encoder_body_top, 0.3),
         ("screw_engagement", engagement, CASE.min_screw_engagement),
@@ -71,7 +76,7 @@ def clearances() -> list[dict]:
         ("screw_head_in_counterbore", (CASE.counterbore_diameter - CASE.screw_head[0]) / 2, 0.2),
         ("knob_to_well_floor_when_pressed", LEVELS.knob_bottom - LEVELS.knob_well_floor - CASE.encoder_press_travel, 0.3),
         ("skin_under_knob_well", LEVELS.knob_well_floor - LEVELS.deck_bottom, CASE.min_wall),
-        ("bezel_land_under_chamfer", deck_skin - CASE.bezel_chamfer, 0.2),
+        ("lens_ledge_thickness", LEVELS.lens_seat - LEVELS.lens_rib_bottom, CASE.min_wall),
         ("rib_to_switch_cutout", (BOARD.keys.pitch - stack.switch_cutout - CASE.rib_width) / 2, 1.0),
         ("skirt_beside_lap_groove", CASE.wall - CASE.lap_crest - CASE.lap_height - CASE.lap_fit, CASE.min_wall),
         ("lap_groove_under_ribs", LEVELS.rib_bottom - CASE.lap_height - CASE.lap_fit, 0.0),
@@ -80,8 +85,8 @@ def clearances() -> list[dict]:
         ("socket_to_floor", stack.underside_clearance - stack.socket_depth, 1.0),
         ("usb_body_to_floor", stack.underside_clearance - BOARD.usb.body_height, 0.5),
         ("led_inside_slot_height", LEVELS.pcb_bottom - led_height - LEVELS.led_slot_bottom, 0.5),
-        ("foot_below_underside", CASE.foot[1] - CASE.foot_depth, 0.5),
-        *_tilt_bar_margins(),
+        ("foot_below_underside", CASE.foot_strip[1] - CASE.foot_recess_depth, 0.5),
+        *_tilt_bar_margins(), *_top_face_margins(), *_lens_margins(), *_light_line_margins(), *_underside_margins(),
     ]
     return [
         {"name": name, "value_mm": round(value, 3), "minimum_mm": minimum, "ok": value >= minimum - 1e-9}
@@ -90,22 +95,78 @@ def clearances() -> list[dict]:
 
 
 def _tilt_bar_margins() -> list[tuple[str, float, float]]:
-    """The tilt bar must leave the back screws and the two button holes uncovered."""
-    back_feet_y = foot_centres()[0][1]
-    bar_back, bar_front = back_feet_y - CASE.tilt_bar_depth / 2, back_feet_y + CASE.tilt_bar_depth / 2
-    back_screws_y = min(y for _, y in mounting_holes())
+    """The tilt bar must leave the back screws and the two button holes reachable."""
     button_y = min(y for _, y in buttons().values())
+    hole_around_counterbore = (CASE.tilt_hole_diameter - CASE.counterbore_diameter) / 2
     return [
-        ("tilt_bar_to_screw_counterbore", bar_back - back_screws_y - CASE.counterbore_diameter / 2, 0.5),
-        ("tilt_bar_to_button_hole", button_y - CASE.button_hole_diameter / 2 - bar_front, 0.5),
-        ("tilt_bar_thinnest", desk_plane_drop(bar_front), 3.0),
+        ("tilt_bar_to_screw_counterbore", hole_around_counterbore, 0.5),
+        ("tilt_bar_to_button_hole", button_y - CASE.button_hole_diameter / 2 - CASE.tilt_bar_front, 0.5),
+        ("tilt_bar_thinnest", desk_plane_drop(CASE.tilt_bar_front), 3.0),
+    ]
+
+
+def _top_face_margins() -> list[tuple[str, float, float]]:
+    """The key dish, and the knobs on the plain deck."""
+    bushing_hole = BOARD.stack.encoder_bushing_diameter + CASE.bushing_clearance
+    grooved_radius = CASE.knob_diameter / 2 - CASE.knob_groove_depth
+    groove_pitch = pi * CASE.knob_diameter / CASE.knob_grooves
+    return [
+        ("switch_flange_to_dish_floor", CASE.dish_floor_margin - MX_FLANGE[0] / 2, 0.25),
+        ("deck_wall_under_dish", CASE.deck_front_wall / sqrt(2), CASE.min_wall),
+        ("knob_covers_bushing_hole", grooved_radius - bushing_hole / 2, 3.0),
+        ("knob_groove_land", groove_pitch - 2 * CASE.knob_groove_depth, 0.45),
+    ]
+
+
+def _lens_margins() -> list[tuple[str, float, float]]:
+    display = BOARD.display
+    (recess_start, recess_end), (recess_back, recess_front) = lens_recess()
+    (opening_start, opening_end), (opening_back, opening_front) = lens_opening()
+    module_in_opening = min(
+        display.x - display.length / 2 - opening_start, opening_end - display.x - display.length / 2,
+        display.y - display.width / 2 - opening_back, opening_front - display.y - display.width / 2,
+    )
+    knob_edge = encoder_centres()[0][0] + CASE.knob_diameter / 2
+    return [
+        ("display_module_inside_opening", module_in_opening, 0.3),
+        ("lens_below_flush", LEVELS.deck_top - LEVELS.lens_top, 0.0),
+        ("lens_end_ledge", opening_start - recess_start, 1.0),
+        ("lens_to_knob", display.x - CASE.lens[0] / 2 - knob_edge, 1.0),
+        ("lens_to_dish_rim", dish_rim()[1][0] - recess_front, 1.0),
+        ("lens_recess_bridge_margin", CASE.max_bridge - (recess_front - recess_back), 0.0),
+    ]
+
+
+def _light_line_margins() -> list[tuple[str, float, float]]:
+    """The gap round the case and the light bar behind it."""
+    rim_wall = CASE.wall - CASE.gap_depth
+    return [
+        ("gap_land_beside_lap_ridge", rim_wall - CASE.lap_crest - CASE.lap_height, 0.2),
+        ("light_skin", CASE.wall - CASE.light_channel_reach, CASE.min_wall),
+        ("light_slit_height", CASE.gap_height - BAR_TO_TOP, 0.8),
+        ("led_to_light_bar", CASE.pcb_gap - CASE.diffuser_inner_face, 0.1),
+    ]
+
+
+def _underside_margins() -> list[tuple[str, float, float]]:
+    """The foot strips hide the screws; the recesses and the cones must leave enough floor."""
+    head_bottom = LEVELS.counterbore_top - CASE.screw_head[1]
+    cone_mouth, cone_end = CASE.screw_cone
+    cone_top = LEVELS.foot_recess_roof + (cone_mouth - cone_end) / 2
+    return [
+        ("screw_head_under_strip_recess", head_bottom - LEVELS.foot_recess_roof, 0.2),
+        ("strip_covers_counterbore", (CASE.foot_strip[0] - CASE.counterbore_diameter) / 2, 1.0),
+        ("floor_under_strip_recess", CASE.floor - CASE.foot_recess_depth, CASE.min_wall),
+        ("cone_inside_floor", LEVELS.floor_top - cone_top, 0.5),
+        ("pad_lower_than_strips", CASE.foot_strip[1] - CASE.centre_pad_thickness, 0.1),
+        ("floor_under_label_engraving", CASE.floor - CASE.label_field_depth - CASE.engraving_depth, CASE.min_wall),
     ]
 
 
 def _usb_opening_margin() -> float:
     """Smallest gap between the plug overmould and the opening, across the width and the height."""
     width, height = CASE.usb_plug
-    opening = usb_cutout() & Pos(BOARD.usb.x, CASE.wall / 2 + CASE.pcb_gap, LEVELS.usb_centre) * _slice_of_wall()
+    opening = usb_cutout() & Pos(BOARD.usb.x, CASE.back_wall / 2 + CASE.pcb_gap, LEVELS.usb_centre) * _slice_of_wall()
     box = opening.bounding_box()
     return min((box.size.X - width) / 2, (box.size.Z - height) / 2)
 
@@ -132,20 +193,65 @@ def moving_parts(parts: dict[str, Part]) -> list[dict]:
 def measurements() -> list[dict]:
     """Everything measured on the finished solids rather than computed from the dimensions."""
     printed, milled = case_parts(PRINT), case_parts(CNC)
+    shells = {"print_base": printed["base"], "print_top": printed["top"], "cnc_base": milled["base"], "cnc_top": milled["top"]}
     bodies = {
         "print_base": base_body(PRINT), "print_top": top_body(PRINT), "cnc_base": milled["base"],
         "cnc_top": milled["top"], "diffuser": printed["diffuser_left"], "knob": printed["knob_left"],
-        "tilt_bar": printed["tilt_bar"],
+        "tilt_bar": printed["tilt_bar"], "foot_strip": printed["foot_strip_back"], "centre_pad": printed["centre_pad"],
     }
     rows = [measure.row(f"thinnest_wall_{name}", measure.thinnest_wall(body), CASE.min_wall) for name, body in bodies.items()]
+    rows += _soundness(printed, milled)
+    rows += _silhouette(shells)
     rows += measure.boss_walls(printed["base"], printed["top"])
     rows += measure.diffuser_retention(printed["diffuser_left"], printed["base"], printed["top"])
     rows += measure.lap_joint(printed["base"], printed["top"])
     rows += [dict(found, name=f"cnc_{found['name']}") for found in measure.lap_joint(milled["base"], milled["top"])]
     rows += moving_parts(printed)
+    rows += _lens_and_feet(printed)
     for name in ("base", "top"):
         rows += measure.machinability(name, milled[name])
     return rows
+
+
+def _soundness(printed: dict[str, Part], milled: dict[str, Part]) -> list[dict]:
+    """Every part must be one valid solid. The small parts are the same in both variants."""
+    parts = {f"print_{name}": part for name, part in printed.items()} | {f"cnc_{name}": milled[name] for name in ("base", "top")}
+    return [
+        measure.row(f"solid_is_sound_{name}", measure.soundness_faults(part), 0, kind="max", unit="faults")
+        for name, part in parts.items()
+    ]
+
+
+def _silhouette(shells: dict[str, Part]) -> list[dict]:
+    """The outline is square, the frame round the key dish is even, and the CNC corners are what the
+    documents say they are."""
+    sizes = [shell.bounding_box().size for shell in shells.values()]
+    frame = measure.frame_widths(shells["print_top"])
+    corners = [measure.outline_corners(shells[f"cnc_{name}"], height) for name, height in OUTLINE_HEIGHTS.items()]
+    return [
+        measure.row("case_width_minus_depth", max(abs(size.X - size.Y) for size in sizes), 0.01, kind="max"),
+        measure.row("frame_side_minus_front", max(abs(frame[side] - frame["front"]) for side in ("left", "right")), 0.01, kind="max"),
+        measure.row("cnc_corner_curvature_at_join", max(join for join, _ in corners), measure.MAX_JOIN_CURVATURE, kind="max", unit="1/mm"),
+        measure.row("cnc_corner_smallest_radius", min(radius for _, radius in corners), MIN_CORNER_RADIUS),
+    ]
+
+
+def _lens_and_feet(parts: dict[str, Part]) -> list[dict]:
+    lens, top = parts["lens"], parts["top"]
+    feet = [parts["foot_strip_back"], parts["foot_strip_front"], parts["centre_pad"]]
+    carried = overlap_volume(Pos(0, 0, -LENS_PUSH) * lens, top)
+    return [
+        measure.row("lens_not_proud", top.bounding_box().max.Z - lens.bounding_box().max.Z, 0.0),
+        measure.row("lens_carried_by_ledges", carried, measure.RETENTION_VOLUME, unit="mm^3"),
+        measure.row("strip_covers_screws", measure.uncovered_screw_area(feet), 0.01, kind="max", unit="mm^2"),
+        measure.row("label_text_inside_field", _label_margin(), 1.0),
+    ]
+
+
+def _label_margin() -> float:
+    """Smallest distance from the engraved mark to the edge of its field, on the four sides."""
+    text, field = underside_mark().bounding_box(), label_field_outline().bounding_box()
+    return min(text.min.X - field.min.X, field.max.X - text.max.X, text.min.Y - field.min.Y, field.max.Y - text.max.Y)
 
 
 def printability() -> list[dict]:

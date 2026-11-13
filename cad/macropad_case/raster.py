@@ -26,6 +26,13 @@ CREASE_COSINE = 0.82  # faces meeting at more than about 35 degrees get an inked
 MESH_TOLERANCE = 0.03
 HATCH_LINE = 0.28  # share of the hatch spacing that a line takes
 HATCH_SHADE = 0.55  # how dark a hatch line is
+# What a metal surface mirrors, by the height (Z of the unit vector) its reflected ray points to: a
+# floor below, a lighter ceiling above, and a bright band low on the walls between them. A
+# 45 degree chamfer seen from above mirrors that band, so it is the brightest line on the part.
+STUDIO_FLOOR = 0.55
+STUDIO_CEILING = 0.8
+STUDIO_BAND = (0.9, 0.4, 0.22)  # extra brightness, the height it is centred on, its spread
+STUDIO_KEY_SHARE = 0.6  # how much of the key light counts toward the brightness of the studio
 MESH_ANGLE = 0.15
 
 
@@ -35,6 +42,7 @@ class Material:
     gloss: float = 0.15  # strength of the highlight
     glow: float = 0.0  # light the surface gives off, as a multiple of its colour
     hatch: float = 0.0  # mm between hatch lines on a cut face; negative leans them the other way
+    metal: float = 0.0  # share of the surface's light that is a mirror image of the studio, not diffuse
 
 
 @dataclass(frozen=True)
@@ -328,6 +336,7 @@ class _SceneArrays:
         self.gloss = np.array([mesh.material.gloss for mesh in scene.meshes])
         self.glow = np.array([mesh.material.glow for mesh in scene.meshes])
         self.hatch = np.array([mesh.material.hatch for mesh in scene.meshes])
+        self.metal = np.array([mesh.material.metal for mesh in scene.meshes])
         self.decals = {number: mesh.decal for number, mesh in enumerate(scene.meshes) if mesh.decal}
 
 
@@ -380,6 +389,7 @@ class _Surface:
             decal.paint(self.colour, self.position, self.normal, hit & (mesh == number))
         self.colour = self.colour * _hatching(self.position, np.where(hit, geometry.hatch[mesh], 0.0))[..., None]
         self.gloss = np.where(hit, geometry.gloss[mesh], 0.0)
+        self.metal = np.where(hit, geometry.metal[mesh], 0.0)
         self.glow_colour = np.where(hit[..., None], geometry.colour[mesh] * geometry.glow[mesh][..., None], 0.0)
         self.face = np.where(hit, geometry.face[safe], -1)
 
@@ -458,11 +468,13 @@ def _shade(surface: _Surface, lighting: Lighting, triangles: np.ndarray, ground_
     shadow = np.where(surface.covered, _cast_shadow(light_view, surface.position, normal), 0.0)
     shadow = gaussian_filter(shadow, 1.5 * SUPERSAMPLE)
     sky = 0.5 + 0.5 * normal[..., 2]
+    occlusion = _crease_occlusion(surface)
     diffuse = (
         lighting.key * np.clip(normal @ key, 0, None) * (1 - shadow)
         + lighting.fill * np.clip(normal @ fill, 0, None)
-        + lighting.ambient * (0.55 + 0.45 * sky) * _crease_occlusion(surface)
+        + lighting.ambient * (0.55 + 0.45 * sky) * occlusion
     )
+    diffuse = diffuse * (1 - surface.metal) + surface.metal * _studio(surface, lighting) * occlusion
     halfway = _unit(surface.toward_eye + key)
     highlight = surface.gloss * np.clip((normal * halfway).sum(axis=-1), 0, None) ** 40 * (1 - shadow)
     model = surface.colour * diffuse[..., None] + highlight[..., None] * lighting.key + surface.glow_colour
@@ -472,6 +484,17 @@ def _shade(surface: _Surface, lighting: Lighting, triangles: np.ndarray, ground_
     ground_light = (1 - lighting.shadow_strength * shadow) * (1 - CONTACT_STRENGTH * contact)
     ground = _background(lighting, *surface.covered.shape[::-1]) * ground_light[..., None]
     return np.where(surface.on_ground[..., None], ground, model)
+
+
+def _studio(surface: _Surface, lighting: Lighting) -> np.ndarray:
+    """How bright the studio is where each pixel's mirror image comes from."""
+    normal, toward_eye = surface.normal, surface.toward_eye
+    reflected_z = 2 * (normal * toward_eye).sum(axis=-1) * normal[..., 2] - toward_eye[..., 2]
+    above_floor = np.clip((reflected_z + 0.1) / 0.35, 0, 1)
+    walls = STUDIO_FLOOR + (STUDIO_CEILING - STUDIO_FLOOR) * above_floor * above_floor * (3 - 2 * above_floor)
+    extra, centre, spread = STUDIO_BAND
+    band = extra * np.exp(-((reflected_z - centre) / spread) ** 2)
+    return (walls + band) * (lighting.ambient + STUDIO_KEY_SHARE * lighting.key)
 
 
 def _crease_occlusion(surface: _Surface) -> np.ndarray:
@@ -497,6 +520,7 @@ def _edges(surface: _Surface, hit: np.ndarray) -> np.ndarray:
             jump = np.abs(surface.distance - other_distance) > 0.6
         crease = (surface.normal * other_normal).sum(axis=-1) < CREASE_COSINE
         differs = (surface.face != other_face) & (crease | jump) & (hit | np.roll(hit, 1, axis=axis))
+        np.moveaxis(differs, axis, 0)[0] = False  # `roll` wraps round: the first row and column have no neighbour
         ink = np.maximum(ink, differs)
     ink = maximum_filter(ink, size=SUPERSAMPLE)
     return gaussian_filter(ink, 0.4 * SUPERSAMPLE)

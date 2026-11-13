@@ -9,8 +9,11 @@ from .components import components
 from .small_parts import case_parts
 from .spec import PRINT, VARIANTS
 
-# The two diffusers are the same part turned around, and the two knobs are identical.
-EXPORT_NAMES = {"base": "base", "top": "top", "diffuser_left": "diffuser", "knob_left": "knob", "tilt_bar": "tilt_bar"}
+# The two light bars are the same part turned around; the two knobs and the two foot strips are identical.
+EXPORT_NAMES = {
+    "base": "base", "top": "top", "diffuser_left": "diffuser", "knob_left": "knob", "foot_strip_back": "foot_strip",
+    "centre_pad": "centre_pad", "tilt_bar": "tilt_bar", "lens": "lens",
+}
 VARIANT_PARTS = ("base", "top")
 
 
@@ -28,9 +31,12 @@ def export_all(exports: Path) -> int:
 
 
 def _export_part(part: Part, name: str, stem: Path, lie_on_bed: bool) -> None:
-    """STEP keeps the assembled position. STL lies the way it prints, when the part is printed."""
+    """STEP keeps the assembled position. STL lies the way it prints, when the part is printed.
+    The lens is cut from sheet: it gets a STEP here and its outline as DXF with the drawings."""
     stem.parent.mkdir(parents=True, exist_ok=True)
     export_step(part, stem.with_suffix(".step"))
+    if name not in PRINT_POSES:
+        return
     export_stl(PRINT_POSES[name] * part if lie_on_bed else part, stem.with_suffix(".stl"))
 
 
