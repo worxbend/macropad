@@ -150,17 +150,22 @@ Nothing below has been printed or milled. The model passes its own checks, and t
 <img src="images/cad/hero.png" alt="The printed variant: light top, dark base" width="48%"> <img src="images/cad/hero_aluminium.png" alt="The milled variant, drawn as silver aluminium" width="48%">
 
 - **Shape.** A 90.0 x 90.0 mm slab, 17.5 mm tall, with one flat top face and no text on it. The base
-  rim steps in under the top, so a 1.5 mm shadow gap runs all round the case where the two shells meet.
-  A 2.0 mm chamfer under the dark base makes it recede.
+  rim steps in under the top, so a 1.6 mm shadow gap runs all round the case where the two shells meet.
+  Round the USB opening the base runs up flush, so the opening sits in a plain pad. A 1.7 mm chamfer
+  under the dark base makes it recede.
 - **Two shells.** The base holds the PCB on six bosses. The top is the switch plate, the deck and the
   skirt in one piece. Six M2 screws go in from below and are hidden under the feet: M2 x 10 cutting
-  their own thread in a printed top, M2 x 8 in tapped holes in a milled one.
+  their own thread in a printed top (never M2 x 12: it comes through the skin under the dish floor),
+  M2 x 8 in tapped holes in a milled one. Posts under the hot-swap sockets carry the board while the
+  switches are pressed in.
 - **PCB thickness.** The board is ordered 1.6 mm thick; board houses allow about 10 %. On a 1.76 mm
   board the top rides 0.16 mm higher, the gap reads 1.66 mm and the lap joint still overlaps 0.44 mm.
-  On a thin board the PCB is loose until the screws pull it down. Both are checked, neither is measured.
+  On a thin board foam rings on the base bosses (a guess) still press the PCB up against the top.
+  Both are checked, neither is measured.
 - **Corners.** The milled outline has continuous-curvature corners (one quintic Bezier each). The
-  printed outline has R 6.4 arcs through the same apex, because the top prints standing on a side wall
-  and the flatter curve would hang too far over the bed.
+  printed outline has R 7.0 arcs through the same apex, because the top prints standing on a side wall
+  and the flatter curve would hang too far over the bed. Two break-away chairs carry the printed
+  corners where they leave the bed.
 - **Key dish.** The keys stand in a dish with 45° walls. The flat frame around it is 4.275 mm wide on
   the left, the right and in front.
 - **Lens.** A 39.0 x 14.6 x 1.0 mm cover glass with a black mask lies 0.12 mm under the top face over
@@ -170,15 +175,16 @@ Nothing below has been printed or milled. The model passes its own checks, and t
 - **Lap joint.** Ridges 0.6 mm tall on the base rim enter grooves in the top. They centre the top and
   close the straight path for light through the joint. The 0.2 mm fit is a guess until a test print.
 - **Light line.** One light bar per side stands in a channel in the base wall, behind a 1.0 mm skin, and
-  is held by the PCB edge. It shows only in the gap: a line 1.4 mm tall, 0.7 mm of it still in sight
-  from 45° above. The gap runs all round, but it lights only along these two 46.5 mm stretches. How
+  is held by the PCB edge. It shows only in the gap: a line 1.5 mm tall, 1.25 mm back, 0.65 mm of it
+  still in sight from 45° above. The gap runs all round, but it lights only along these two 46.5 mm stretches. How
   bright and how even is a guess.
-- **Knobs.** 14.4 mm, 30 fine grooves, flat top with a pointer dimple. Each stands in a shallow well in
-  the top face, so no bushing shows. Printed in both variants.
+- **Knobs.** 14.4 mm, 36 fine grooves in one band, flat top with a radial pointer line. Each seats on
+  the end of its shaft and stands in a shallow well in the top face, so no bushing shows. Three crush
+  ribs grip the shaft (a guess). Printed in both variants.
 - **Underside.** Two foot strips and a centre pad cover all six screws. The mark is engraved in the flat
   face of a printed base and laser-marked on a milled one.
-- **USB-C.** A 13.5 x 7.5 mm opening: a plug overmould up to 13.0 x 7.0 mm fits. The PCB edge shows in
-  it; a black solder mask hides it.
+- **USB-C.** A 13.5 x 7.5 mm opening with rounded corners and a 0.3 mm lead-in: a plug overmould up to
+  13.0 x 7.0 mm fits. The PCB edge shows in it; a black solder mask hides it.
 - **Size.** 90.0 x 90.0 x 17.5 mm, 31.0 mm from the underside to the top of the knobs. The foot strips
   add 1.2 mm.
 - **Two variants.** `cad/exports/print/` for FDM printing, `cad/exports/cnc/` for 3-axis milling with a

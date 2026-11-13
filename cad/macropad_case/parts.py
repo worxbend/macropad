@@ -321,7 +321,8 @@ def top_chairs() -> Part:
     reach = CASE.print_corner_radius
     room = [
         Polygon((left, -back), (left, -(back + reach)), (left + reach, -(back + reach)), align=None),
-        Polygon((left, -front), (left, -(front - reach)), (left + reach, -(front - reach)), align=None),
+        # Counter-clockwise, like the first, so the face looks up and `slab` extrudes it upward.
+        Polygon((left, -front), (left + reach, -(front - reach)), (left, -(front - reach)), align=None),
     ]
     profile = Sketch() + room - case_outline(PRINT, CASE.chair_gap)
     return slab(profile, (0, LEVELS.deck_top))

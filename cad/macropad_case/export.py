@@ -6,6 +6,7 @@ from build123d import Compound, Part, export_step, export_stl
 
 from .checks import PRINT_POSES
 from .components import components
+from .parts import top_chairs
 from .small_parts import case_parts
 from .spec import PRINT, VARIANTS
 
@@ -25,6 +26,8 @@ def export_all(exports: Path) -> int:
                 _export_part(parts[name], name, exports / variant / file_name, lie_on_bed=variant == PRINT)
             elif variant == PRINT:
                 _export_part(parts[name], name, exports / file_name, lie_on_bed=True)
+    # The break-away chairs print with the top, in the same pose: load both files together.
+    export_stl(PRINT_POSES["top"] * top_chairs(), exports / PRINT / "top_chairs.stl")
     export_step(_assembly(), exports / "assembly.step")
     print(f"exported to {exports}")
     return 0

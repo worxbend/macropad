@@ -5,37 +5,43 @@ from dataclasses import dataclass, field, replace
 from math import cos, radians, sin
 from pathlib import Path
 
+import os
+
 import numpy as np
 from build123d import Box, Part, Pos, Rot
 from PIL import Image, ImageDraw, ImageFont
 
-from . import signature
 from .checks import PRINT_POSES
 from .components import DISPLAY_ACTIVE_AREA, drawn_components
 from .raster import Camera, Decal, Lighting, Material, Mesh, Scene, mesh_of, render
+from .parts import underside_artwork
 from .small_parts import case_parts, lens_drawn, tilt_strip
 from .solids import LEGEND_FONT
 from .spec import BOARD, CASE, CNC, FRONT_ROW, LEVELS, PRINT, case_bounds, encoder_centres, foot_thickness, screw_rows
 
 IMAGE_SIZE = (1600, 1100)
 TILE_SIZE = (IMAGE_SIZE[0] // 2, IMAGE_SIZE[1] // 2)
-WORKERS = 4  # each view holds about 1 GB of buffers while it renders
+# Each view holds about 1 GB of buffers while it renders. Set CAD_RENDER_WORKERS lower on a small machine.
+WORKERS = int(os.environ.get("CAD_RENDER_WORKERS", "4"))
 
 GRAPHITE = Material((0.16, 0.17, 0.19), gloss=0.08)
 # The knobs are printed in both builds, in graphite, with a little shine so the grooves catch the light.
 GRAPHITE_KNOB = replace(GRAPHITE, gloss=0.3)
+# Dark switch housings in every colourway: the key field then reads as keys on a shaded bed.
 DARK_SWITCH = Material((0.16, 0.16, 0.17), gloss=0.3)
 MATERIALS = {
     "base": GRAPHITE, "top": Material((0.80, 0.79, 0.76), gloss=0.08), "tilt_bar": GRAPHITE, "knob": GRAPHITE_KNOB,
-    # Natural translucent: it passes the most light. Unlit it sits in the shadow of the gap.
-    "diffuser": Material((0.96, 0.94, 0.89), gloss=0.1),
-    "keycap": Material((0.93, 0.92, 0.90), gloss=0.12),
+    # Natural translucent: it passes the most light. Unlit, most of the light that falls on it passes
+    # into it, so it looks darker than an opaque part of its colour would (a guess).
+    "diffuser": Material((0.55, 0.54, 0.51), gloss=0.15),
+    # Capped below white, so the caps keep their shading under the key light.
+    "keycap": Material((0.93, 0.92, 0.90), gloss=0.12, ceiling=0.83),
     # Black-printed glass: no broad highlight, only the band of a window mirrored in it.
     "lens": Material((0.03, 0.03, 0.04), gloss=0.0, sheen=0.1),
     "foot_strip": Material((0.06, 0.06, 0.06), gloss=0.05),
     "centre_pad": Material((0.06, 0.06, 0.06), gloss=0.05),
     "tilt_strip": Material((0.06, 0.06, 0.06), gloss=0.05),
-    "switch": Material((0.88, 0.87, 0.84), gloss=0.2),  # Chalk: switches with light housings (see docs/parts.md)
+    "switch": DARK_SWITCH,
     "socket": Material((0.30, 0.31, 0.33)),
     "pcb": Material((0.05, 0.06, 0.06), gloss=0.3),  # black solder mask, an order option; the default is green
     "display_glass": Material((0.42, 0.45, 0.47), gloss=0.9),
@@ -46,25 +52,32 @@ MATERIALS = {
     "usb_plug": Material((0.12, 0.12, 0.13), gloss=0.25),
     "led": Material((1.0, 0.96, 0.80)),
     "button": Material((0.25, 0.25, 0.27)),
+    "boss_ring": Material((0.10, 0.10, 0.11), gloss=0.0),  # closed-cell foam
+    "display_foam": Material((0.14, 0.14, 0.15), gloss=0.0),
     "screw": Material((0.72, 0.73, 0.76), gloss=0.8),
 }
 LASER_MARK = Material((0.30, 0.31, 0.33), gloss=0.0)  # a guess: a dark mark on clear anodised aluminium
 MARK_OFF_SURFACE = 0.02  # mm below the underside, so the flat mark is drawn in front of it
 # A guess: warm white; the LEDs are RGB. The slit is lit indirectly, so its ends fade out.
-GLOWING_DIFFUSER = Material((0.98, 0.93, 0.82), glow=2.2, glow_fade=3.0)
+# Long fades: the slit is lit from the bar's ends inward, so the light dissolves there instead of stopping.
+GLOWING_DIFFUSER = Material((0.98, 0.93, 0.82), glow=2.2, glow_fade=8.0)
+# The light studio behind the darker colourways and the metal; the default warm grey suits Chalk.
+PALE_STUDIO = {"background_top": (0.93, 0.94, 0.95), "background_bottom": (0.80, 0.82, 0.85)}
 
 
 def _anodised(colour: tuple[float, float, float]) -> Material:
-    return Material(colour, gloss=0.6, metal=0.85)
+    # Capped, so the 45 degree dish wall does not blow out to white where it mirrors the soft boxes.
+    return Material(colour, gloss=0.6, metal=0.85, ceiling=0.72)
 
 
 def _two_tone(top: Material, base: Material, keycap: tuple[float, float, float]) -> dict[str, Material]:
-    """A colourway with dark switches. Its knobs stay printed graphite."""
-    return {"top": top, "base": base, "tilt_bar": base, "keycap": Material(keycap, gloss=0.12), "switch": DARK_SWITCH}
+    """A colourway's shells and keycaps. Its knobs stay printed graphite."""
+    return {"top": top, "base": base, "tilt_bar": base, "keycap": Material(keycap, gloss=0.12)}
 
 
 SILVER, SPACE_GREY = _anodised((0.77, 0.78, 0.80)), _anodised((0.33, 0.34, 0.36))
-# Each colourway: the scene it is drawn from and the materials it changes. Chalk is `MATERIALS` as it stands.
+# Each colourway: the scene it is drawn from and the materials it changes. Chalk is `MATERIALS` as it stands,
+# in the warm grey studio; the others are drawn in the pale one.
 ASSEMBLY, MILLED, CUT_ALONG, CUT_ACROSS, SHELLS, BED = "assembly", "milled", "cut_along", "cut_across", "shells", "bed"
 COLOURWAYS = {
     "Chalk, printed": (ASSEMBLY, {}),
@@ -75,6 +88,7 @@ COLOURWAYS = {
 }
 FROM_BELOW = Lighting(key_direction=(-0.45, -0.35, -0.82), key=1.15, ambient=0.6, fill=0.35)
 FROM_BEHIND = Lighting(key_direction=(-0.45, 0.6, 0.66))  # the default light only grazes the back wall
+FROM_ABOVE_BEHIND = Lighting(key_direction=(-0.15, 0.35, 0.92))
 RAKING = Lighting(key_direction=(-0.85, -0.3, 0.45), key=1.25, ambient=0.36, fill=0.3)  # low: for the knob grooves
 # High, so the knobs' shadows stay off the lens; dimmer, because it falls square on the top face.
 OVERHEAD = Lighting(key_direction=(-0.10, 0.06, 0.99), key=0.62, ambient=0.34)
@@ -84,9 +98,10 @@ NIGHT = Lighting(key=0.22, fill=0.06, ambient=0.10, background_top=(0.05, 0.05, 
 CENTRE = (BOARD.board.width / 2, -BOARD.board.height / 2, 3.0)
 FRONT_STRIP_LINE = screw_rows()[FRONT_ROW][0][1]
 FEET_BOTTOM = LEVELS.foot_recess_roof - foot_thickness(FRONT_ROW)
-# How far each part moves in the exploded view: up, and the light bars out to their sides as well.
+# How far each part moves in the exploded view: along Z only, so every part stays on its own axes. The
+# light bars go down with the base and out to their sides.
 EXPLODED_SHIFT = {
-    "base": (0, 0, -34.0), "diffuser_left": (-15.0, 0, -16.0), "diffuser_right": (15.0, 0, -16.0),
+    "base": (0, 0, -34.0), "diffuser_left": (-12.0, 0, -34.0), "diffuser_right": (12.0, 0, -34.0),
     "screw": (0, 0, -80.0), "foot_strip": (0, 0, -112.0), "centre_pad": (0, 0, -112.0),
     "top": (0, 0, 56.0), "lens": (0, 0, 68.0), "switch": (0, 0, 122.0), "keycap": (0, 0, 150.0), "knob": (0, 0, 170.0),
 }
@@ -127,7 +142,8 @@ def _camera(offset: tuple[float, float, float], target: tuple[float, float, floa
     return Camera(tuple(np.add(target, offset)), target, **options)
 
 
-HERO_CAMERA = _camera((-95, -170, 250), target=(CENTRE[0], CENTRE[1] - 2, 4.0), field_of_view=21)
+# High enough that the back row of keycaps leaves the whole display in sight.
+HERO_CAMERA = _camera((-72, -129, 278), target=(CENTRE[0], CENTRE[1] - 2, 4.0), field_of_view=21)
 # From below and in front, 25 degrees off square, with the front edge level in the picture.
 UNDERSIDE_CAMERA = _camera((0, -300 * sin(radians(25)), -300 * cos(radians(25))), field_of_view=24, up=(0.0, 1.0, 0.0))
 LEFT_KNOB = (encoder_centres()[0][0], -encoder_centres()[0][1], (LEVELS.knob_bottom + LEVELS.knob_top) / 2)
@@ -136,7 +152,8 @@ BACK_FACE = -case_bounds()[1][0]  # model Y of the back of the case
 
 def _colourway(name: str, picture: str, size: tuple[int, int] = IMAGE_SIZE) -> View:
     scene, materials = COLOURWAYS[name]
-    return View(picture, HERO_CAMERA, scene=scene, overrides=materials, size=size)
+    lighting = Lighting() if not materials else Lighting(**PALE_STUDIO)
+    return View(picture, HERO_CAMERA, lighting=lighting, scene=scene, overrides=materials, size=size)
 
 
 VIEWS = [
@@ -153,11 +170,12 @@ VIEWS = [
          scene=CUT_ACROSS, hidden=("tilt_bar", "usb_plug"), ground=None, outlined=True),
     View("back_usb", _camera((70, 250, 80), target=(CENTRE[0], -20.0, 2.0), field_of_view=19), lighting=FROM_BEHIND,
          hidden=()),
-    View("usb_detail", _camera((0, 130, 12), target=(BOARD.usb.x, BACK_FACE, -3.0), field_of_view=11),
-         lighting=FROM_BEHIND),
+    # 20 degrees off square, lit from above: the PCB edge inside the opening falls into shadow.
+    View("usb_detail", _camera((130 * sin(radians(20)), 130 * cos(radians(20)), 12),
+                               target=(BOARD.usb.x, BACK_FACE, -3.0), field_of_view=11), lighting=FROM_ABOVE_BEHIND),
     View("underside", UNDERSIDE_CAMERA, lighting=FROM_BELOW, ground=None),
-    View("underside_aluminium", UNDERSIDE_CAMERA, lighting=FROM_BELOW, scene=MILLED, ground=None,
-         overrides=COLOURWAYS["Silver, milled"][1]),
+    View("underside_aluminium", UNDERSIDE_CAMERA, lighting=replace(FROM_BELOW, **PALE_STUDIO), scene=MILLED,
+         ground=None, overrides=COLOURWAYS["Silver, milled"][1]),
     View("light_line", _camera((-150, -130, 22), target=(4.0, -50.0, -1.0), field_of_view=17), lighting=NIGHT,
          overrides={"diffuser": GLOWING_DIFFUSER}),
     View("deck_detail", _camera((-60, -105, 95), target=(36.0, -13.0, 9.0), field_of_view=20)),
@@ -213,7 +231,7 @@ def _scene_meshes() -> dict[str, dict[str, Mesh]]:
     }
     # The milled build differs from the printed one in its two shells and in the laser mark under the base.
     scenes[MILLED] = scenes[ASSEMBLY] | _meshes({name: milled[name] for name in ("base", "top")})
-    scenes[MILLED]["signature_mark"] = _laser_mark()
+    scenes[MILLED]["laser_mark"] = _laser_mark()
     # The cuts show the whole lens: a cut through its window would leave only the two borders.
     for name, (axis, position, keep) in CUTS.items():
         scenes[name] = _with_cut_faces(_meshes(_cut_open(assembly, axis, position, keep)), axis, position)
@@ -221,9 +239,9 @@ def _scene_meshes() -> dict[str, dict[str, Mesh]]:
 
 
 def _laser_mark() -> Mesh:
-    """The signature as a flat patch of colour on the underside of the milled base. It is not in the
-    solids: a laser mark has no depth worth drawing."""
-    artwork = Pos(0, 0, LEVELS.floor_bottom - MARK_OFF_SURFACE) * signature.artwork()
+    """The underside artwork (button legends, mark and signature) as a flat patch of colour on the
+    underside of the milled base. It is not in the solids: a laser mark has no depth worth drawing."""
+    artwork = Pos(0, 0, LEVELS.floor_bottom - MARK_OFF_SURFACE) * underside_artwork()
     seen_from_above = mesh_of(artwork, LASER_MARK)
     # The sketch faces up; turn every triangle over so the mark is seen from below.
     return replace(

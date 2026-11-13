@@ -114,9 +114,12 @@ JLCPCB does not place these. Buy them yourself. Numbers and notes are in [parts.
 2. 1 x 5-pin socket for the display, or use the one that comes with the nice!view.
 3. 1 x nice!view.
 4. 12 x MX-style switches and 12 x 1u keycaps.
-5. 6 x M2 socket-head cap screws (M2 x 10 for a printed case, M2 x 8 for a milled one), a 1.0 mm
-   cover glass lens with a printed black mask, thin double-sided tape and a small foam pad. The feet
-   are printed.
+5. 6 x M2 socket-head cap screws (M2 x 10 for a printed case, never 12; M2 x 8 for a milled one), a
+   1.0 mm cover glass lens with a printed black mask, thin double-sided tape, a 5 mm foam pad and six
+   0.8 mm foam rings. The feet are printed.
+6. A milled case: send `cad/exports/cnc/*.step` and the two CNC sheets. Proposed material and finish:
+   6061-T6, fine bead blast, Type II anodise 10 to 15 µm (a guess) dyed clear or grey, the six tapped
+   M2 holes masked or chased after anodising. Nothing has been milled yet.
 
 JLCPCB can also solder the encoders and the socket as through-hole parts. They sit on the top face,
 so that makes it a two-sided assembly order. This repository's placement list does not include them.

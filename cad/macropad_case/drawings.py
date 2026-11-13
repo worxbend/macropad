@@ -4,6 +4,7 @@ shop. Every dimension text is computed from the model, never typed in."""
 
 import shutil
 import subprocess
+import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -62,6 +63,12 @@ TABLE_AT = (312.0, 30.0)
 TABLE_LINE = 5.2
 NOTES_AT = 255.0  # sheet Y of the first line of notes on a part sheet
 NOTE_LINE = 3.5
+# The second column of notes on a part sheet, right of the lap detail: material, finish, workholding.
+SIDE_NOTES_AT = (312.0, 216.0)
+SIDE_NOTE_WIDTH = 62  # characters per line
+CUT_LETTER_ASIDE = 6.0  # sheet mm left of the cut line, so a letter clears dimension text centred on it
+# The back letter sits just inside the back face: above it run the dimension lines of the lens and the knobs.
+CUT_LETTER_INSIDE = 6.0
 PREVIEW_NAMES = {"general_arrangement": "general_arrangement", "base": "drawing_base", "top": "drawing_top"}
 
 
@@ -284,9 +291,11 @@ def _cut_line(frame: Frame, letter: str) -> str:
     """The trace of the section plane on a plan view, with its letter beside both ends."""
     x, top = frame.place(*_plan_point(SECTION_X, BACK - 4.5))
     _, bottom = frame.place(*_plan_point(SECTION_X, FRONT_SIDE + 4.5))
+    _, back_face = frame.place(*_plan_point(SECTION_X, BACK))
+    letter_x = x - CUT_LETTER_ASIDE
     return (f'<path class="centre" d="M{x:.2f},{top:.2f} V{bottom:.2f}"/>'
-            f'<text class="title" x="{x + 2:.2f}" y="{top + 5:.2f}">{letter}</text>'
-            f'<text class="title" x="{x + 2:.2f}" y="{bottom - 1.5:.2f}">{letter}</text>')
+            f'<text class="title" x="{letter_x:.2f}" y="{back_face + CUT_LETTER_INSIDE:.2f}">{letter}</text>'
+            f'<text class="title" x="{letter_x:.2f}" y="{bottom - 1.5:.2f}">{letter}</text>')
 
 
 @dataclass(frozen=True)
@@ -296,8 +305,19 @@ class PartSheet:
     fill: str
     detail_height: float  # model Z at the middle of the lap detail
     notes: tuple[str, ...]
+    side_notes: tuple[str, ...] = ()  # material, finish and workholding, in a column of their own
 
 
+# A proposal: nothing has been milled or anodised. The coating thickness and the blast are guesses.
+FINISH_NOTES = (
+    "MATERIAL AND FINISH (a proposal; nothing has been made)",
+    "6061-T6 aluminium.",
+    "Fine bead blast, 120 to 150 grit glass bead, then Type II sulphuric anodise, "
+    "10 to 15 um (a guess), dyed clear (Silver) or grey (Space grey).",
+    "Anodise grows each face by about 0.01 to 0.02 mm (a guess). Every fit on this sheet leaves 0.1 mm "
+    "or more per side, so no fit is cut to allow for it.",
+    "Break unmarked edges 0.05. The 0.3 chamfers are cosmetic: measure them after blasting.",
+)
 CORNER_NOTE = (
     f"Outline corners: one quintic Bezier each, control points {_mm(CASE.corner_setback)}, "
     f"{_mm(CASE.corner_setback * CASE.corner_handles[0])} and {_mm(CASE.corner_setback * CASE.corner_handles[1])} mm "
@@ -310,14 +330,22 @@ BASE_SHEET = PartSheet(
         f"Every pocket corner is R{_mm(CASE.cnc_corner_radius)} or larger: "
         f"a {_mm(2 * CASE.cnc_corner_radius)} mm end mill reaches them all.",
         f"45 degree chamfers: {_mm(CASE.underside_chamfer)} on the underside rim, "
-        f"{_mm(CASE.seam_chamfer)} on the outer skin's top edge at the gap, "
-        "the flank and ends of the lap ridges, the USB lead-in.",
-        "The rim inside the gap stays sharp: the top seats on it.",
+        f"the flank and ends of the lap ridges, {_mm(CASE.usb_mouth_chamfer)} on the USB lead-in.",
+        "The outer skin's top edge at the gap stays sharp, and so does the rim inside the gap: the top seats on it.",
         f"The rim steps in {_mm(CASE.gap_depth)} mm over the top {_mm(CASE.gap_height)} mm, all round: that is the gap. "
         "Cut it with the side of the end mill in setup 1.",
         f"Screw holes go straight through: M2 x {_mm(CASE.cnc_screw_length)} socket head from below.",
         CORNER_NOTE,
         "General tolerance: ISO 2768-m is a proposal. Nothing has been made or measured.",
+    ),
+    (
+        *FINISH_NOTES,
+        "WORKHOLDING",
+        "Setup 1: cut the light channels last, after the cavity is roughed: 3 mm 3-flute end mill, "
+        "0.2 mm radial steps, full depth in two passes. Each channel leaves a free 1.0 mm skin.",
+        "Setup 2 (underside up): sit the base on a plug fixture that fills the cavity, 0.1 mm smaller all "
+        "round and 4 mm tall, so it backs up both skins. Hold it with an M2 screw through each of the six "
+        "holes into the fixture, or in soft jaws cut to the outline below the gap. Never in a plain vise.",
     ),
 )
 TOP_SHEET = PartSheet(
@@ -337,6 +365,14 @@ TOP_SHEET = PartSheet(
         "the outline. The skirts are too thin for vise pressure.",
         CORNER_NOTE,
         "General tolerance: ISO 2768-m is a proposal. Nothing has been made or measured.",
+    ),
+    (
+        *FINISH_NOTES,
+        "Mask the six tapped M2 holes before anodising, or chase them with an M2 6H tap after it.",
+        "LENS OPENING",
+        f"Cut it in setup 2, after the lens recess, with the same 3 mm end mill, down to Z "
+        f"{_mm(LEVELS.lens_rib_bottom)} ({_mm(BOARD.stack.deck_top - LEVELS.lens_rib_bottom)} deep). The "
+        "recess and the opening then share their long walls without a step between setups.",
     ),
 )
 
@@ -551,6 +587,12 @@ def _part_labels(sheet: PartSheet) -> list[str]:
         f'<text class="small" x="20" y="{NOTES_AT + NOTE_LINE * index:.1f}">{escape(note)}</text>'
         for index, note in enumerate(notes)
     )
+    side_x, side_y = SIDE_NOTES_AT
+    side_lines = [line for note in sheet.side_notes for line in textwrap.wrap(note, SIDE_NOTE_WIDTH)]
+    side_block = "".join(
+        f'<text class="small" x="{side_x}" y="{side_y + NOTE_LINE * index:.1f}">{escape(line)}</text>'
+        for index, line in enumerate(side_lines)
+    )
     detail_x, detail_y = DETAIL_AT
     return [
         f'<text class="title" x="{TABLE_AT[0]}" y="16">{escape(sheet.title)}</text>',
@@ -559,7 +601,7 @@ def _part_labels(sheet: PartSheet) -> list[str]:
         title(PART_CUT, _side_point(FRONT_SIDE, 0)[0], 14, "SECTION B-B"),
         f'<text class="title" x="{detail_x - 34:.1f}" y="{detail_y - 44:.1f}">'
         f"GAP AND LAP JOINT, front wall, {DETAIL_SCALE:g}:1</text>",
-        datum, block,
+        datum, block, side_block,
     ]
 
 

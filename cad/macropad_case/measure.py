@@ -51,7 +51,7 @@ LAYER_TOLERANCE = 0.02
 FRAME_SAMPLES = 400  # points along the rim of the key dish where the frame's width is taken
 OUTER_FACE_DEPTH = 0.6  # mm; a face this close to the outline, and facing out, is part of the outside
 FACING_OUT = 0.5  # cosine between a face's normal and the outline's outward normal, in plan
-SUPPORT_REACH = 0.5  # mm; a chair this close under an overhanging face carries it
+SUPPORT_REACH = 0.5  # mm; a chair, or the bed, this close under an overhanging face carries it
 INSERT_STEP = 0.5  # mm between the heights a part is tried at while it is lowered into place
 
 
@@ -160,9 +160,10 @@ def frame_swell(top: Part) -> float:
 
 def steepest_unsupported_outer_face(posed: Part, chairs: Part, outward_in_plan) -> float:
     """Largest angle from vertical, in degrees, of a downward face on the outside of a part in its bed
-    pose that no chair carries. `outward_in_plan(triangle centres)` gives, in the bed frame, the
-    outline's outward normal and how deep inside the outline each centre lies; faces deeper than
-    `OUTER_FACE_DEPTH`, or not facing out, belong to the inside and are left out."""
+    pose that neither a chair nor the bed carries: either must lie `SUPPORT_REACH` or less under it.
+    `outward_in_plan(triangle centres)` gives, in the bed frame, the outline's outward normal and how
+    deep inside the outline each centre lies; faces deeper than `OUTER_FACE_DEPTH`, or not facing out,
+    belong to the inside and are left out."""
     mesh = mesh_of(posed, ANY_MATERIAL)
     triangles = mesh.triangles
     normal = np.cross(triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0])
@@ -170,8 +171,9 @@ def steepest_unsupported_outer_face(posed: Part, chairs: Part, outward_in_plan) 
     normal = normal / np.where(area == 0, 1.0, area)[:, None]
     centres = triangles.mean(axis=1)
     outward, depth = outward_in_plan(centres)
-    off_the_bed = triangles[:, :, 2].max(axis=1) > posed.bounding_box().min.Z + PROBE
-    on_the_outside = (depth < OUTER_FACE_DEPTH) & ((normal * outward).sum(axis=1) > FACING_OUT) & (area > 1e-9) & off_the_bed
+    off_the_bed = centres[:, 2] > posed.bounding_box().min.Z + SUPPORT_REACH
+    on_the_outside = (depth < OUTER_FACE_DEPTH) & ((normal * outward).sum(axis=1) > FACING_OUT) & (area > 1e-9)
+    on_the_outside &= off_the_bed
     downward = on_the_outside & (normal[:, 2] < -1e-6)
     if not downward.any():
         return 0.0
@@ -183,8 +185,13 @@ def steepest_unsupported_outer_face(posed: Part, chairs: Part, outward_in_plan) 
         batch = slice(start, start + RAYS_PER_BATCH)
         distance, _ = _first_hit(centres[chosen[batch]], down[batch], chair_triangles)
         carried[batch] = distance <= SUPPORT_REACH
-    angles = np.degrees(np.arcsin(np.clip(-normal[chosen, 2], 0, 1)))
-    return float(angles[~carried].max(initial=0.0))
+    # The angle from the CAD face itself: on a curved face a flat triangle tilts off the true surface.
+    faces = posed.faces()
+    exact = np.array([
+        tuple(faces[int(mesh.face_ids[index])].normal_at(Vector(*centres[index]))) for index in chosen[~carried]
+    ]).reshape(-1, 3)
+    angles = np.degrees(np.arcsin(np.clip(-exact[:, 2], 0, 1)))
+    return float(angles.max(initial=0.0))
 
 
 def insertion_clearance(part: Part, height: float, obstacles: list[Part]) -> float:

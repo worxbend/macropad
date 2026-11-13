@@ -92,7 +92,7 @@
     },
     {
       "name": "arc_corner_found",
-      "found": 0.156,
+      "found": 0.143,
       "expected": "more than 0.01",
       "ok": true
     },
@@ -161,17 +161,41 @@
       "found": 0.0,
       "expected": "less than 15.0",
       "ok": true
+    },
+    {
+      "name": "face_between_layers_found",
+      "found": 1.0,
+      "expected": "equal to 1",
+      "ok": true
+    },
+    {
+      "name": "faces_on_layers_pass",
+      "found": 0.0,
+      "expected": "equal to 0",
+      "ok": true
+    },
+    {
+      "name": "bare_curve_off_the_bed_found",
+      "found": 62.857,
+      "expected": "more than 45.0",
+      "ok": true
+    },
+    {
+      "name": "chaired_curve_off_the_bed_passes",
+      "found": 44.285,
+      "expected": "less than 45.000001",
+      "ok": true
     }
   ],
   "interference": [
     {
       "variant": "print",
-      "pairs": 582,
+      "pairs": 659,
       "clashes": []
     },
     {
       "variant": "cnc",
-      "pairs": 582,
+      "pairs": 659,
       "clashes": []
     }
   ],
@@ -274,8 +298,50 @@
     },
     {
       "name": "knob_to_well_floor_when_pressed",
-      "value_mm": 0.3,
+      "value_mm": 0.7,
       "minimum_mm": 0.3,
+      "ok": true
+    },
+    {
+      "name": "knob_to_well_floor_short_shaft",
+      "value_mm": 0.4,
+      "minimum_mm": 0.0,
+      "ok": true
+    },
+    {
+      "name": "knob_pocket_to_bushing_when_pressed",
+      "value_mm": 0.8,
+      "minimum_mm": 0.3,
+      "ok": true
+    },
+    {
+      "name": "knob_pocket_to_bushing_short_shaft",
+      "value_mm": 0.5,
+      "minimum_mm": 0.3,
+      "ok": true
+    },
+    {
+      "name": "knob_rib_interference",
+      "value_mm": 0.12,
+      "minimum_mm": 0.08,
+      "ok": true
+    },
+    {
+      "name": "knob_rib_interference_headroom",
+      "value_mm": 0.08,
+      "minimum_mm": 0.0,
+      "ok": true
+    },
+    {
+      "name": "bushing_to_hole_after_shrink",
+      "value_mm": 0.275,
+      "minimum_mm": 0.2,
+      "ok": true
+    },
+    {
+      "name": "cnc_bushing_to_hole",
+      "value_mm": 0.3,
+      "minimum_mm": 0.2,
       "ok": true
     },
     {
@@ -345,6 +411,36 @@
       "ok": true
     },
     {
+      "name": "pcb_clamped_thin_pcb",
+      "value_mm": 0.24,
+      "minimum_mm": 0.0,
+      "ok": true
+    },
+    {
+      "name": "boss_ring_not_solid_thick_pcb",
+      "value_mm": 0.24,
+      "minimum_mm": 0.16000000000000003,
+      "ok": true
+    },
+    {
+      "name": "display_foam_compression",
+      "value_mm": 0.9,
+      "minimum_mm": 0.5,
+      "ok": true
+    },
+    {
+      "name": "socket_post_to_socket",
+      "value_mm": 0.15,
+      "minimum_mm": 0.05,
+      "ok": true
+    },
+    {
+      "name": "socket_post_gap_headroom",
+      "value_mm": 0.05,
+      "minimum_mm": 0.0,
+      "ok": true
+    },
+    {
       "name": "tilt_bar_to_screw_counterbore",
       "value_mm": 0.6,
       "minimum_mm": 0.5,
@@ -376,19 +472,19 @@
     },
     {
       "name": "knob_covers_bushing_hole",
-      "value_mm": 3.05,
+      "value_mm": 3.0,
       "minimum_mm": 3.0,
       "ok": true
     },
     {
       "name": "knob_groove_land",
-      "value_mm": 0.608,
+      "value_mm": 0.557,
       "minimum_mm": 0.45,
       "ok": true
     },
     {
       "name": "knob_well_to_lens_recess",
-      "value_mm": 1.025,
+      "value_mm": 1.005,
       "minimum_mm": 1.0,
       "ok": true
     },
@@ -442,19 +538,19 @@
     },
     {
       "name": "lens_to_dish_rim",
-      "value_mm": 1.35,
+      "value_mm": 1.4,
       "minimum_mm": 1.0,
       "ok": true
     },
     {
       "name": "lens_recess_bridge_margin",
-      "value_mm": 0.0,
+      "value_mm": 0.1,
       "minimum_mm": 0.0,
       "ok": true
     },
     {
       "name": "print_lens_fit_after_bridge_sag",
-      "value_mm": 0.1,
+      "value_mm": 0.12,
       "minimum_mm": 0.0,
       "ok": true
     },
@@ -490,19 +586,19 @@
     },
     {
       "name": "light_slit_height",
-      "value_mm": 1.4,
+      "value_mm": 1.5,
       "minimum_mm": 0.8,
       "ok": true
     },
     {
       "name": "light_line_visible_at_45deg",
-      "value_mm": 0.7,
+      "value_mm": 0.65,
       "minimum_mm": 0.6,
       "ok": true
     },
     {
       "name": "led_to_light_bar",
-      "value_mm": 0.3,
+      "value_mm": 0.35,
       "minimum_mm": 0.1,
       "ok": true
     },
@@ -568,7 +664,13 @@
     },
     {
       "name": "chamfer_to_strip_recess",
-      "value_mm": 0.5,
+      "value_mm": 0.736,
+      "minimum_mm": 0.6,
+      "ok": true
+    },
+    {
+      "name": "cnc_chamfer_to_strip_recess",
+      "value_mm": 0.565,
       "minimum_mm": 0.4,
       "ok": true
     },
@@ -620,7 +722,7 @@
     },
     {
       "name": "thinnest_wall_diffuser",
-      "value": 1.25,
+      "value": 1.289,
       "limit": 0.8,
       "kind": "min",
       "unit": "mm",
@@ -636,7 +738,7 @@
     },
     {
       "name": "thinnest_wall_tilt_bar",
-      "value": 1.015,
+      "value": 0.935,
       "limit": 0.8,
       "kind": "min",
       "unit": "mm",
@@ -788,9 +890,25 @@
     },
     {
       "name": "cnc_corner_smallest_radius",
-      "value": 4.714,
-      "limit": 4.66,
+      "value": 5.155,
+      "limit": 5.1,
       "kind": "min",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "print_frame_swell_at_dish_corners",
+      "value": 0.403,
+      "limit": 0.65,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "cnc_frame_swell_at_dish_corners",
+      "value": 0.899,
+      "limit": 1.2,
+      "kind": "max",
       "unit": "mm",
       "ok": true
     },
@@ -819,8 +937,16 @@
       "ok": true
     },
     {
+      "name": "top_corner_boss_wall",
+      "value": 1.6,
+      "limit": 1.5,
+      "kind": "min",
+      "unit": "mm",
+      "ok": true
+    },
+    {
       "name": "diffuser_stopped_outward",
-      "value": 80.875,
+      "value": 62.167,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -828,7 +954,7 @@
     },
     {
       "name": "diffuser_stopped_inward",
-      "value": 31.184,
+      "value": 31.185,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -836,7 +962,7 @@
     },
     {
       "name": "diffuser_stopped_upward",
-      "value": 38.75,
+      "value": 36.44,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -844,7 +970,7 @@
     },
     {
       "name": "diffuser_stopped_downward",
-      "value": 31.959,
+      "value": 28.919,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -852,7 +978,7 @@
     },
     {
       "name": "diffuser_stopped_to_the_back",
-      "value": 3.057,
+      "value": 3.032,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -860,7 +986,7 @@
     },
     {
       "name": "diffuser_stopped_to_the_front",
-      "value": 3.057,
+      "value": 3.032,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -900,7 +1026,7 @@
     },
     {
       "name": "lap_stops_top_sliding_front",
-      "value": 8.612,
+      "value": 8.686,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -940,7 +1066,7 @@
     },
     {
       "name": "cnc_lap_stops_top_sliding_front",
-      "value": 8.612,
+      "value": 8.686,
       "limit": 0.05,
       "kind": "min",
       "unit": "mm^3",
@@ -948,7 +1074,7 @@
     },
     {
       "name": "pressed_keycap_to_top",
-      "value": 0.563,
+      "value": 0.944,
       "limit": 0.4,
       "kind": "min",
       "unit": "mm",
@@ -956,7 +1082,7 @@
     },
     {
       "name": "keycap_to_knob",
-      "value": 4.763,
+      "value": 4.75,
       "limit": 2.0,
       "kind": "min",
       "unit": "mm",
@@ -964,7 +1090,7 @@
     },
     {
       "name": "keycap_to_knob_right",
-      "value": 4.763,
+      "value": 4.75,
       "limit": 2.0,
       "kind": "min",
       "unit": "mm",
@@ -972,7 +1098,7 @@
     },
     {
       "name": "pressed_knob_to_top",
-      "value": 0.3,
+      "value": 0.7,
       "limit": 0.3,
       "kind": "min",
       "unit": "mm",
@@ -980,8 +1106,16 @@
     },
     {
       "name": "knob_to_top",
-      "value": 0.8,
+      "value": 1.096,
       "limit": 0.8,
+      "kind": "min",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "pressed_knob_to_bushing",
+      "value": 0.5,
+      "limit": 0.3,
       "kind": "min",
       "unit": "mm",
       "ok": true
@@ -1044,7 +1178,7 @@
     },
     {
       "name": "label_text_inside_field",
-      "value": 1.118,
+      "value": 1.029,
       "limit": 1.0,
       "kind": "min",
       "unit": "mm",
@@ -1052,7 +1186,7 @@
     },
     {
       "name": "shell_seat_area",
-      "value": 256.508,
+      "value": 253.858,
       "limit": 150.0,
       "kind": "min",
       "unit": "mm^2",
@@ -1060,7 +1194,7 @@
     },
     {
       "name": "shell_seat_area_left",
-      "value": 36.033,
+      "value": 34.343,
       "limit": 5.0,
       "kind": "min",
       "unit": "mm^2",
@@ -1068,7 +1202,7 @@
     },
     {
       "name": "shell_seat_area_right",
-      "value": 36.033,
+      "value": 34.343,
       "limit": 5.0,
       "kind": "min",
       "unit": "mm^2",
@@ -1076,7 +1210,7 @@
     },
     {
       "name": "shell_seat_area_back",
-      "value": 66.132,
+      "value": 67.375,
       "limit": 5.0,
       "kind": "min",
       "unit": "mm^2",
@@ -1084,7 +1218,7 @@
     },
     {
       "name": "shell_seat_area_front",
-      "value": 121.72,
+      "value": 119.454,
       "limit": 5.0,
       "kind": "min",
       "unit": "mm^2",
@@ -1092,7 +1226,7 @@
     },
     {
       "name": "cnc_shell_seat_area",
-      "value": 252.225,
+      "value": 249.545,
       "limit": 150.0,
       "kind": "min",
       "unit": "mm^2",
@@ -1100,7 +1234,7 @@
     },
     {
       "name": "cnc_shell_seat_area_left",
-      "value": 34.957,
+      "value": 33.051,
       "limit": 5.0,
       "kind": "min",
       "unit": "mm^2",
@@ -1108,7 +1242,7 @@
     },
     {
       "name": "cnc_shell_seat_area_right",
-      "value": 34.957,
+      "value": 33.051,
       "limit": 5.0,
       "kind": "min",
       "unit": "mm^2",
@@ -1116,7 +1250,7 @@
     },
     {
       "name": "cnc_shell_seat_area_back",
-      "value": 65.022,
+      "value": 66.916,
       "limit": 5.0,
       "kind": "min",
       "unit": "mm^2",
@@ -1124,7 +1258,7 @@
     },
     {
       "name": "cnc_shell_seat_area_front",
-      "value": 120.519,
+      "value": 118.076,
       "limit": 5.0,
       "kind": "min",
       "unit": "mm^2",
@@ -1164,7 +1298,7 @@
     },
     {
       "name": "legend_stroke",
-      "value": 0.484,
+      "value": 0.715,
       "limit": 0.45,
       "kind": "min",
       "unit": "mm",
@@ -1172,8 +1306,104 @@
     },
     {
       "name": "underside_mark_stroke",
-      "value": 0.477,
+      "value": 0.706,
       "limit": 0.45,
+      "kind": "min",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "legend_bed_engraving",
+      "value": 0.715,
+      "limit": 0.7,
+      "kind": "min",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "underside_mark_bed_engraving",
+      "value": 0.706,
+      "limit": 0.7,
+      "kind": "min",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "knob_pointer_bed_engraving",
+      "value": 0.735,
+      "limit": 0.7,
+      "kind": "min",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "layer_aligned_base",
+      "value": 0.0,
+      "limit": 0,
+      "kind": "max",
+      "unit": "faces",
+      "ok": true
+    },
+    {
+      "name": "layer_aligned_diffuser_left",
+      "value": 0.0,
+      "limit": 0,
+      "kind": "max",
+      "unit": "faces",
+      "ok": true
+    },
+    {
+      "name": "layer_aligned_knob_left",
+      "value": 0.0,
+      "limit": 0,
+      "kind": "max",
+      "unit": "faces",
+      "ok": true
+    },
+    {
+      "name": "layer_aligned_foot_strip_back",
+      "value": 0.0,
+      "limit": 0,
+      "kind": "max",
+      "unit": "faces",
+      "ok": true
+    },
+    {
+      "name": "layer_aligned_centre_pad",
+      "value": 0.0,
+      "limit": 0,
+      "kind": "max",
+      "unit": "faces",
+      "ok": true
+    },
+    {
+      "name": "layer_aligned_tilt_bar",
+      "value": 0.0,
+      "limit": 0,
+      "kind": "max",
+      "unit": "faces",
+      "ok": true
+    },
+    {
+      "name": "show_face_overhang_print_top",
+      "value": 45.0,
+      "limit": 45.0,
+      "kind": "max",
+      "unit": "degrees",
+      "ok": true
+    },
+    {
+      "name": "lens_reveal_spread_print",
+      "value": 0.03,
+      "limit": 0.05,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "bar_insert_after_pcb",
+      "value": 0.15,
+      "limit": 0.1,
       "kind": "min",
       "unit": "mm",
       "ok": true
@@ -1197,7 +1427,7 @@
     },
     {
       "name": "cnc_base_undercut_area",
-      "value": 0.686,
+      "value": 0.683,
       "limit": 5.0,
       "kind": "max",
       "unit": "mm^2",
@@ -1238,7 +1468,7 @@
     },
     {
       "name": "cnc_top_undercut_area",
-      "value": 1.55,
+      "value": 1.531,
       "limit": 5.0,
       "kind": "max",
       "unit": "mm^2",
@@ -1259,6 +1489,22 @@
       "kind": "max",
       "unit": "mm^2",
       "ok": true
+    },
+    {
+      "name": "cnc_top_deepest_pocket_over_tool",
+      "value": 2.333,
+      "limit": 3.0,
+      "kind": "max",
+      "unit": "of 1",
+      "ok": true
+    },
+    {
+      "name": "cnc_base_deepest_pocket_over_tool",
+      "value": 2.327,
+      "limit": 3.0,
+      "kind": "max",
+      "unit": "of 1",
+      "ok": true
     }
   ],
   "printability": [
@@ -1266,9 +1512,11 @@
       "part": "base",
       "widest_span_mm": 7.4,
       "limit_mm": 15.0,
-      "bed_contact_mm2": 5825.1,
+      "bed_contact_mm2": 5856.4,
       "minimum_contact_mm2": 100.0,
       "height_over_narrow_side": 0.1,
+      "aspect_limit": 11.0,
+      "brim_required": false,
       "longest_bridge_mm": 6.8,
       "bridge_at": [
         2.8,
@@ -1286,15 +1534,17 @@
     },
     {
       "part": "top",
-      "widest_span_mm": 3.9,
+      "widest_span_mm": 4.26,
       "limit_mm": 15.0,
-      "bed_contact_mm2": 604.1,
+      "bed_contact_mm2": 682.7,
       "minimum_contact_mm2": 100.0,
       "height_over_narrow_side": 10.6,
-      "longest_bridge_mm": 14.4,
+      "aspect_limit": 11.0,
+      "brim_required": true,
+      "longest_bridge_mm": 14.3,
       "bridge_at": [
         -7.2,
-        -18.2,
+        -18.1,
         60.5
       ],
       "deepest_cantilever_mm": 1.2,
@@ -1308,37 +1558,41 @@
     },
     {
       "part": "diffuser_left",
-      "widest_span_mm": 0.7,
+      "widest_span_mm": 0.58,
       "limit_mm": 15.0,
-      "bed_contact_mm2": 238.0,
+      "bed_contact_mm2": 239.7,
       "minimum_contact_mm2": 100.0,
       "height_over_narrow_side": 0.3,
+      "aspect_limit": 11.0,
+      "brim_required": false,
       "longest_bridge_mm": 0.0,
       "bridge_at": [
         -0.3,
         -73.7,
-        -0.6
+        -0.7
       ],
-      "deepest_cantilever_mm": 0.1,
+      "deepest_cantilever_mm": 0.0,
       "cantilever_at": [
-        1.8,
-        -72.7,
-        -1.6
+        -0.3,
+        -73.7,
+        -0.7
       ],
       "cantilever_limit_mm": 1.5,
       "ok": true
     },
     {
       "part": "knob_left",
-      "widest_span_mm": 0.8,
+      "widest_span_mm": 0.9,
       "limit_mm": 15.0,
-      "bed_contact_mm2": 140.5,
+      "bed_contact_mm2": 137.4,
       "minimum_contact_mm2": 100.0,
       "height_over_narrow_side": 0.9,
-      "longest_bridge_mm": 0.2,
+      "aspect_limit": 11.0,
+      "brim_required": false,
+      "longest_bridge_mm": 0.3,
       "bridge_at": [
         13.4,
-        5.5,
+        5.4,
         -21.5
       ],
       "deepest_cantilever_mm": 0.0,
@@ -1357,6 +1611,8 @@
       "bed_contact_mm2": 581.7,
       "minimum_contact_mm2": 100.0,
       "height_over_narrow_side": 0.2,
+      "aspect_limit": 11.0,
+      "brim_required": false,
       "longest_bridge_mm": 0.0,
       "bridge_at": [
         -0.6,
@@ -1379,6 +1635,8 @@
       "bed_contact_mm2": 171.8,
       "minimum_contact_mm2": 100.0,
       "height_over_narrow_side": 0.2,
+      "aspect_limit": 11.0,
+      "brim_required": false,
       "longest_bridge_mm": 0.0,
       "bridge_at": [
         38.1,
@@ -1398,9 +1656,11 @@
       "part": "tilt_bar",
       "widest_span_mm": 7.4,
       "limit_mm": 15.0,
-      "bed_contact_mm2": 306.2,
+      "bed_contact_mm2": 303.5,
       "minimum_contact_mm2": 100.0,
       "height_over_narrow_side": 0.7,
+      "aspect_limit": 11.0,
+      "brim_required": false,
       "longest_bridge_mm": 6.8,
       "bridge_at": [
         2.8,
@@ -1409,7 +1669,7 @@
       ],
       "deepest_cantilever_mm": 0.0,
       "cantilever_at": [
-        -1.9,
+        -1.8,
         -8.1,
         -9.2
       ],

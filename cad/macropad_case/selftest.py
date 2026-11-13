@@ -1,7 +1,9 @@
 """The checks, checked: each one is run on a small solid with a known fault and must report it, and on
 a sound solid and must stay quiet. A check that cannot fail proves nothing about the case."""
 
-from math import radians, tan
+from math import cos, radians, sin, tan
+
+import numpy as np
 
 from build123d import Axis, Box, Cylinder, Part, Plane, Polygon, Pos, extrude, fillet
 
@@ -13,6 +15,8 @@ BLOCK = (30.0, 30.0, 10.0)
 POCKET = (10.0, 10.0, 6.0)  # open at the top of the block
 OUTLINE_SLAB = (0.0, 2.0)
 LEDGE_SPAN = 58.0  # about the length of the key dish's wall
+LYING_ROD = (5.0, 20.0)  # radius and length of a rod lying on the bed, as a printed corner leaves it
+CHAIR_GAP = 0.25
 
 
 def _block() -> Part:
@@ -77,6 +81,8 @@ def run() -> list[dict]:
         ("sloped_ledge_prints", _longest_bridge(_ledged_wall(sloped=True)), "less than", CASE.max_bridge),
         ("face_between_layers_found", measure.misaligned_faces(_stepped_block(1.5)), "equal to", 1),
         ("faces_on_layers_pass", measure.misaligned_faces(_stepped_block(1.6)), "equal to", 0),
+        ("bare_curve_off_the_bed_found", _rod_overhang(chaired=False), "more than", 45.0),
+        ("chaired_curve_off_the_bed_passes", _rod_overhang(chaired=True), "less than", 45.0 + 1e-6),
     ]
     return [_verdict(*case) for case in cases]
 
@@ -129,6 +135,25 @@ def _ledged_wall(sloped: bool) -> Part:
 def _stepped_block(step: float) -> Part:
     """A block 2 mm tall with a step at the given height: one horizontal face besides the top and the bed."""
     return Pos(0, 0, 1) * Box(10, 10, 2) - Pos(2.5, 0, step + 1) * Box(5, 12, 2)
+
+
+def _rod_overhang(chaired: bool) -> float:
+    """Steepest unsupported outer face of a rod lying on the bed along Y, with or without a chair
+    under each side up to where its surface reaches 45 degrees."""
+    radius, length = LYING_ROD
+    rod = Pos(0, 0, radius) * (Plane.XZ * Cylinder(radius, length))
+    reach, height = radius * sin(radians(45)), radius * (1 - cos(radians(45)))
+    room = Pos(0, 0, height / 2) * Box(2 * reach, length, height)
+    chairs = room - Pos(0, 0, radius) * (Plane.XZ * Cylinder(radius + CHAIR_GAP, length + 2))
+    if not chaired:
+        chairs = Pos(0, 0, -100) * Box(1, 1, 1)  # nothing near the rod
+
+    def outward(centres: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        radial = centres * np.array((1.0, 0.0, 1.0)) - np.array((0.0, 0.0, radius))
+        distance = np.linalg.norm(radial, axis=1)
+        return radial / np.maximum(distance, 1e-9)[:, None], radius - distance
+
+    return measure.steepest_unsupported_outer_face(rod, chairs, outward)
 
 
 def _verdict(name: str, found: float, relation: str, limit: float) -> dict:

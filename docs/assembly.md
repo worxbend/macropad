@@ -95,8 +95,9 @@ Unplug the board first.
 5. Plug in the USB cable. Expected: a splash screen with the firmware version, then the MEDIA
    layer with its key labels.
 
-The display is held only by its header. Stick a foam pad, about 8 x 10 mm and 4 mm thick (a guess),
-on the PCB under the display's free end, between X 48 and 58 mm. It is not optional: without it one
+The display is held only by its header. Stick an open-cell foam pad, 10 x 10 mm and 5 mm thick (a
+guess), on the PCB under the display's free end, between X 48 and 58 mm. The module squeezes it to
+4.1 mm. It is not optional: without it one
 degree of tilt lifts the free end 0.6 mm, and the case leaves 0.38 mm between the glass and the lens,
 on the assumption that the glass is 7.0 mm above the board.
 
@@ -114,6 +115,7 @@ Print or mill the parts first: [cad/README.md](../cad/README.md#printing).
    in the top without force. The 0.2 mm fit is a guess; a tight printer may need a light pass with
    a file on the ridges.
 3. Try a light bar in its channel. It must drop in from above, lip up and toward the inside.
+   Punch six foam rings, 5 mm across with a 2.4 mm hole, from 0.8 mm closed-cell foam tape (a guess).
 4. Try a switch in one plate cut-out. It must clip in.
 5. Try the lens in its recess. It must drop in and lie just under the top face. The lens is 1.0 mm
    cover glass cut to `cad/exports/drawings/lens.dxf`, with the black mask of `lens_mask.dxf`
@@ -124,30 +126,31 @@ Print or mill the parts first: [cad/README.md](../cad/README.md#printing).
 
 <img src="images/cad/section_light_line.png" alt="Cut through one LED, the PCB edge and the light bar" width="48%"> <img src="images/cad/shells_inside.png" alt="Both shells from inside" width="48%">
 
-1. Stand one light bar in each side channel of the base, lip up and toward the inside. Hold each
-   against the outer skin with a strip of tape over the gap: until the board is in, nothing stops a
-   bar tipping inward, and the board's edge LEDs pass the lip with 0.15 mm to spare.
-2. Lower the board onto the six bosses, USB port toward the opening at the back. The board edges
-   now hold the bars in.
-3. Check through the base holes that the BOOT and RESET buttons sit behind their holes.
-4. Stick a piece of thin double-sided tape (0.13 mm, a guess) on each of the two lens ledges in the
+1. Put a foam ring on each of the six base bosses.
+2. Lower the board onto the rings, USB port toward the opening at the back.
+3. Drop one light bar into each side channel, between the board edge and the outer skin, lip up and
+   toward the inside. It passes the board's edge with 0.15 mm to spare; the edge then holds it in.
+4. Check through the base holes that the BOOT and RESET buttons sit behind their holes.
+5. Stick a piece of thin double-sided tape (0.13 mm, a guess) on each of the two lens ledges in the
    top. Press the lens in, mask down, window toward the right knob.
-5. Put the top on. The lap ridges centre it. The knob shafts must pass through their holes without
-   touching, and the display must sit under the lens. Peel off the tape over the gap.
-6. Turn the pad over. Fit the six screws from below: four in the corners, two in the middle. Printed
-   case: M2 x 10. Milled case: M2 x 8; a 10 mm screw bottoms in its tapped hole.
-7. Tighten each screw until the head is seated, no further. In a printed top the screws cut their
-   own thread in 1.8 mm holes and strip easily.
+6. Put the top on. The lap ridges centre it. The knob shafts must pass through their holes without
+   touching, and the display must sit under the lens.
+7. Turn the pad over. Fit the six screws from below: four in the corners, two in the middle. Printed
+   case: **M2 x 10 only, never M2 x 12**: a 12 mm screw comes through the skin under the dish floor.
+   Milled case: M2 x 8; a 10 mm screw bottoms in its tapped hole.
+8. Tighten each screw until the head is seated, no further. The top seats on the base rim and the
+   rings press the board up against it. In a printed top the screws cut their own thread in 1.8 mm
+   holes and strip easily.
 
 ## 8. Switches, keycaps, knobs, feet
 
 1. Check each switch for bent pins. Straighten them first; a bent pin folds under the switch.
 2. Press each switch through the plate into its socket. Press straight down, near the middle of the
-   board first. The board rests on six bosses only, so do not use force.
+   board first. A post under each socket carries the board, 0.15 mm under it; still, do not use force.
 3. Fit the keycaps.
-4. Push the knobs onto the shafts. The pointer dimple goes on the side of the shaft's flat. Three
-   ribs in the bore grip the shaft; they may need a firm push. A pressed knob stops 0.3 mm above the
-   floor of its well.
+4. Push the knobs onto the shafts until each stops on the end of its shaft. The pointer line goes on
+   the side of the shaft's flat. Three ribs in the bore press on the shaft; they need a firm push. A
+   pressed knob stops 0.7 mm above the floor of its well.
 5. Run the final test below before the next step.
 6. Stick the two foot strips and the centre pad into their recesses on the underside, last. They
    cover all six screws.

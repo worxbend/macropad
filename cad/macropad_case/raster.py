@@ -41,6 +41,11 @@ STUDIO_KEY_SHARE = 0.6  # how much of the key light counts toward the brightness
 SHEEN_ACROSS = (0.8, 0.6, 0.0)
 SHEEN_PLACE = (-0.3, 0.22)
 MESH_ANGLE = 0.15
+GROUND_SHADOW_SPREAD = 0.02  # share of the image width over which a shadow on the ground goes soft
+# Bead-blasted metal: each pixel's normal is tilted at random by about this much (radians, ~2 degrees)
+# before the studio is mirrored in it, so a flat face reads as satin and not as flat grey.
+BEAD_BLAST = 0.035
+BEAD_BLAST_SEED = 7  # the same grain in every picture
 
 
 @dataclass(frozen=True)
@@ -52,6 +57,9 @@ class Material:
     metal: float = 0.0  # share of the surface's light that is a mirror image of the studio, not diffuse
     sheen: float = 0.0  # brightness of the window a glossy sheet mirrors, as a band across the mesh
     glow_fade: float = 0.0  # mm; the glow fades out over this length at both ends of the mesh's longest side
+    # Linear brightness the lit surface may reach, glow aside: white plastic and bright metal keep some
+    # shading instead of clipping to flat white.
+    ceiling: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -118,8 +126,9 @@ class Lighting:
     key: float = 0.95
     fill: float = 0.25
     ambient: float = 0.42
-    background_top: tuple[float, float, float] = (0.93, 0.94, 0.95)
-    background_bottom: tuple[float, float, float] = (0.80, 0.82, 0.85)
+    # A warm grey studio, darker than a light top, so the top's outline stays clear against it.
+    background_top: tuple[float, float, float] = (0.77, 0.75, 0.72)
+    background_bottom: tuple[float, float, float] = (0.64, 0.62, 0.59)
     shadow_strength: float = 0.55
     bloom: float = 0.0  # how much glowing surfaces spill light around themselves
     edge_ink: float = 0.45
@@ -348,6 +357,7 @@ class _SceneArrays:
         self.metal = np.array([mesh.material.metal for mesh in scene.meshes])
         self.sheen = np.array([mesh.material.sheen for mesh in scene.meshes])
         self.glow_fade = np.array([mesh.material.glow_fade for mesh in scene.meshes])
+        self.ceiling = np.array([mesh.material.ceiling for mesh in scene.meshes])
         # Each mesh's extent, for the effects that are laid out along it.
         points = [mesh.triangles.reshape(-1, 3) for mesh in scene.meshes]
         low, high = np.array([each.min(axis=0) for each in points]), np.array([each.max(axis=0) for each in points])
@@ -410,6 +420,7 @@ class _Surface:
         self.colour = self.colour * _hatching(self.position, np.where(hit, geometry.hatch[mesh], 0.0))[..., None]
         self.gloss = np.where(hit, geometry.gloss[mesh], 0.0)
         self.metal = np.where(hit, geometry.metal[mesh], 0.0)
+        self.ceiling = np.where(hit, geometry.ceiling[mesh], np.inf)
         glow = geometry.glow[mesh] * _end_fade(geometry, mesh, self.position)
         self.glow_colour = np.where(hit[..., None], geometry.colour[mesh] * glow[..., None], 0.0)
         self.sheen = np.where(hit, geometry.sheen[mesh] * _sheen_band(geometry, mesh, self.position), 0.0)
@@ -504,8 +515,8 @@ def _shade(surface: _Surface, lighting: Lighting, triangles: np.ndarray, ground_
     light_view = _DepthMap(triangles, lighting.key_direction)
     key = light_view.toward_viewer
     fill = _unit(np.array((-key[0] * 1.5, -key[1], 0.35)))
-    shadow = np.where(surface.covered, _cast_shadow(light_view, surface.position, normal), 0.0)
-    shadow = gaussian_filter(shadow, 1.5 * SUPERSAMPLE)
+    cast = np.where(surface.covered, _cast_shadow(light_view, surface.position, normal), 0.0)
+    shadow = gaussian_filter(cast, 1.5 * SUPERSAMPLE)
     sky = 0.5 + 0.5 * normal[..., 2]
     occlusion = _crease_occlusion(surface)
     diffuse = (
@@ -513,23 +524,41 @@ def _shade(surface: _Surface, lighting: Lighting, triangles: np.ndarray, ground_
         + lighting.fill * np.clip(normal @ fill, 0, None)
         + lighting.ambient * (0.55 + 0.45 * sky) * occlusion
     )
-    diffuse = diffuse * (1 - surface.metal) + surface.metal * _studio(surface, lighting) * occlusion
+    blasted = _bead_blasted(normal, surface.metal > 0)
+    diffuse = diffuse * (1 - surface.metal) + surface.metal * _studio(blasted, surface.toward_eye, lighting) * occlusion
     halfway = _unit(surface.toward_eye + key)
-    highlight = surface.gloss * np.clip((normal * halfway).sum(axis=-1), 0, None) ** 40 * (1 - shadow)
+    highlight = surface.gloss * np.clip((blasted * halfway).sum(axis=-1), 0, None) ** 40 * (1 - shadow)
     window = surface.sheen * (lighting.ambient + STUDIO_KEY_SHARE * lighting.key)
-    model = (surface.colour * diffuse[..., None] + (highlight * lighting.key + window)[..., None]
-             + surface.glow_colour)
+    lit = surface.colour * diffuse[..., None] + (highlight * lighting.key + window)[..., None]
+    model = np.minimum(lit, surface.ceiling[..., None]) + surface.glow_colour
     if ground_z is None:
         return model
     contact = _contact_shadow(triangles, ground_z, surface.position)
-    ground_light = (1 - lighting.shadow_strength * shadow) * (1 - CONTACT_STRENGTH * contact)
+    on_ground = _spread_on_ground(cast, surface.on_ground)
+    ground_light = (1 - lighting.shadow_strength * on_ground) * (1 - CONTACT_STRENGTH * contact)
     ground = _background(lighting, *surface.covered.shape[::-1]) * ground_light[..., None]
     return np.where(surface.on_ground[..., None], ground, model)
 
 
-def _studio(surface: _Surface, lighting: Lighting) -> np.ndarray:
+def _spread_on_ground(shadow: np.ndarray, on_ground: np.ndarray) -> np.ndarray:
+    """The shadow on the ground, blurred over the ground alone: a soft edge, as from a large light,
+    without the model's own shading leaking into it."""
+    spread = GROUND_SHADOW_SPREAD * shadow.shape[1]
+    ground = on_ground.astype(float)
+    weight = gaussian_filter(ground, spread)
+    return gaussian_filter(shadow * ground, spread) / np.maximum(weight, 1e-6)
+
+
+def _bead_blasted(normal: np.ndarray, chosen: np.ndarray) -> np.ndarray:
+    """The normals with a fine random tilt where `chosen`, as on a bead-blasted surface."""
+    if not chosen.any():
+        return normal
+    grain = np.random.default_rng(BEAD_BLAST_SEED).normal(0.0, BEAD_BLAST, normal.shape)
+    return np.where(chosen[..., None], _unit(normal + grain), normal)
+
+
+def _studio(normal: np.ndarray, toward_eye: np.ndarray, lighting: Lighting) -> np.ndarray:
     """How bright the studio is where each pixel's mirror image comes from."""
-    normal, toward_eye = surface.normal, surface.toward_eye
     reflected_z = np.clip(2 * (normal * toward_eye).sum(axis=-1) * normal[..., 2] - toward_eye[..., 2], -1, 1)
     sky = STUDIO_HORIZON + (STUDIO_ZENITH - STUDIO_HORIZON) * np.clip(reflected_z, 0, 1) ** 0.7
     floor = STUDIO_FLOOR_AT_HORIZON + (STUDIO_NADIR - STUDIO_FLOOR_AT_HORIZON) * np.clip(-reflected_z, 0, 1)
