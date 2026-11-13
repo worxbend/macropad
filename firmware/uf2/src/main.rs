@@ -17,10 +17,11 @@ fn main() {
 
 fn convert(elf_path: &str, uf2_path: &str) -> Result<(), Box<dyn Error>> {
     let elf = fs::read(elf_path).map_err(|error| format!("{elf_path}: {error}"))?;
+    macropad_uf2::check_bootable(&elf).map_err(|error| format!("{elf_path}: {error}"))?;
     let uf2 = macropad_uf2::elf_to_uf2(&elf).map_err(|error| format!("{elf_path}: {error}"))?;
     fs::write(uf2_path, &uf2).map_err(|error| format!("{uf2_path}: {error}"))?;
     println!(
-        "{uf2_path}: {} blocks, {} bytes of flash",
+        "{uf2_path}: bootable RP2350 image, {} blocks, {} bytes of flash",
         uf2.len() / 512,
         uf2.len() / 2
     );

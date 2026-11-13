@@ -1,10 +1,16 @@
 """Small build123d helpers that take board coordinates (X right, Y toward the front, Z up from the PCB top)."""
 
-from build123d import Box, Circle, Cylinder, Part, Pos, Rectangle, RectangleRounded, Sketch, extrude, offset
+from pathlib import Path
+
+import matplotlib
+from build123d import Axis, Box, Circle, Cylinder, Kind, Part, Plane, Pos, Rectangle, RectangleRounded, Sketch, Text
+from build123d import chamfer, extrude, loft, mirror, offset
 
 from .spec import BOARD, CASE, CNC
 
 CUT_OVERSHOOT = 0.01  # cuts run past the face they open so no zero-thickness skin is left
+# DejaVu Sans Bold ships inside matplotlib, so the engraved text is the same on every machine.
+LEGEND_FONT = Path(matplotlib.get_data_path()) / "fonts" / "ttf" / "DejaVuSans-Bold.ttf"
 
 
 def box(x: tuple[float, float], y: tuple[float, float], z: tuple[float, float]) -> Part:
@@ -54,6 +60,31 @@ def pcb_outline(grow: float = 0.0) -> Sketch:
 
 def slab(profile: Sketch, z: tuple[float, float]) -> Part:
     return Pos(0, 0, z[0]) * extrude(profile, z[1] - z[0])
+
+
+def chamfered_slab(profile: Sketch, z: tuple[float, float], bottom: float, top: float) -> Part:
+    """A slab with its bottom and top outlines cut back at 45 degrees. A zero leaves that outline sharp."""
+    body = slab(profile, z)
+    if bottom:
+        body = chamfer(body.edges().group_by(Axis.Z)[0], bottom)
+    if top:
+        body = chamfer(body.edges().group_by(Axis.Z)[-1], top)
+    return body
+
+
+def flared_cut(opening: Sketch, top: float, depth: float) -> Part:
+    """A 45 degree lead-in around `opening`: `depth` deep, widest at the face z = `top`."""
+    narrow = Pos(0, 0, top - depth) * opening
+    wide = Pos(0, 0, top + CUT_OVERSHOOT) * offset(opening, amount=depth + CUT_OVERSHOOT, kind=Kind.INTERSECTION)
+    return loft([narrow.face(), wide.face()], ruled=True)
+
+
+def legend(text: str, size: float, centre: tuple[float, float], read_from_below: bool = False) -> Sketch:
+    """Engraving artwork at a board position. Text read from below is mirrored left to right."""
+    artwork = Text(text, size, font_path=str(LEGEND_FONT))
+    if read_from_below:
+        artwork = mirror(artwork, Plane.YZ)
+    return Pos(centre[0], -centre[1]) * artwork
 
 
 def millable(pocket: Sketch, variant: str) -> Sketch:

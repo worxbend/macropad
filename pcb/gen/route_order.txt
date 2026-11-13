@@ -1,0 +1,16 @@
+# MCU nets that are routed before the others, first line first.
+# Written by `build.py order`. Run it again after moving parts or pins, when `build.py place`
+# reports unrouted pads.
+KEY0
+KEY11
+KEY5
+KEY9
+DISP_SCK
+ENC_R_B
+SWDIO
+KEY1
+ENC_R_SW
+KEY8
+DISP_MOSI
+KEY7
+KEY6

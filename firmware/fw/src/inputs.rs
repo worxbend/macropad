@@ -6,7 +6,7 @@ use macropad_core::engine::Inputs;
 use macropad_core::keymap::KEY_COUNT;
 use macropad_core::quadrature::{QuadratureDecoder, Rotation};
 
-use crate::board::Knob;
+use crate::board::{Knob, KNOB_DETENTS};
 
 struct KnobScanner {
     pins: Knob,
@@ -18,7 +18,7 @@ impl KnobScanner {
     fn new(pins: Knob) -> Self {
         Self {
             pins,
-            decoder: QuadratureDecoder::default(),
+            decoder: QuadratureDecoder::new(KNOB_DETENTS),
             switch: Debouncer::default(),
         }
     }

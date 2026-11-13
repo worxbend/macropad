@@ -1,0 +1,43 @@
+# Checks that need neither Docker nor hardware.
+# Not run here: the KiCad build and DRC (Docker, `make pcb`) and the case checks (`make cad`,
+# a build123d environment and several minutes). Run `make test` locally for the case.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pcb-and-docs:
+    name: PCB generator tests, documentation paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      # The runner's own Python 3.12 is enough: both targets use the standard library only.
+      - run: make pcb-test
+      - run: make docs-check
+
+  firmware:
+    name: Firmware tests, board check, HID check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      # Host crates only, with the runner's stable Rust. The microcontroller build, rustfmt and
+      # clippy stay in `make firmware`: they depend on the toolchain version and no version is pinned.
+      - run: cargo test --locked
+        working-directory: firmware
+      - run: make -C firmware check-pins check-hid

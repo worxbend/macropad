@@ -1,4 +1,6 @@
 //! USB device: a boot keyboard (with lock LEDs) and a consumer-control interface.
+//!
+//! It also watches the bus state: while the host sleeps, the rest of the firmware goes dark.
 
 use core::sync::atomic::Ordering;
 
@@ -10,11 +12,11 @@ use embassy_usb::class::hid::{
     self, HidBootProtocol, HidReader, HidReaderWriter, HidSubclass, HidWriter, ReportId, RequestHandler,
 };
 use embassy_usb::control::OutResponse;
-use embassy_usb::{Builder, UsbDevice};
+use embassy_usb::{Builder, Handler, UsbDevice};
 use macropad_core::engine::Reports;
 use static_cell::StaticCell;
 
-use crate::state::{HOST_LOCKS, REPORTS};
+use crate::state::{HOST_ASLEEP, HOST_LOCKS, REPORTS};
 use crate::Irqs;
 
 /// pid.codes test IDs: fine for development on your own desk, not for a product that ships.
@@ -67,9 +69,27 @@ impl RequestHandler for LockLeds {
     }
 }
 
+/// Follows what the host does to the bus.
+struct BusWatcher;
+
+impl Handler for BusWatcher {
+    /// A suspended bus allows a device 2.5 mA, so the LEDs must go off while the host sleeps.
+    fn suspended(&mut self, suspended: bool) {
+        HOST_ASLEEP.store(suspended, Ordering::Relaxed);
+    }
+
+    /// After a bus reset the host is awake and will send its lock states again.
+    fn reset(&mut self) {
+        HOST_ASLEEP.store(false, Ordering::Relaxed);
+        HOST_LOCKS.store(0, Ordering::Relaxed);
+    }
+}
+
 /// Builds the USB device and starts its tasks.
 pub fn start(spawner: Spawner, usb: Peri<'static, USB>) {
+    static BUS_WATCHER: StaticCell<BusWatcher> = StaticCell::new();
     let mut builder = builder(Driver::new(usb, Irqs));
+    builder.handler(BUS_WATCHER.init(BusWatcher));
     let (lock_reader, keyboard) = keyboard_interface(&mut builder);
     let consumer = consumer_interface(&mut builder);
     // Each task below is spawned exactly once, so its single-slot pool cannot be full.
@@ -86,6 +106,8 @@ fn builder(driver: UsbDriver) -> Builder<'static, UsbDriver> {
     config.manufacturer = Some("worxbend");
     config.product = Some("macropad");
     config.max_power = 500;
+    // No remote wakeup: embassy-rp 0.10's USB driver answers `remote_wakeup` with `Unsupported`,
+    // so the descriptor must not promise it. A key press cannot wake a sleeping host.
     Builder::new(
         driver,
         config,

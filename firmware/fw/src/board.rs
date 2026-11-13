@@ -2,13 +2,18 @@
 //! `tools/check_pins.py` fails when this file disagrees with it.
 
 use embassy_rp::gpio::{AnyPin, Input, Pull};
-use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIN_22, PIN_23, PIN_24, PIN_9, PIO0, SPI0, USB};
+use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIN_22, PIN_23, PIN_24, PIN_9, PIO0, SPI0, USB, WATCHDOG};
 use embassy_rp::{Peri, Peripherals};
 use macropad_core::keymap::KEY_COUNT;
+use macropad_core::quadrature::Detents;
 use macropad_core::sharp_lcd::Orientation;
 
 /// Change to `Rotated180` if the picture is upside down on your module.
 pub const DISPLAY_ORIENTATION: Orientation = Orientation::Normal;
+
+/// The Alps EC11E18244AU has 36 detents and 18 pulses per turn: two clicks per electrical cycle.
+/// `tools/check_pins.py` fails when this disagrees with the encoder part in `board.toml`.
+pub const KNOB_DETENTS: Detents = Detents::PerHalfCycle;
 
 pub struct Knob {
     pub a: Input<'static>,
@@ -38,6 +43,7 @@ pub struct Board {
     pub display: DisplayPins,
     pub leds: LedPins,
     pub usb: Peri<'static, USB>,
+    pub watchdog: Peri<'static, WATCHDOG>,
 }
 
 impl Board {
@@ -56,6 +62,7 @@ impl Board {
             display: DisplayPins { spi: p.SPI0, sck: p.PIN_22, mosi: p.PIN_23, cs: p.PIN_24, dma: p.DMA_CH1 },
             leds: LedPins { pio: p.PIO0, data: p.PIN_9, dma: p.DMA_CH0 },
             usb: p.USB,
+            watchdog: p.WATCHDOG,
         }
     }
 }

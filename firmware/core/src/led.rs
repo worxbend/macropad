@@ -1,4 +1,5 @@
-//! Colours for the eight side LEDs, and the cap that keeps them inside the USB power budget.
+//! Colours and base effects for the eight side LEDs, and the cap that keeps them inside the
+//! USB power budget. What the pad adds on top (ripples, fades, dimming) is in `lighting`.
 
 pub const LED_COUNT: usize = 8;
 pub type LedFrame = [Rgb; LED_COUNT];
@@ -12,9 +13,25 @@ const CHANNEL_FULL_MA: u32 = 20;
 /// Current of one LED's controller with all channels off.
 const IDLE_MA_PER_LED: u32 = 1;
 
+/// Brightness steps the user can pick; `MAX_LEVEL` is full brightness, 0 is off.
+pub const MAX_LEVEL: u8 = 8;
+
+/// Time between two frames sent to the chain.
+pub const FRAME_PERIOD_MS: u32 = 20;
+/// One frame on the wire: 24 bits per LED at 1.25 us per bit.
+const FRAME_ON_WIRE_US: u32 = LED_COUNT as u32 * 24 * 5 / 4;
+/// The longest latch (reset) gap any SK6812 SIDE datasheet revision asks for.
+const LATCH_GAP_US: u32 = 200;
+const _: () = assert!(
+    FRAME_PERIOD_MS * 1000 >= FRAME_ON_WIRE_US + LATCH_GAP_US,
+    "the data line must rest long enough between frames for the LEDs to latch"
+);
+
 const BREATH_PERIOD_MS: u32 = 4000;
 const BREATH_FLOOR: u32 = 24;
 const RAINBOW_PERIOD_MS: u32 = 5120;
+const WAVE_PERIOD_MS: u32 = 2400;
+const WAVE_FLOOR: u32 = 40;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Rgb {
@@ -24,11 +41,22 @@ pub struct Rgb {
 }
 
 impl Rgb {
+    pub const BLACK: Self = Self::new(0, 0, 0);
+    pub const WHITE: Self = Self::new(255, 255, 255);
+
     pub const fn new(r: u8, g: u8, b: u8) -> Self {
         Self { r, g, b }
     }
 
-    fn scaled(self, numerator: u32, denominator: u32) -> Self {
+    /// The colour `amount`/255 of the way from `self` to `toward`.
+    pub fn mixed(self, toward: Self, amount: u8) -> Self {
+        let amount = u32::from(amount);
+        let mix = |from: u8, to: u8| ((u32::from(from) * (255 - amount) + u32::from(to) * amount) / 255) as u8;
+        Self::new(mix(self.r, toward.r), mix(self.g, toward.g), mix(self.b, toward.b))
+    }
+
+    /// The colour at `numerator`/`denominator` of its brightness. The fraction must not exceed 1.
+    pub fn scaled(self, numerator: u32, denominator: u32) -> Self {
         let scale = |channel: u8| (u32::from(channel) * numerator / denominator) as u8;
         Self::new(scale(self.r), scale(self.g), scale(self.b))
     }
@@ -43,6 +71,8 @@ pub enum Effect {
     Solid,
     Breathing,
     Rainbow,
+    /// A bright spot of the layer colour that runs around the pad.
+    Wave,
 }
 
 /// The frame an effect shows at `time_ms`, before current limiting.
@@ -51,7 +81,17 @@ pub fn render(effect: Effect, color: Rgb, time_ms: u32) -> LedFrame {
         Effect::Solid => [color; LED_COUNT],
         Effect::Breathing => [color.scaled(breath_level(time_ms), 255); LED_COUNT],
         Effect::Rainbow => core::array::from_fn(|led| rainbow_color(led, time_ms)),
+        Effect::Wave => core::array::from_fn(|led| color.scaled(wave_level(led, time_ms), 255)),
     }
+}
+
+/// Triangle wave between `WAVE_FLOOR` and 255, one crest spread over the whole chain.
+fn wave_level(led: usize, time_ms: u32) -> u32 {
+    let turn = (time_ms % WAVE_PERIOD_MS) * 256 / WAVE_PERIOD_MS;
+    let spread = (led * 256 / LED_COUNT) as u32;
+    let phase = (turn + 256 - spread) % 256;
+    let rising = if phase < 128 { phase } else { 256 - phase };
+    WAVE_FLOOR + rising * (255 - WAVE_FLOOR) / 128
 }
 
 /// Triangle wave between `BREATH_FLOOR` and 255.
@@ -102,7 +142,7 @@ pub fn within_current_budget(frame: LedFrame) -> LedFrame {
 mod tests {
     use super::*;
 
-    const WHITE: Rgb = Rgb::new(255, 255, 255);
+    const WHITE: Rgb = Rgb::WHITE;
 
     #[test]
     fn full_white_is_dimmed_to_the_budget() {
@@ -126,7 +166,7 @@ mod tests {
 
     #[test]
     fn no_effect_ever_exceeds_the_budget_after_capping() {
-        for effect in [Effect::Solid, Effect::Breathing, Effect::Rainbow] {
+        for effect in [Effect::Solid, Effect::Breathing, Effect::Rainbow, Effect::Wave] {
             for time_ms in (0..10_000).step_by(37) {
                 let capped = within_current_budget(render(effect, WHITE, time_ms));
                 assert!(
@@ -166,5 +206,25 @@ mod tests {
         assert_eq!(color_wheel(85), Rgb::new(0, 255, 0));
         assert_eq!(color_wheel(170), Rgb::new(0, 0, 255));
         assert_eq!(color_wheel(255), Rgb::new(255, 0, 0));
+    }
+
+    #[test]
+    fn mixing_runs_from_one_colour_to_the_other() {
+        let (from, to) = (Rgb::new(10, 200, 0), Rgb::new(250, 0, 0));
+        assert_eq!(from.mixed(to, 0), from);
+        assert_eq!(from.mixed(to, 255), to);
+        assert_eq!(Rgb::BLACK.mixed(WHITE, 128), Rgb::new(128, 128, 128));
+    }
+
+    #[test]
+    fn the_wave_has_one_crest_that_moves_along_the_chain() {
+        let brightest = |time_ms| {
+            let frame = render(Effect::Wave, WHITE, time_ms);
+            (0..LED_COUNT).max_by_key(|&led| frame[led].r).unwrap()
+        };
+        assert_eq!(brightest(WAVE_PERIOD_MS / 2), 0);
+        assert_eq!(brightest(WAVE_PERIOD_MS / 2 + WAVE_PERIOD_MS / 4), 2);
+        let frame = render(Effect::Wave, WHITE, 0);
+        assert!(frame.iter().all(|led| u32::from(led.r) >= WAVE_FLOOR));
     }
 }

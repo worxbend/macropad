@@ -45,6 +45,11 @@ pub fn text_width(text: &str) -> usize {
     (text.chars().count() * ADVANCE).saturating_sub(1)
 }
 
+/// Width of a string drawn with `Framebuffer::big_text`.
+pub fn big_text_width(text: &str, scale: usize) -> usize {
+    text_width(text) * scale
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -77,5 +82,10 @@ mod tests {
         assert_eq!(text_width(""), 0);
         assert_eq!(text_width("A"), 5);
         assert_eq!(text_width("AB"), 11);
+    }
+
+    #[test]
+    fn big_text_width_scales_the_gaps_too() {
+        assert_eq!(big_text_width("AB", 3), 33);
     }
 }

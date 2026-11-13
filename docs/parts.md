@@ -1,9 +1,17 @@
 # Parts and sourcing
 
-Stock and library type come from the JLCPCB parts search on 2026-11-12. Stock moves fast: check again before ordering.
+Everything needed for one pad: the parts JLCPCB places, the parts you solder, and the case hardware.
+How to place the order is in [ordering.md](ordering.md).
+
+Stock and library type come from the JLCPCB parts search on 2026-11-12. They were not looked up again
+since. Stock moves fast: check again before ordering.
 "Basic" parts have no setup fee at JLCPCB. "Extended" parts cost a one-time fee per distinct part.
+This board has 10 extended parts. The fee and the prices are not listed here, because they change.
 
 ## Machine-placed (JLCPCB assembly, bottom face)
+
+69 parts in 21 BOM lines. The table matches `pcb/fab/bom-jlcpcb.csv`, which `make pcb-fab` checks
+against the circuit.
 
 | Part | Value | Qty | JLCPCB # | Type | Stock | Why this one |
 |---|---|---|---|---|---|---|
@@ -31,12 +39,33 @@ Stock and library type come from the JLCPCB parts search on 2026-11-12. Stock mo
 
 ## Hand-soldered (through-hole, top face)
 
-| Part | Qty | JLCPCB # | Note |
+These are not in the BOM file. The board's top silkscreen names them: `ENC1`, `ENC2`, `J2`.
+
+| Part | Ref | Qty | JLCPCB # | Note |
+|---|---|---|---|---|
+| Alps EC11E18244AU encoder | ENC1, ENC2 | 2 | C202365 | 20 mm D-shaft, push switch, 36 detents and 18 pulses per turn. 2 553 in stock. The firmware's knob decoder is set for this detent count; another EC11 variant needs `KNOB_DETENTS` changed in `firmware/fw/src/board.rs`. |
+| 1 x 5 socket, 2.54 mm | J2 | 1 | C50950 | For the nice!view. Use the low-profile sockets that ship with the display if you have them: the case assumes the glass 7.0 mm above the PCB (`MEASURE`). |
+
+## Plugged in, no solder
+
+| Part | Qty | Where to buy | Note |
 |---|---|---|---|
-| Alps EC11E18244AU encoder | 2 | C202365 | 2 553 in stock. JLCPCB can also place it as a through-hole part. |
-| 1 x 5 socket, 2.54 mm | 1 | C50950 | For the nice!view. Use the low-profile sockets that ship with the display if you have them. |
-| nice!view | 1 | not at JLCPCB | From keyboard shops (Typeractive, splitkb, and others). |
-| MX switches and keycaps | 12 | not at JLCPCB | |
+| nice!view | 1 | Keyboard shops (Typeractive, splitkb, and others) | Sharp LS011B7DH03 on a small board, 36 x 14 mm, 5 pins |
+| MX-style switches | 12 | Any keyboard shop | 3-pin or 5-pin. They clip into the 1.5 mm plate and plug into the sockets. |
+| Keycaps, 1u | 12 | Any keyboard shop | The renders show DSA. The case check assumes the skirt stays 2.0 mm above the plate when pressed (`MEASURE`). |
+
+## Case hardware
+
+| Part | Qty | Note |
+|---|---|---|
+| M2 x 10 socket-head cap screw, ISO 4762 | 6 | 3.8 mm head. They cut their own thread in the printed top. For a milled aluminium top, tap M2. |
+| Stick-on foot, 8 mm wide, 1.6 mm tall | 4 | The size is a `MEASURE` value in the case model. |
+| Printed or milled base and top | 1 each | `cad/exports/print/` or `cad/exports/cnc/` |
+| Printed diffuser | 2 | Clear or natural PETG, 100 % infill. `cad/exports/diffuser.stl` |
+| Printed knob | 2 | `cad/exports/knob.stl`. For a 6 mm D-shaft; the wells are sized for this 16 mm knob. |
+| Printed tilt bar (optional) | 1 | `cad/exports/tilt_bar.stl` |
+
+The M7 nuts and washers that come with the encoders are not used. The PCB holds the encoders.
 
 ## Substitutions I made, and what to check
 
@@ -44,6 +73,10 @@ Stock and library type come from the JLCPCB parts search on 2026-11-12. Stock mo
    The board uses the common X322512MSB4SI with 15 pF load capacitors and the same 1 kΩ series resistor.
    Its rated load is 20 pF, so it will run slightly fast: far inside the USB tolerance, but this pairing
    is not from the Raspberry Pi guide. If USB does not enumerate on the first boards, look here first.
+   27 pF capacitors would be closer to the rated load; that value was not checked against JLCPCB stock.
+   The firmware side of the same question: embassy-rp waits for the crystal with a startup delay
+   multiplier of 128 (the Pico SDK uses 64 for the reference crystal). It is set through the clock
+   settings of `embassy_rp::config::Config`.
 2. **RP2354A instead of RP2350A plus flash.** Stock was 1 448 against 5 840 for the RP2350A (C42411118).
    If the RP2354A runs out, the RP2350A needs an external flash chip and a board change.
 3. **Hot-swap socket.** The plain CPG151101S11 (C2803348) had zero stock; the `-2` variant is the same socket.
@@ -60,3 +93,4 @@ parts per order. It usually costs more than JLCPCB for a board this small and ta
 
 4 layers, 1.6 mm, any colour, HASL or ENIG (ENIG is kinder to the 0.4 mm pitch QFN).
 Assembly on the bottom side only. Minimum track and gap on the board: 0.15 mm. Smallest drill: 0.3 mm.
+The full walk-through is in [ordering.md](ordering.md).

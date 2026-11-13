@@ -1,24 +1,57 @@
 # macropad
 
-A 12-key macropad on a custom PCB. Two rotary encoders, a nice!view display, RGB light bars in the
-case sides, one USB-C port. It is the small, PCB-based sibling of
-[macropad-nyxilab](https://github.com/worxbend/macropad-nyxilab): 89.6 x 88.1 mm instead of 159 x 98 mm, and no hand wiring.
+A 12-key macropad on its own 4-layer PCB. Two rotary encoders, an always-on memory display,
+light bars in the case sides, one USB-C port. Board, case and firmware are all generated from
+code in this repository and checked against one shared file, [`board.toml`](board.toml).
 
-<img src="docs/images/cad/hero.png" alt="case render" width="48%"> <img src="docs/images/ui/media.png" alt="display, MEDIA layer" width="48%">
+It is the small, PCB-based sibling of [macropad-nyxilab](https://github.com/worxbend/macropad-nyxilab):
+89.6 x 88.1 mm instead of 159 x 98 mm, and no hand wiring.
 
-## Status: design files, nothing built yet
+<img src="docs/images/cad/hero.png" alt="Render of the case with keycaps, two knobs and the display" width="100%">
 
-| Part | State |
-|---|---|
-| Circuit and part placement | Done. Netlist self-check and placement checks pass. |
-| PCB routing | **Not done.** One command left to run: `make pcb-route` (see below). |
-| Gerbers | Not generated. They need the routed board. |
-| JLCPCB BOM and placement list | Generated: `pcb/fab/`. Every part number checked against JLCPCB stock on 2026-11-12. |
-| Case | Done. 255 interference pairs checked, 0 clashes, for both the printed and the milled variant. |
-| Firmware | Builds. 79 tests pass. UF2 in `firmware/dist/`. |
-| Real hardware | No board made, no case printed, firmware never run on a chip. |
+<img src="docs/images/ui/demo.gif" alt="Simulator: the pad from above, its display, its LEDs and the USB reports the host receives" width="100%">
 
-Do not order boards from this repository before the routing step is done and `make pcb-check` reports zero errors.
+*Top: a render of the case model, not a photo. Bottom: the firmware running in its simulator, not a
+recording of a device. The display in the render shows the simulator's own picture.*
+
+> **Status: design files only. Nothing has been built.**
+> No board has been ordered. No case has been printed or milled. The firmware has never run on a chip.
+> Every claim below is what the design files and their automatic checks say. Read
+> [Before you order](#before-you-order) first.
+
+## Contents
+
+1. [Status](#status)
+2. [What it is](#what-it-is)
+3. [Gallery](#gallery)
+4. [Build one](#build-one)
+5. [Stock keymap](#stock-keymap)
+6. [Work on the design](#work-on-the-design)
+7. [What is checked](#what-is-checked)
+8. [Where things are](#where-things-are)
+9. [Before you order](#before-you-order)
+10. [License](#license)
+
+## Status
+
+Checked on 2026-11-13 by running the commands in the last column on this repository.
+
+| Part | State | How it was checked |
+|---|---|---|
+| Circuit | Done. 51 nets, 69 machine-placed parts. | `make pcb-test`: netlist self-check, 34 unit tests pass |
+| Schematic | Done. Generated KiCad 9 sheet. ERC: 0 errors, 0 warnings. | `make pcb-place` (report in `pcb/.build/erc.rpt`) |
+| PCB layout | **Fully routed.** 775 tracks, 158 vias, 0 unrouted pads. DRC: 0 violations, 0 unconnected, 0 differences from the schematic. | `make pcb-check` |
+| Order files | Written: 11 Gerbers, 2 drill files, BOM, placement list. They agree with the board and with each other. | `make pcb-fab` |
+| Case | Done. 383 part pairs per variant, 0 clashes. Every named clearance and measurement inside its limit. Printed and milled variant. | `make test` |
+| Firmware | Builds. 220 tests pass. UF2 in `firmware/dist/`. | `make test`, `make firmware` |
+| Real hardware | **None.** No board, no print, no flash. | - |
+
+One accepted DRC warning remains: the USB-C footprint differs from its library copy, because its
+silkscreen is cut at the board edge. It is named in `pcb/gen/build.py` and explained in
+[pcb/README.md](pcb/README.md).
+
+A clean DRC does not make a working board. The list of things a person still has to look at is in
+[Before you order](#before-you-order).
 
 ## What it is
 
@@ -26,57 +59,250 @@ Do not order boards from this repository before the routing step is done and `ma
 |---|---|
 | MCU | RP2354A: the Pico 2 chip (RP2350) with 2 MB flash inside the package |
 | Keys | 12 x MX, Kailh hot-swap sockets, one GPIO per key (no matrix, no diodes) |
-| Knobs | 2 x Alps EC11E with push switch |
-| Display | nice!view (Sharp memory LCD, 160 x 68), plugs into a 5-pin socket |
+| Knobs | 2 x Alps EC11E18244AU with push switch, 36 clicks per turn |
+| Display | nice!view (Sharp memory LCD, 160 x 68, monochrome, readable in sunlight), on a 5-pin socket |
 | Light | 8 x SK6812 SIDE-A side-emitting RGB LEDs on the PCB edges, behind translucent strips in the case sides |
-| USB | One USB-C port for power, data and flashing. ESD protection and a 500 mA resettable fuse |
-| PCB | 84 x 82.5 mm, 4 layers, all machine-placed parts on the bottom face |
-| Case | Base, top (switch plate and display deck in one part), 2 diffuser strips, 2 knobs. 3D-print or CNC variant |
-| Firmware | Rust (embassy). 4 layers, macros, per-layer knob functions, layer colours, live key legend on the display |
+| USB | One USB-C port for power, data and flashing. ESD diodes, 500 mA resettable fuse |
+| Debug | Six test pads on the bottom face: SWCLK, SWDIO, GND, 5V, 3V3, 1V1. BOOT and RESET buttons reached through the case floor |
+| PCB | 84 x 82.5 mm, 4 layers, 1.6 mm. Every machine-placed part is on the bottom face |
+| Case | Base and top with a lap joint, 2 diffuser strips, 2 knobs, optional 6° tilt bar. 3D-print or CNC variant |
+| Size | 89.6 x 88.1 mm (90.6 mm over the light strips), 13.6 mm tall at the keys, 30.6 mm at the knobs |
+| Firmware | Rust ([embassy](https://embassy.dev)). 4 layers, macros, tap-hold keys, per-layer knob functions, animated display, reactive lighting |
+| Host | Shows up as a USB keyboard plus media keys. No driver, no host software |
 
-## Finish the PCB
+How the pieces connect:
 
-The autorouter is a third-party Java program (Freerouting 2.5.0). The Makefile downloads it, checks its
-SHA-256 against the release digest, and runs it in a container. Docker is required.
-
-1. `make pcb-route` routes the board and pours ground.
-2. `make pcb-check` runs KiCad's design-rule check. It must report zero errors.
-3. `make pcb-fab` writes the Gerbers and drill files to `pcb/fab/`.
-4. Open `pcb/kicad/macropad.kicad_pcb` in KiCad 9 and look at the USB pair, the crystal and the
-   regulator loop around L1. An autorouter does not know these are sensitive.
-5. Upload `pcb/fab/macropad-gerbers.zip`, `bom-jlcpcb.csv` and `cpl-jlcpcb.csv` to JLCPCB.
-   Check every part's rotation in their placement preview before you pay.
-
-## Build the rest
-
-```bash
-make firmware   # tests, lints, UF2 -> firmware/dist/macropad.uf2
-make cad        # case checks and STEP/STL exports (needs cad/.venv, see cad/README.md)
-make test       # everything that can be checked without hardware
+```mermaid
+flowchart LR
+    usb[USB-C] -->|5 V through fuse| reg[AP2112K 3.3 V]
+    usb <-->|D+ D- through ESD diodes| mcu[RP2354A]
+    reg --> mcu
+    keys[12 MX keys] -->|12 GPIO| mcu
+    knobs[2 encoders with push] -->|6 GPIO| mcu
+    mcu -->|SPI0| lcd[nice!view]
+    mcu -->|GPIO9| shift[74LVC1T45 to 5 V]
+    shift --> leds[8 x SK6812 SIDE-A]
+    usb -->|5 V| leds
 ```
 
-Flash: hold BOOT (hole in the case floor) while plugging in, then copy `macropad.uf2` to the `RP2350`
-drive. After the first flash, holding both knobs down for one second reboots into the bootloader.
+More detail: [docs/hardware.md](docs/hardware.md).
+
+## Gallery
+
+Every picture is generated by the code in this repository. None is a photo.
+
+### Case
+
+<img src="docs/images/cad/exploded.png" alt="Exploded view: knobs, keycaps, switches, top, PCB, base, screws" width="48%"> <img src="docs/images/cad/light_strips.png" alt="Left light strip drawn glowing" width="48%">
+
+<img src="docs/images/cad/back_usb.png" alt="Back of the case with the USB-C opening" width="48%"> <img src="docs/images/cad/underside.png" alt="Underside: six screws, four foot recesses, BOOT and RESET holes" width="48%">
+
+<img src="docs/images/cad/section_usb_display.png" alt="Cut through the USB port and the display window" width="48%"> <img src="docs/images/cad/section_light_strip.png" alt="Cut across the pad through one LED and its diffuser" width="48%">
+
+<img src="docs/images/cad/shells_inside.png" alt="Both shells from inside: lap ridges, ribs, screw bosses" width="48%"> <img src="docs/images/cad/tilt.png" alt="The optional tilt bar under the back feet" width="48%">
+
+The glow colour in the light-strip picture is illustrative. No optical simulation was done.
+More views, the print orientation and the design notes: [cad/README.md](cad/README.md).
+
+### PCB
+
+<img src="docs/images/pcb/render-top.png" alt="Bare board, top face" width="48%"> <img src="docs/images/pcb/render-bottom.png" alt="Bare board, bottom face with all machine-placed parts" width="48%">
+
+<img src="docs/images/pcb/assembled-angle.png" alt="Populated board, key side" width="48%"> <img src="docs/images/pcb/assembled-underside.png" alt="Populated board, underside" width="48%">
+
+The parts on the populated board are block models with nominal heights. They show where things
+are. They are not the makers' 3D models.
+
+<a href="docs/images/pcb/schematic.pdf"><img src="docs/images/pcb/schematic.svg" alt="Schematic, one A3 sheet" width="100%"></a>
+
+Schematic as [PDF](docs/images/pcb/schematic.pdf). Copper layers:
+[top](docs/images/pcb/copper-top.svg), [ground](docs/images/pcb/copper-ground.svg),
+[power](docs/images/pcb/copper-power.svg), [bottom](docs/images/pcb/copper-bottom.svg).
+Assembly drawings: [top](docs/images/pcb/assembly-top.svg), [bottom](docs/images/pcb/assembly-bottom.svg).
+Routing notes and the full check list: [pcb/README.md](pcb/README.md).
+
+### Display and lighting
+
+<img src="docs/images/ui/screens.png" alt="All display screens: splash, four layers, layer banner, knob overlay, system, idle, flash mode" width="60%">
+
+<img src="docs/images/ui/led_timeline.png" alt="Colours of the 8 LEDs over the demo session" width="100%">
+
+The 8 LEDs over the demo session, one row per LED. Colours are brightened for the screen.
+Screens, controls and timing: [firmware/README.md](firmware/README.md).
+
+### Drawings
+
+<img src="docs/images/cad/general_arrangement.png" alt="General arrangement drawing with dimensions" width="100%">
+
+<img src="docs/images/cad/drawing_base.png" alt="Machine-shop sheet for the CNC base" width="48%"> <img src="docs/images/cad/drawing_top.png" alt="Machine-shop sheet for the CNC top" width="48%">
+
+The sheets are in `cad/exports/drawings/` as SVG and PDF. Dimension texts are computed from the model.
+
+## Build one
+
+Nobody has done this yet. The guides are written from the design files. Expect to find mistakes,
+and please report them.
+
+1. **Read [Before you order](#before-you-order).** Decide whether you accept the open points.
+2. **Order the board.** [docs/ordering.md](docs/ordering.md): JLCPCB step by step, with the files
+   in `pcb/fab/`. Buy the parts JLCPCB does not place: [docs/parts.md](docs/parts.md).
+3. **Make the case.** Print or mill the files in `cad/exports/`. Orientation, settings and CNC notes
+   are in [cad/README.md](cad/README.md#printing).
+4. **Assemble.** [docs/assembly.md](docs/assembly.md): solder the two encoders and the display
+   socket, test the bare board, then close the case with six screws.
+5. **Flash.** [docs/flashing.md](docs/flashing.md): hold BOOT, plug in, copy
+   `firmware/dist/macropad.uf2` to the `RP2350` drive. The same page lists what to check first when
+   something does not work.
+
+To change what the keys do: [docs/keymap.md](docs/keymap.md).
+
+## Stock keymap
+
+Four layers. Tap the left knob for the next layer. The display always shows the active layer's labels.
+
+| Layer | Keys, row by row | Left knob | Right knob | Right knob press |
+|---|---|---|---|---|
+| MEDIA | PREV PLAY NEXT STOP / F13 F14 F15 F16 / F17 F18 F19 F20 | Volume | Screen brightness | Mute |
+| EDIT | UNDO REDO CUT COPY / PASTE ALL SAVE FIND / ESC TAB-or-Shift DEL LINE | Undo, redo | Cursor left, right | Enter |
+| NAV | HOME UP END PGUP / LEFT DOWN RIGHT PGDN / TAB- TAB+ BACK FWD | Up, down arrow | Previous, next tab | Enter |
+| NUM | 7 8 9 BKSP / 4 5 6 ENTER / 1 2 3 0 | Volume | Minus, plus | Period |
+
+| Gesture | Does |
+|---|---|
+| Hold the left knob + a top-row key | Jump to layer 1, 2, 3 or 4 |
+| Hold the left knob + turn the right knob | LED brightness, 8 steps down to off |
+| Hold both knobs for 1 s | Restart as a USB drive for a new firmware file |
+
+## Work on the design
+
+### Tools
+
+| For | You need |
+|---|---|
+| Firmware | Rust (stable) with `rustup target add thumbv8m.main-none-eabihf`, Python 3.11 or newer, `make` |
+| Simulator pictures | The above plus ImageMagick (`magick`) |
+| Case | Python 3.12 and a virtual environment in `cad/.venv` (set-up in [cad/README.md](cad/README.md#build)). `rsvg-convert` for the PDF and PNG drawings |
+| PCB | Docker. All KiCad work runs in the pinned image `kicad/kicad:9.0.9` through `pcb/kicad.sh` |
+
+### Commands
+
+Run `make help` for this list.
+
+| Command | Does | Needs | Time |
+|---|---|---|---|
+| `make test` | Everything that can be checked without Docker or hardware | Rust, `cad/.venv` | about 2 minutes |
+| `make firmware` | Tests, lints, board and HID checks, `firmware/dist/macropad.uf2` | Rust | under 1 minute |
+| `make ui-images` | Redraws `docs/images/ui/` and the demo GIF from the simulator | Rust, ImageMagick | about 1 minute |
+| `make cad` | Case self-test, checks, STEP/STL exports, renders, drawings | `cad/.venv` | about 3 minutes |
+| `make pcb` | `pcb-place`, `pcb-check`, `pcb-fab` in order | Docker | about 2 minutes |
+| `make pcb-place` | Schematic, placed and routed board, 3D models, pictures | Docker | about 1 minute |
+| `make pcb-check` | KiCad design-rule check, board against schematic | Docker | seconds |
+| `make pcb-fab` | Gerbers, drill files, BOM, placement list into `pcb/fab/` | Docker | seconds |
+| `make pcb-test` | Netlist self-check and the PCB generator's unit tests | Python | seconds |
+| `make docs-check` | Every file and picture named in a Markdown file exists | Python | seconds |
+
+### One file drives three builds
+
+`board.toml` holds the positions and the GPIO numbers. The PCB generator, the case model and the
+firmware's board check all read it.
+
+1. Change a position or a pin in `board.toml`.
+2. Run `make pcb cad firmware`.
+3. If parts or pins moved on the PCB, the routing order may need a new search:
+   `pcb/kicad.sh python3 pcb/gen/build.py order` (about 10 minutes; it can fail).
+
+Nothing in `pcb/kicad/` is drawn by hand. Hand edits are lost on the next `make pcb-place`.
+Change `pcb/gen/circuit.py` or `pcb/gen/route.py` instead.
+
+## What is checked
+
+No check here replaces a prototype. They catch the mistakes a computer can catch.
+
+| Area | Check | Result on 2026-11-13 |
+|---|---|---|
+| PCB | Netlist self-check in `circuit.py` | 51 nets, passes |
+| PCB | Router and schematic-writer unit tests | 34 pass |
+| PCB | `circuit.py` pins against KiCad's own RP2354A, regulator, ESD and level-shifter symbols | match |
+| PCB | Schematic ERC, every severity | 0 errors, 0 warnings |
+| PCB | DRC with board-against-schematic compare | 0 violations, 0 unconnected, 0 parity issues |
+| PCB | Length limits on the USB pair, crystal and regulator nets; no via on the sensitive ones | pass (D+ 15.43 mm, D- 14.26 mm) |
+| PCB | Order files agree: Gerbers newer than the board, one drill hit per via, BOM = placement list = circuit | 69 parts, pass |
+| Case | Self-test: the measuring checks must catch 15 known-bad and sound shapes | 15 of 15 |
+| Case | Interference, every part against every other, both variants | 383 pairs each, 0 clashes |
+| Case | Wall thickness, screw bosses, diffuser retention, lap joint, key and knob travel | all inside limits |
+| Case | CNC: 3 mm tool reaches every pocket, no sharp internal corner, no undercut | pass |
+| Case | Print: layer-by-layer bridge and overhang check for every printed part | pass |
+| Firmware | Unit tests: `core` 164, `sim` 38, `uf2` 18 | 220 pass |
+| Firmware | `tools/check_pins.py`: GPIOs, knob type, key grid, LED and simulator positions against `board.toml` | match |
+| Firmware | `tools/check_hid.py`: the USB report descriptors, parsed as a host would | match |
+| Firmware | UF2 converter refuses an image the chip could not boot | current image passes |
+| Docs | `make docs-check`: files and pictures named in Markdown exist | pass |
+
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the checks that need neither Docker
+nor a long case build: `make pcb-test`, `make docs-check` and the firmware tests with both board
+checks. The workflow has not run on GitHub yet.
 
 ## Where things are
 
 | Path | What |
 |---|---|
-| `board.toml` | Positions and GPIOs. The PCB, the case and the firmware pin check all read it. |
-| `pcb/gen/` | The board generator. `circuit.py` is the circuit; there is no hand-drawn schematic. |
-| `pcb/kicad/` | Generated KiCad 9 board. |
-| `pcb/fab/` | Files for the board house. |
-| `cad/` | Parametric case (build123d) and its exports. |
-| `firmware/` | Rust workspace: `core` logic, `fw` binary, `sim` display renderer, `uf2` converter. |
-| `docs/` | [Parts and sourcing](docs/parts.md), [hardware notes](docs/hardware.md), images. |
+| [`board.toml`](board.toml) | Positions and GPIOs. The single source of truth for PCB, case and firmware. |
+| [`pcb/`](pcb/README.md) | The board. `gen/` is the generator (`circuit.py` is the circuit), `kicad/` the generated KiCad 9 project, `fab/` the order files, `lib/` footprints and block models. |
+| [`cad/`](cad/README.md) | Parametric case (build123d). `macropad_case/` is the model and its checks, `exports/` holds STEP, STL, drawings and `checks.json`. |
+| [`firmware/`](firmware/README.md) | Rust workspace: `core` logic, `fw` binary, `sim` simulator, `uf2` converter. `dist/macropad.uf2` is the built image. [`KEYMAP.md`](firmware/KEYMAP.md) is the keymap reference. |
+| `tools/` | `check_pins.py` and `check_hid.py`: firmware against `board.toml` and against the HID rules. |
+| [`docs/hardware.md`](docs/hardware.md) | Circuit in words, pin map, layer stack, test pads, mechanical stack. |
+| [`docs/parts.md`](docs/parts.md) | Every part, its JLCPCB number, what to buy elsewhere, substitutions. |
+| [`docs/ordering.md`](docs/ordering.md) | Ordering the assembled board from JLCPCB, step by step. |
+| [`docs/assembly.md`](docs/assembly.md) | Soldering, bare-board tests, case assembly. |
+| [`docs/flashing.md`](docs/flashing.md) | First flash, updates, troubleshooting. |
+| [`docs/keymap.md`](docs/keymap.md) | Changing what the keys, knobs and lights do. |
+| `docs/images/` | Generated pictures: `cad/`, `pcb/`, `ui/`. |
 
-## Known gaps
+## Before you order
 
-- No KiCad schematic file. The netlist is `pcb/netlist.txt`, generated from `pcb/gen/circuit.py`.
-- The crystal is not Raspberry Pi's reference part (that one had 1 piece in stock). See `docs/parts.md`.
-- Dimensions tagged `MEASURE` in `board.toml` come from community footprints, not from a caliper:
-  the nice!view header position and pin order, its glass window, its height on sockets.
-- Display orientation, knob direction and LED colour order are one-line settings in
-  `firmware/fw/src/board.rs`. They are guesses until a board exists.
-- USB IDs are the pid.codes test pair `1209:0001`. Get your own before you give boards to others.
-- No license file yet. Until one is added, nobody else has the right to reuse this.
+These are open. None is hidden by a green check.
+
+**Electrical**
+
+- **Crystal.** Not Raspberry Pi's reference part (that one had 1 piece in stock). The board uses a
+  common 12 MHz crystal rated for 20 pF load with 15 pF capacitors. A guess until the oscillator is
+  measured. If USB does not enumerate, look here first. See [docs/parts.md](docs/parts.md).
+- **Capacitance on VBUS.** About 31 µF sits behind the fuse. USB 2.0 allows 10 µF at plug-in. Most
+  hosts tolerate this; it is outside the specification.
+- **USB pair.** Two short tracks, 15.4 and 14.3 mm, not a tuned differential pair. No impedance was
+  calculated. Normal for full-speed USB over this length; nobody measured it.
+- **Regulator inductor.** Its marked end must face VREG_LX. Not verified against Raspberry Pi's
+  hardware design guide.
+- **Pin orders from community footprints.** The nice!view header order and the SK6812 SIDE-A pad
+  order are tagged `MEASURE`. No KiCad library symbol covers them, so nothing checks them.
+- **Placement rotations.** `pcb/fab/cpl-jlcpcb.csv` carries KiCad's angles. JLCPCB's zero angle often
+  differs. Check every part in their preview before you pay.
+- **Suspend current.** The LEDs go off when the host sleeps, but the MCU keeps running, above the
+  2.5 mA a suspended USB device may draw.
+
+**Mechanical**
+
+- **`MEASURE` dimensions.** The nice!view glass window, its height on sockets and its header position
+  come from community footprints, not from a caliper. The full table is in
+  [cad/README.md](cad/README.md#assumptions-to-measure).
+- **Fits are guesses.** Lap joint 0.2 mm, deepest unsupported ledge 1.5 mm, engraved strokes about
+  0.5 mm. Print one copy and measure before a batch or before paying for machining.
+- **The top prints standing on its side wall**, 10.5 times taller than its footprint is wide. Tipping
+  and warping are not modelled.
+
+**Firmware**
+
+- **Display orientation, knob direction, LED colour order** are one-line settings and are guesses
+  until a board exists. [docs/flashing.md](docs/flashing.md) says where each one is.
+- **USB IDs** are the pid.codes test pair `1209:0001`. Get your own before you give boards to others.
+- Settings are not stored: brightness and layer reset at power-on.
+
+**Review**
+
+- The schematic and the layout are generated and machine-checked. No engineer has reviewed them.
+
+## License
+
+No license file yet. Until one is added, nobody else has the right to reuse this.
+The side-LED footprint comes from another project under the MIT License; see `pcb/lib/SOURCES.txt`.

@@ -20,6 +20,18 @@ const FLAG_FAMILY_ID_PRESENT: u32 = 0x0000_2000;
 /// "rp2350-arm-s": a secure Arm image, what the boot ROM runs by default.
 pub const FAMILY_RP2350_ARM_SECURE: u32 = 0xE48B_FF59;
 
+/// RP2354A: 520 kB of RAM.
+const RAM_START: u32 = 0x2000_0000;
+const RAM_END: u32 = RAM_START + 520 * 1024;
+/// The boot ROM searches this much of the image for its image definition block.
+const IMAGE_DEFINITION_SEARCH_BYTES: usize = 4096;
+const BLOCK_START_MARKER: u32 = 0xFFFF_DED3;
+const BLOCK_END_MARKER: u32 = 0xAB12_3579;
+const ITEM_IMAGE_TYPE: u8 = 0x42;
+const ITEM_LAST: u8 = 0xFF;
+/// Image type flags: executable, secure mode, Arm, RP2350. Must agree with the UF2 family id.
+const IMAGE_TYPE_ARM_SECURE_EXE: u16 = 0x1021;
+
 const ELF_MAGIC: &[u8] = b"\x7FELF";
 const ELF_CLASS_32: u8 = 1;
 const ELF_LITTLE_ENDIAN: u8 = 1;
@@ -34,6 +46,12 @@ pub enum Error {
     /// A loadable segment lies outside the flash; holds its load address.
     SegmentOutsideFlash(u32),
     NothingToFlash,
+    /// The vector table at the start of flash has no usable stack pointer or reset address.
+    BadVectorTable,
+    /// No well-formed image definition block in the first 4 kB: the boot ROM would not start this.
+    NoImageDefinition,
+    /// The image definition does not say "secure Arm executable for RP2350"; holds its flags.
+    WrongImageType(u16),
 }
 
 impl fmt::Display for Error {
@@ -43,6 +61,12 @@ impl fmt::Display for Error {
             Self::Truncated => write!(f, "the ELF file is cut short"),
             Self::SegmentOutsideFlash(address) => write!(f, "segment at {address:#010x} is outside the 2 MB flash"),
             Self::NothingToFlash => write!(f, "the ELF file has no loadable flash contents"),
+            Self::BadVectorTable => write!(f, "the vector table at the start of flash is not valid"),
+            Self::NoImageDefinition => write!(f, "no RP2350 image definition block in the first 4 kB of flash"),
+            Self::WrongImageType(flags) => write!(
+                f,
+                "the image definition has type flags {flags:#06x}, not {IMAGE_TYPE_ARM_SECURE_EXE:#06x} (secure Arm executable)"
+            ),
         }
     }
 }
@@ -67,6 +91,79 @@ pub fn elf_to_uf2(elf: &[u8]) -> Result<Vec<u8>, Error> {
         )
     });
     Ok(blocks.flatten().collect())
+}
+
+/// Checks what the RP2350 boot ROM needs before it runs an image: a vector table at the start
+/// of flash and, within the first 4 kB, an image definition block for a secure Arm executable.
+///
+/// A UF2 that fails this copies fine and then never starts, so the converter refuses to write it.
+pub fn check_bootable(elf: &[u8]) -> Result<(), Error> {
+    let pages = flash_pages(elf)?;
+    let head: Vec<u8> = (0..IMAGE_DEFINITION_SEARCH_BYTES / PAGE_BYTES)
+        .map_while(|page| pages.get(&(FLASH_START + (page * PAGE_BYTES) as u32)))
+        .flatten()
+        .copied()
+        .collect();
+    check_vector_table(&head)?;
+    let flags = image_type_flags(&head).ok_or(Error::NoImageDefinition)?;
+    if flags != IMAGE_TYPE_ARM_SECURE_EXE {
+        return Err(Error::WrongImageType(flags));
+    }
+    Ok(())
+}
+
+/// The first two vectors: a stack pointer inside RAM and a Thumb reset address inside flash.
+fn check_vector_table(head: &[u8]) -> Result<(), Error> {
+    let (Some(stack_pointer), Some(reset)) = (word_at(head, 0), word_at(head, 4)) else {
+        return Err(Error::BadVectorTable);
+    };
+    let stack_in_ram = (RAM_START + 4..=RAM_END).contains(&stack_pointer) && stack_pointer % 4 == 0;
+    let reset_in_flash = (FLASH_START..FLASH_END).contains(&reset) && reset % 2 == 1;
+    if stack_in_ram && reset_in_flash {
+        Ok(())
+    } else {
+        Err(Error::BadVectorTable)
+    }
+}
+
+/// Finds a well-formed image definition block and returns the flags of its image type item.
+fn image_type_flags(head: &[u8]) -> Option<u16> {
+    (0..head.len())
+        .step_by(4)
+        .filter(|&offset| word_at(head, offset) == Some(BLOCK_START_MARKER))
+        .find_map(|offset| flags_of_block(head, offset + 4))
+}
+
+/// Walks the items of a block that starts at `offset`. `None` if it is cut short or malformed.
+fn flags_of_block(head: &[u8], mut offset: usize) -> Option<u16> {
+    let mut flags = None;
+    loop {
+        let item = head.get(offset..offset + 4)?;
+        if item[0] == ITEM_LAST {
+            // After the last item: a link to the next block, then the end marker.
+            return (word_at(head, offset + 8)? == BLOCK_END_MARKER)
+                .then_some(flags)
+                .flatten();
+        }
+        if item[0] == ITEM_IMAGE_TYPE {
+            flags = Some(u16::from_le_bytes([item[2], item[3]]));
+        }
+        // Item types with the top bit set carry a two-byte size; the others one byte. In words.
+        let size_words = if item[0] & 0x80 == 0 {
+            usize::from(item[1])
+        } else {
+            usize::from(u16::from_le_bytes([item[1], item[2]]))
+        };
+        if size_words == 0 {
+            return None;
+        }
+        offset += size_words * 4;
+    }
+}
+
+fn word_at(bytes: &[u8], offset: usize) -> Option<u32> {
+    let word = bytes.get(offset..offset + 4)?;
+    Some(u32::from_le_bytes([word[0], word[1], word[2], word[3]]))
 }
 
 /// Flash contents by page address. Bytes no segment covers stay zero.
@@ -302,5 +399,98 @@ mod tests {
     #[test]
     fn an_elf_without_flash_contents_is_rejected() {
         assert_eq!(elf_to_uf2(&elf(&[])), Err(Error::NothingToFlash));
+    }
+
+    /// A vector table and the image definition block embassy-rp emits for a secure Arm executable.
+    fn bootable_head() -> Vec<u8> {
+        let words: [u32; 8] = [
+            RAM_END,
+            FLASH_START + 0x101,
+            0,
+            BLOCK_START_MARKER,
+            0x1021_0142,
+            0x0000_01FF,
+            0,
+            BLOCK_END_MARKER,
+        ];
+        words.iter().flat_map(|word| word.to_le_bytes()).collect()
+    }
+
+    fn with_word(mut head: Vec<u8>, index: usize, word: u32) -> Vec<u8> {
+        head[index * 4..][..4].copy_from_slice(&word.to_le_bytes());
+        head
+    }
+
+    fn check(head: &[u8]) -> Result<(), Error> {
+        check_bootable(&elf(&[load(FLASH_START, head)]))
+    }
+
+    #[test]
+    fn an_image_with_vectors_and_an_image_definition_is_bootable() {
+        assert_eq!(check(&bootable_head()), Ok(()));
+    }
+
+    #[test]
+    fn an_image_definition_after_other_items_is_found() {
+        // A two-word item of another type sits between the image type and the last item.
+        let mut head = bootable_head();
+        head.truncate(5 * 4);
+        for word in [0x0000_0203u32, 0x1234_5678, 0x0000_03FF, 0, BLOCK_END_MARKER] {
+            head.extend(word.to_le_bytes());
+        }
+        assert_eq!(check(&head), Ok(()));
+    }
+
+    #[test]
+    fn an_image_without_a_definition_block_is_refused() {
+        let no_block = with_word(bootable_head(), 3, 0);
+        assert_eq!(check(&no_block), Err(Error::NoImageDefinition));
+    }
+
+    #[test]
+    fn a_block_without_its_end_marker_is_refused() {
+        let unterminated = with_word(bootable_head(), 7, 0);
+        assert_eq!(check(&unterminated), Err(Error::NoImageDefinition));
+        let mut cut_short = bootable_head();
+        cut_short.truncate(6 * 4);
+        assert_eq!(check(&cut_short), Err(Error::NoImageDefinition));
+    }
+
+    #[test]
+    fn a_definition_beyond_the_first_four_kilobytes_is_not_seen() {
+        let mut late = with_word(bootable_head(), 3, 0);
+        late.resize(IMAGE_DEFINITION_SEARCH_BYTES, 0);
+        late.extend(&bootable_head()[3 * 4..]);
+        assert_eq!(check(&late), Err(Error::NoImageDefinition));
+    }
+
+    #[test]
+    fn an_image_for_another_cpu_or_security_mode_is_refused() {
+        // 0x1101: executable, RISC-V, RP2350.
+        let riscv = with_word(bootable_head(), 4, 0x1101_0142);
+        assert_eq!(check(&riscv), Err(Error::WrongImageType(0x1101)));
+    }
+
+    #[test]
+    fn a_stack_pointer_outside_ram_or_an_arm_mode_reset_vector_is_refused() {
+        assert_eq!(
+            check(&with_word(bootable_head(), 0, FLASH_START)),
+            Err(Error::BadVectorTable)
+        );
+        assert_eq!(
+            check(&with_word(bootable_head(), 0, RAM_END + 4)),
+            Err(Error::BadVectorTable)
+        );
+        assert_eq!(
+            check(&with_word(bootable_head(), 1, FLASH_START + 0x100)),
+            Err(Error::BadVectorTable)
+        );
+        assert_eq!(check(&[1, 2, 3]), Err(Error::BadVectorTable));
+    }
+
+    #[test]
+    fn an_image_that_does_not_start_at_the_start_of_flash_is_refused() {
+        let moved = elf(&[load(FLASH_START + 0x1000, &bootable_head())]);
+        assert_eq!(check_bootable(&moved), Err(Error::BadVectorTable));
     }
 }

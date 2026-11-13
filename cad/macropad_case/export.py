@@ -6,11 +6,11 @@ from build123d import Compound, Part, export_step, export_stl
 
 from .checks import PRINT_POSES
 from .components import components
-from .parts import case_parts
+from .small_parts import case_parts
 from .spec import PRINT, VARIANTS
 
 # The two diffusers are the same part turned around, and the two knobs are identical.
-EXPORT_NAMES = {"base": "base", "top": "top", "diffuser_left": "diffuser", "knob_left": "knob"}
+EXPORT_NAMES = {"base": "base", "top": "top", "diffuser_left": "diffuser", "knob_left": "knob", "tilt_bar": "tilt_bar"}
 VARIANT_PARTS = ("base", "top")
 
 

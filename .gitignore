@@ -6,3 +6,11 @@ target/
 *.kicad_prl
 *-backups/
 fp-info-cache
+*.egg-info/
+# KiCad editor leftovers
+*.lck
+_autosave-*
+\#auto_saved_files\#
+# Editors and desktops
+.DS_Store
+*.swp

@@ -65,13 +65,14 @@ FOOTPRINT = {
     "SOCKET5": "Connector_PinSocket_2.54mm:PinSocket_1x05_P2.54mm_Vertical",
     "EC11": "Rotary_Encoder:RotaryEncoder_Alps_EC11E-Switch_Vertical_H20mm",
     "TESTPAD": "TestPoint:TestPoint_Pad_D1.0mm",
+    "FIDUCIAL": "Fiducial:Fiducial_1mm_Mask2mm",
     "HOLE_M2": "macropad:Hole_M2",
     "LED_SIDE": "macropad:SK6812-side-a",
     "MX_HOTSWAP": "macropad:MX_Hotswap",
 }
 
 HAND_SOLDERED = {"EC11", "SOCKET5"}
-NOT_A_PART = {"TESTPAD", "HOLE_M2"}
+NOT_A_PART = {"TESTPAD", "HOLE_M2", "FIDUCIAL"}
 
 
 @dataclass(frozen=True)
@@ -146,8 +147,11 @@ MCU_FIXED_SIGNALS = {
 # One 100 nF per supply pin; ADC_AVDD (44) shares the capacitor of IOVDD pin 45 next to it,
 # and QSPI_IOVDD (54) shares the one of USB_OTP_VDD (53).
 DECOUPLED_PINS = [1, 6, 11, 20, 23, 30, 38, 39, 45, 53]
-# Sideways shift (x, y) of a capacitor that would otherwise sit on its neighbour or block a signal.
-DECOUPLING_SHIFT = {20: (0.9, 0.0), 30: (-0.6, 0.0), 38: (0.0, 0.55), 39: (0.0, -0.55), 53: (1.7, 0.0)}
+# Sideways shift (x, y) of a capacitor away from the spot straight in front of its pin. Some would
+# sit on a neighbour there. Pins 1 and 11 move theirs outward along the row instead, to open a fifth
+# track lane for the four signal pins between two capacitors (2-5 and 7-10).
+DECOUPLING_SHIFT = {1: (0.0, -0.4), 11: (0.0, 0.4), 20: (0.9, 0.0), 30: (-1.4, 0.0), 38: (0.0, 0.2),
+                    39: (0.0, -0.4), 53: (1.7, 0.0)}
 
 
 def key_net(index: int) -> str:
@@ -183,7 +187,17 @@ def _mcu() -> Part:
 
 _RADIAL_ROTATION = {0: 180.0, 1: 90.0, 2: 0.0, 3: 270.0}  # pad 1 toward the chip
 _OUTWARD = {0: (1, 0), 1: (0, 1), 2: (-1, 0), 3: (0, -1)}
-_DECOUPLING_DISTANCE = 1.75  # MCU pad centre to capacitor centre
+# MCU pad centre to capacitor centre. Far enough for a via between the pin and the capacitor, in
+# line with both, so the tracks of the neighbouring pins keep their way out.
+DECOUPLING_DISTANCE = 2.0
+# Along the same line: MCU pad centre to the supply via, and capacitor centre to its ground via.
+SUPPLY_VIA_DISTANCE = 0.85
+GROUND_VIA_DISTANCE = 1.45
+
+
+def outward(pin: int) -> tuple[int, int]:
+    """Unit step away from the chip, for the side this pin is on."""
+    return _OUTWARD[_mcu_side(pin)]
 
 
 def _decoupling_caps() -> list[Part]:
@@ -194,11 +208,14 @@ def _decoupling_caps() -> list[Part]:
         shift_x, shift_y = DECOUPLING_SHIFT.get(pin, (0.0, 0.0))
         caps.append(Part(
             f"C{number}", "100nF", "C0402",
-            pad_x + out_x * _DECOUPLING_DISTANCE + shift_x, pad_y + out_y * _DECOUPLING_DISTANCE + shift_y,
+            pad_x + out_x * DECOUPLING_DISTANCE + shift_x, pad_y + out_y * DECOUPLING_DISTANCE + shift_y,
             rotation=_RADIAL_ROTATION[_mcu_side(pin)],
             nets={"1": MCU_POWER_PINS[pin], "2": GND},
         ))
     return caps
+
+
+CORE_TEST_PAD = "TP6"
 
 
 def _core_regulator() -> list[Part]:
@@ -213,26 +230,32 @@ def _core_regulator() -> list[Part]:
         Part("C13", "4.7uF", "C0402", 39.3, 9.6, 270, nets={"1": V1, "2": GND}),
         Part("C14", "4.7uF", "C0402", 37.0, 13.7, 0, nets={"1": "VREG_AVDD", "2": GND}),
         Part("R1", "33R", "R0402", 35.0, 13.7, 0, nets={"1": "VREG_AVDD", "2": V3}),
+        # Probe pad on the regulator output, beside the inductor. Routed with the output capacitors.
+        Part(CORE_TEST_PAD, V1, "TESTPAD", 36.0, 11.0, nets={"1": V1}),
     ]
 
 
 def _clock_and_reset() -> list[Part]:
     spec = BOARD_SPEC["buttons"]
     return [
-        Part("Y1", "12MHz", "XTAL3225", 40.6, 30.1, 0,
+        # The crystal sits as close below XIN/XOUT (MCU pins 21 and 22) as the two hot-swap sockets
+        # allow. XIN runs down its right side to pad 1, with its load capacitor right there.
+        Part("Y1", "12MHz", "XTAL3225", 41.9, 26.2, 0,
              nets={"1": "XIN", "2": GND, "3": "XTAL_DRIVE", "4": GND}),
-        Part("C15", "15pF", "C0402", 40.5, 27.2, 90, nets={"1": "XIN", "2": GND}),
-        Part("C16", "15pF", "C0402", 42.3, 27.2, 90, nets={"1": "XTAL_DRIVE", "2": GND}),
-        Part("R2", "1k", "R0402", 46.0, 23.6, 90, nets={"1": "XOUT", "2": "XTAL_DRIVE"}),
+        Part("C15", "15pF", "C0402", 44.7, 26.7, 270, nets={"1": "XIN", "2": GND}),
+        Part("C16", "15pF", "C0402", 42.05, 28.9, 180, nets={"1": "XTAL_DRIVE", "2": GND}),
+        Part("R2", "1k", "R0402", 40.1, 28.9, 0, nets={"1": "XOUT", "2": "XTAL_DRIVE"}),
         Part("R3", "10k", "R0402", 47.6, 22.6, 90, nets={"1": V3, "2": "RUN"}),
         Part("SW14", "TS-1187A", "TACT", spec["reset"]["x"], spec["reset"]["y"], 0,
              nets={"1": "RUN", "2": GND}),
-        Part("R4", "1k", "R0402", 50.2, 12.4, 0, nets={"1": "QSPI_SS", "2": "BOOT"}),
+        # Next to the BOOT button, so the long track across the board is the one behind the resistor.
+        Part("R4", "1k", "R0402", 35.6, 22.3, 90, nets={"1": "QSPI_SS", "2": "BOOT"}),
         Part("SW13", "TS-1187A", "TACT", spec["boot"]["x"], spec["boot"]["y"], 0,
              nets={"1": "BOOT", "2": GND}),
-        Part("TP1", "SWCLK", "TESTPAD", 36.4, 19.8, nets={"1": "SWCLK"}),
-        Part("TP2", "SWDIO", "TESTPAD", 36.4, 21.9, nets={"1": "SWDIO"}),
-        Part("TP3", "GND", "TESTPAD", 36.4, 24.0, nets={"1": GND}),
+        # Debug pads in a row between the first two key rows, where nothing else needs the space.
+        Part("TP1", "SWCLK", "TESTPAD", 39.0, 36.5, nets={"1": "SWCLK"}),
+        Part("TP2", "SWDIO", "TESTPAD", 42.0, 36.5, nets={"1": "SWDIO"}),
+        Part("TP3", "GND", "TESTPAD", 45.0, 36.5, nets={"1": GND}),
     ]
 
 
@@ -250,13 +273,19 @@ def _usb_and_power() -> list[Part]:
         Part("R6", "5.1k", "R0402", 48.0, 6.6, 90, nets={"1": "CC2", "2": GND}),
         Part("U3", "USBLC6-2SC6", "SOT23-6", 46.8, 10.4, 0,
              nets={"1": "USB_D_N", "6": "USB_D_N", "3": "USB_D_P", "4": "USB_D_P", "2": GND, "5": VBUS}),
-        Part("R7", "27R", "R0402", 41.4, 11.0, 90, nets={"1": "USB_D_N", "2": "USB_DM"}),
-        Part("R8", "27R", "R0402", 42.4, 11.0, 90, nets={"1": "USB_D_P", "2": "USB_DP"}),
+        # Each series resistor sits straight above its MCU pin (51 at x 41.2, 52 at x 41.6) or to the
+        # right of it, so D- runs straight and D+ leans away from it: both stay on the bottom layer.
+        Part("R7", "27R", "R0402", 41.25, 11.0, 90, nets={"1": "USB_D_N", "2": "USB_DM"}),
+        Part("R8", "27R", "R0402", 42.25, 11.0, 90, nets={"1": "USB_D_P", "2": "USB_DP"}),
         Part("F1", "nSMD050", "F1206", 33.0, 3.4, 90, nets={"1": VBUS, "2": V5}),
         Part("U2", "AP2112K-3.3", "SOT23-5", 31.0, 9.4, 90,
              nets={"1": V5, "2": GND, "3": V5, "4": NO_NET, "5": V3}),
         Part("C17", "10uF", "C0603", 29.0, 5.6, 0, nets={"1": V5, "2": GND}),
         Part("C18", "10uF", "C0603", 31.0, 12.4, 0, nets={"1": V3, "2": GND}),
+        # Probe pads for bring-up, each in a free spot over its own plane: 5 V beside the debug pads,
+        # 3.3 V at the left end of the 3.3 V island.
+        Part("TP4", V5, "TESTPAD", 50.0, 38.5, nets={"1": V5}),
+        Part("TP5", V3, "TESTPAD", 24.5, 23.0, nets={"1": V3}),
     ]
 
 
@@ -335,10 +364,20 @@ def _mounting_holes() -> list[Part]:
     ]
 
 
+# Three optical marks for the pick-and-place camera, on the assembly face, in three corners so the
+# board cannot be read upside down. 4 mm in from the edge, clear of the conveyor rails.
+FIDUCIALS = [(7.5, 4.0), (76.5, 4.0), (7.5, 78.5)]
+FIDUCIAL_MASK_DIAMETER = 2.0
+
+
+def _fiducials() -> list[Part]:
+    return [Part(f"FID{i}", "fiducial", "FIDUCIAL", x, y) for i, (x, y) in enumerate(FIDUCIALS, start=1)]
+
+
 def all_parts() -> list[Part]:
     parts = (
         [_mcu()] + _decoupling_caps() + _core_regulator() + _clock_and_reset() + _usb_and_power()
-        + _keys() + _encoders() + _display() + _leds() + _mounting_holes()
+        + _keys() + _encoders() + _display() + _leds() + _mounting_holes() + _fiducials()
     )
     refs = [part.ref for part in parts]
     assert len(refs) == len(set(refs)), "duplicate reference designator"

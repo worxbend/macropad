@@ -1,18 +1,19 @@
-//! Refreshes the nice!view ten times a second.
+//! Refreshes the nice!view thirty times a second.
 
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::spi::{Config, Spi};
 use embassy_time::{Duration, Ticker, Timer};
 use macropad_core::sharp_lcd::FrameEncoder;
-use macropad_core::ui;
 
 use crate::board::{DisplayPins, DISPLAY_ORIENTATION};
-use crate::state::snapshot;
+use crate::state::{host, view};
 use crate::Irqs;
 
-/// The panel's limit. Its VCOM bit must also flip at least once a second; every frame flips it.
+/// The panel's limit. One frame is 1498 bytes, so it takes 12 ms on the wire.
 const SPI_HZ: u32 = 1_000_000;
-const FRAME_PERIOD: Duration = Duration::from_millis(100);
+/// Fast enough for the animations. The panel's VCOM bit must also flip at least once a second;
+/// every frame flips it.
+const FRAME_PERIOD: Duration = Duration::from_millis(33);
 /// Chip-select setup and hold times from the panel datasheet, rounded up.
 const SELECT_SETUP_US: u64 = 6;
 const SELECT_HOLD_US: u64 = 2;
@@ -27,7 +28,7 @@ pub async fn run(pins: DisplayPins) {
     let mut encoder = FrameEncoder::new(DISPLAY_ORIENTATION);
     let mut ticker = Ticker::every(FRAME_PERIOD);
     loop {
-        let bytes = encoder.encode(&ui::draw(&snapshot().ui_state()));
+        let bytes = encoder.encode(&view().screen(host()));
         select.set_high();
         Timer::after_micros(SELECT_SETUP_US).await;
         spi.write(&bytes)

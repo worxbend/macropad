@@ -1,5 +1,11 @@
 # Hardware notes
 
+What the board and the case are, in one place. Nothing here has been built or measured.
+Values tagged `MEASURE` come from community footprints, not from a caliper.
+
+Related pages: [parts](parts.md), [ordering](ordering.md), [assembly](assembly.md),
+[PCB details](../pcb/README.md), [case details](../cad/README.md).
+
 ## How it compares to macropad-nyxilab
 
 | | nyxilab | this board |
@@ -27,22 +33,80 @@ Top view, USB at the back:
    LEDs on both side edges, four per side
 ```
 
-The MCU, USB-C port, regulator, crystal and both buttons sit on the bottom face under the display.
+<img src="images/pcb/assembly-top.svg" alt="Assembly drawing, top face" width="48%"> <img src="images/pcb/assembly-bottom.svg" alt="Assembly drawing, bottom face" width="48%">
+
+- **Top face:** the two encoders and the 5-pin display socket. These three are soldered by hand.
+  The switches plug into their sockets through the board.
+- **Bottom face:** everything else. The MCU, USB-C port, regulator, crystal and both buttons sit
+  under the display. The hot-swap sockets sit under the keys. The LEDs sit on the left and right
+  edges and shine outward.
+
+Positions are in `board.toml`. The origin is the top-left corner of the PCB seen from the key side.
+X grows to the right, Y toward the front.
 
 ## Circuit, in words
 
-- **USB-C**: 5.1 kΩ on both CC pins, USBLC6 ESD diodes, 27 Ω series resistors, 500 mA resettable fuse.
-- **Power**: VBUS through the fuse is the 5 V rail (LEDs, level shifter). An AP2112K makes 3.3 V.
-  The RP2354A makes its own 1.1 V core supply with the on-chip switching regulator and L1.
-- **Clock**: 12 MHz crystal with a 1 kΩ series resistor on XOUT.
-- **Flashing**: BOOT pulls QSPI_SS low through 1 kΩ, which starts the ROM USB bootloader. RESET pulls RUN low.
-  SWCLK, SWDIO and GND are on three test pads next to the MCU.
-- **Keys and knobs**: each switch connects one GPIO to ground. The firmware turns on the internal pull-ups.
-- **Display**: SPI0 (SCK GPIO22, MOSI GPIO23), chip select GPIO24, active high.
-- **LEDs**: GPIO9, through a 74LVC1T45 to 5 V logic, then eight SK6812 in a chain: right side back to front,
-  then left side front to back. The firmware caps total LED current at about 200 mA.
+<a href="images/pcb/schematic.pdf"><img src="images/pcb/schematic.svg" alt="Schematic" width="100%"></a>
 
-Pin numbers live in `board.toml`. The full netlist is `pcb/netlist.txt`.
+The schematic is generated from `pcb/gen/circuit.py` and checked against it pin by pin.
+The KiCad file is `pcb/kicad/macropad.kicad_sch`.
+
+- **USB-C.** 5.1 kΩ on both CC pins, USBLC6 ESD diodes, 27 Ω series resistors (R7, R8) right at the
+  MCU pins, 500 mA resettable fuse. From the resistors to the chip the pair runs on the bottom layer
+  with no via: D+ 15.43 mm and D- 14.26 mm from connector to MCU. No impedance was calculated.
+- **Power.** VBUS through the fuse is the 5 V rail (LEDs, level shifter). An AP2112K makes 3.3 V.
+  The RP2354A makes its own 1.1 V core supply with the on-chip switching regulator and L1.
+  About 31 µF sits on the 5 V rail; USB 2.0 allows 10 µF at plug-in. See [the PCB notes](../pcb/README.md).
+- **Clock.** 12 MHz crystal with a 1 kΩ series resistor on XOUT and 15 pF load capacitors.
+  The crystal is a substitute; see [parts](parts.md).
+- **Flashing.** BOOT pulls QSPI_SS low through 1 kΩ, which starts the ROM USB bootloader.
+  RESET pulls RUN low. Both buttons are on the bottom face and reached through holes in the case floor.
+- **Keys and knobs.** Each switch connects one GPIO to ground. The firmware turns on the internal
+  pull-ups. No matrix, no diodes, no ghosting.
+- **Knobs.** Alps EC11E18244AU: 36 detents and 18 pulses per turn, so one click is half a quadrature
+  cycle. The firmware decodes two clicks per cycle. The detent count is read from the Alps product
+  page, not from a part on a desk.
+- **Display.** SPI0 (SCK GPIO22, MOSI GPIO23), chip select GPIO24, active high. Header order
+  from the back edge to the front: MOSI, SCK, 3V3, GND, CS. `MEASURE`: check it against your module.
+- **LEDs.** GPIO9, through a 74LVC1T45 to 5 V logic, then eight SK6812 SIDE-A in a chain: right side
+  back to front, then left side front to back. The firmware caps total LED current at about 200 mA
+  and turns the LEDs off when the host sleeps.
+
+The full netlist is `pcb/netlist.txt`. Track length and via count per net are in `pcb/routing.txt`.
+
+## Pin map
+
+`board.toml` is the source of truth. `tools/check_pins.py` fails when the firmware disagrees with it.
+
+| Function | GPIO |
+|---|---|
+| Keys K0 to K3 (back row) | 21, 20, 4, 3 |
+| Keys K4 to K7 | 19, 18, 6, 5 |
+| Keys K8 to K11 (front row) | 17, 16, 8, 7 |
+| Left knob A, B, push | 27, 28, 29 |
+| Right knob A, B, push | 0, 1, 2 |
+| Display SCK, MOSI, CS | 22, 23, 24 |
+| LED data | 9 |
+| Spare, no pads | 10 to 15, 25, 26 |
+
+The spare pins end at the chip. Adding a header means a board change.
+
+## Test pads
+
+Six round 1 mm pads on the bottom face, each named in silkscreen. Positions in board coordinates (mm).
+
+| Pad | Net | X, Y | Where |
+|---|---|---|---|
+| TP1 | SWCLK | 39.0, 36.5 | Between the first two key rows |
+| TP2 | SWDIO | 42.0, 36.5 | Next to TP1 |
+| TP3 | GND | 45.0, 36.5 | Next to TP2 |
+| TP4 | 5V | 50.0, 38.5 | Next to the debug pads |
+| TP5 | 3V3 | 24.5, 23.0 | Beside the BOOT button |
+| TP6 | 1V1 | 36.0, 11.0 | Beside the inductor, on the regulator output track |
+
+The case floor has no probe holes. Use the pads before the board goes into the case.
+The pad positions were picked by a free-space search on the copper and are not checked against the
+case model; the pads are flat copper, so nothing can collide.
 
 ## Layer stack
 
@@ -53,6 +117,47 @@ Pin numbers live in `board.toml`. The full netlist is `pcb/netlist.txt`.
 | In2.Cu | 5 V plane, with a 3.3 V island under the MCU and the display socket |
 | B.Cu | Parts, signals, ground pour |
 
-## Spare pins
+Design rules: 0.15 mm track and gap, 0.6 mm via with a 0.3 mm drill, 0.3 mm copper to board edge.
+Pictures of each layer: [top](images/pcb/copper-top.svg), [ground](images/pcb/copper-ground.svg),
+[power](images/pcb/copper-power.svg), [bottom](images/pcb/copper-bottom.svg).
 
-GPIO10 to GPIO15, GPIO25 and GPIO26 are unconnected. They have no pads; adding a header means a board change.
+Routing: 775 tracks, 158 vias, 1301.2 mm of track, 0 unrouted pads. The router is a small grid
+router in `pcb/gen/router.py`; the routing plan is `pcb/gen/route.py`. No third-party autorouter is used.
+
+## Mechanical stack
+
+Heights from `board.toml`, measured from the PCB top face.
+
+| What | Height |
+|---|---|
+| Case floor (inside) | 5.0 mm below the PCB bottom face |
+| Hot-swap socket | 1.85 mm below the PCB bottom face |
+| USB-C body | 3.26 mm below the PCB bottom face |
+| PCB | 1.6 mm thick |
+| Switch plate top | 5.0 mm (plate 1.5 mm thick, 14.0 mm cut-outs) |
+| Encoder body top | 6.5 mm |
+| Display glass top | 7.0 mm (`MEASURE`: nice!view on low-profile sockets) |
+| Deck over knobs and display | 8.5 mm |
+| Encoder shaft top | 20.0 mm |
+
+<img src="images/cad/section_usb_display.png" alt="Cut through the USB port, the display window and the centre screws" width="48%"> <img src="images/cad/section_light_strip.png" alt="Cut through one LED, the PCB edge and the diffuser strip" width="48%">
+
+## Case
+
+- **Two shells.** The base holds the PCB on six bosses. The top is the switch plate, the raised deck
+  and the skirt in one piece. Six M2 x 10 screws go in from below.
+- **Lap joint.** Ridges 0.6 mm tall on the base rim enter grooves in the top. They centre the top and
+  close the straight path for light through the seam. The 0.2 mm fit is a guess until a test print.
+- **Light strips.** One diffuser per side drops into a slot in the base and is held by the PCB edge.
+  It stands 0.5 mm out of the wall.
+- **Size.** 89.6 x 88.1 mm, 90.6 mm over the light strips. 13.6 mm tall at the keys, 17.1 mm at the
+  deck, 30.6 mm to the top of the knobs. The feet add 1.0 mm.
+- **Two variants.** `cad/exports/print/` for FDM printing, `cad/exports/cnc/` for 3-axis milling with a
+  3 mm end mill. Diffusers, knobs and the tilt bar are always printed.
+- **Tilt.** An optional bar under the back feet tilts the pad by 6°.
+
+<img src="images/cad/exploded.png" alt="Exploded view" width="48%"> <img src="images/cad/shells_inside.png" alt="Both shells from inside" width="48%">
+
+Drawings with dimensions: [general arrangement](images/cad/general_arrangement.png),
+[CNC base](images/cad/drawing_base.png), [CNC top](images/cad/drawing_top.png).
+Printing and milling notes: [cad/README.md](../cad/README.md#printing).

@@ -1,3 +1,5 @@
 SK6812-side-a.kicad_mod: from DangerousPrototypes/BusPirate5-hardware, MIT License.
+  Changed here: the body outline moved from the silkscreen to the F.Fab layer. On this board the LED
+  hangs over the edge and the outline ran over its own pads.
 MX_Hotswap.kicad_mod: drawn for this project from the Kailh CPG151101S11 dimensions.
 Hole_M2.kicad_mod: drawn for this project.
