@@ -4,200 +4,815 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>macropad</title>
-  <meta name="description" content="An open 12-key macropad: RP2350 on a four-layer PCB, two knobs, a nice!view display, a line of light round the case, Rust firmware. Design files only; not built yet.">
+  <meta name="description" content="A 12-key macropad with two knobs, an always-on display and one line of light in the seam of its case. RP2350 on a four-layer board, Rust firmware, printed or milled case. Design files only; nothing has been built yet.">
+  <meta name="color-scheme" content="light dark">
   <meta property="og:title" content="macropad">
-  <meta property="og:description" content="Twelve keys, two knobs and a line of light. Open hardware, not built yet.">
+  <meta property="og:description" content="Twelve keys. Two knobs. One line of light. Design stage: nothing has been built yet.">
   <meta property="og:image" content="images/cad/hero_aluminium.png">
+  <script>
+    // Runs before first paint so the CSS for scroll scenes applies from the start, with no layout shift.
+    // html.js: scripts run. html.motion: scroll scenes are on (not with reduced motion or ?motion=off).
+    (function () {
+      var root = document.documentElement;
+      var query = location.search;
+      var still = /[?&]motion=off\b/.test(query) || matchMedia("(prefers-reduced-motion: reduce)").matches;
+      root.classList.add("js");
+      if (!still) root.classList.add("motion");
+      if (/[?&]frame=/.test(query)) root.classList.add("debug-frame");
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&amp;display=optional" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <script src="motion.js" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to the content</a>
 
   <header class="top">
-    <a class="wordmark" href="#main">macropad</a>
-    <nav aria-label="Sections">
-      <a href="#case">Case</a>
-      <a href="#signature">Signature</a>
-      <a href="#inside">Inside</a>
-      <a href="#firmware">Firmware</a>
-      <a href="#build">Build one</a>
+    <a class="wordmark" href="#hero">macropad</a>
+    <nav class="nav" aria-label="Sections">
+      <ul class="nav-links">
+        <li><a href="#design">Design</a></li>
+        <li><a href="#light">Light</a></li>
+        <li><a href="#inside">Inside</a></li>
+        <li><a href="#firmware">Firmware</a></li>
+        <li><a href="#uses">Uses</a></li>
+        <li><a href="#signature">Signature</a></li>
+        <li><a href="#build">Build</a></li>
+      </ul>
+      <details class="nav-menu">
+        <summary>Sections</summary>
+        <ul>
+          <li><a href="#design">Design</a></li>
+          <li><a href="#light">Light</a></li>
+          <li><a href="#inside">Inside</a></li>
+          <li><a href="#firmware">Firmware</a></li>
+          <li><a href="#uses">Uses</a></li>
+          <li><a href="#signature">Signature</a></li>
+          <li><a href="#build">Build</a></li>
+        </ul>
+      </details>
     </nav>
+    <a class="pill" href="#status"><span class="pill-dot" aria-hidden="true"></span>Not built yet</a>
   </header>
 
   <main id="main">
-    <section class="hero">
-      <h1>Twelve keys, two knobs and a line of light.</h1>
-      <p class="lede">
-        An open-source macropad on its own four-layer board, with a nice!view screen between the knobs
-        and a thin glow in the seam of the case. Every file to make one is in the repository.
-      </p>
-      <p class="actions">
-        <a class="button primary" href="https://github.com/worxbend/macropad/releases/latest">Download the order files</a>
-        <a class="button" href="https://github.com/worxbend/macropad">Open the repository</a>
-      </p>
-      <figure class="hero-shot">
-        <img src="images/cad/hero_aluminium.png" width="1600" height="1100"
-             alt="The milled aluminium case seen from the front left: twelve black keys in a shallow dish, two silver knobs, the display between them.">
-      </figure>
-      <p class="status" role="note">
-        <strong>Not built yet.</strong> Nothing here has been printed, milled, assembled or switched on.
-        The pictures are renders of the design files.
-      </p>
+
+    <!-- Hero: the milled pad in its own studio light. Scene: zooms out from the deck. -->
+    <section id="hero" class="scene hero" data-scene="hero" aria-labelledby="hero-title">
+      <div class="track"><div class="stage">
+        <div class="hero-copy" data-part="copy">
+          <h1 id="hero-title"><span>Twelve keys.</span> <span>Two knobs.</span> <span>One line of light.</span></h1>
+          <p class="lede">A 90 mm square macropad with hot-swap keys, an always-on screen and a glow that lives in the seam of the case. Board, case and firmware are all generated from code, all in one repository.</p>
+          <p class="actions">
+            <a class="button primary" href="#design">See the design</a>
+            <a class="button" href="https://github.com/worxbend/macropad">Open the repository</a>
+          </p>
+        </div>
+        <div class="frame alu hero-frame">
+          <div class="layer" data-part="image">
+            <picture>
+              <source type="image/webp" srcset="images/cad/hero_aluminium-800.webp 800w, images/cad/hero_aluminium-1600.webp 1600w" sizes="(min-width: 48rem) 90vw, 100vw">
+              <img src="images/cad/hero_aluminium.png" width="1600" height="1100" fetchpriority="high" decoding="async"
+                   alt="Render of the milled case in silver aluminium from the front left: twelve black keycaps in a shallow dish, two black knobs, and the display between them showing the media layer.">
+            </picture>
+          </div>
+        </div>
+        <p class="status-note" role="note">Design stage. Nothing has been built, printed, milled or switched on yet. Every picture on this page is a render or a simulator frame, not a photo.</p>
+      </div></div>
     </section>
 
-    <div class="seam" aria-hidden="true"><span></span></div>
-
-    <section id="case" class="chapter">
-      <div class="text">
-        <h2>One slab, one seam</h2>
-        <p>
-          The case is two shells that meet in a shadow gap halfway up its sides. Light from eight LEDs on
-          the board edge leaks into that gap, so the pad glows along a single line instead of through strips.
-          Make it on a printer or have it milled from aluminium; both come from the same parametric model.
-        </p>
+    <!-- The manifesto. Every word is a fact about this design; the words light up in reading order. -->
+    <section id="words" class="chapter words text-ground" data-scene="words" aria-labelledby="words-title">
+      <div class="column">
+        <h2 id="words-title">Everything a desk wants, in 90 millimetres.</h2>
+        <p class="manifesto" data-part="manifesto"><span>Tactile.</span> <span><span class="nb">Hot-swappable.</span></span> <span><span class="nb">Per-key</span> wired.</span> <span>Zero ghosting.</span> <span><span class="nb">Always-on.</span></span> <span><span class="nb">Sunlight-readable.</span></span> <span>Async Rust.</span> <span>1&nbsp;ms scan.</span> <span><span class="nb">Drag-and-drop</span> updates.</span> <span><span class="nb">Current-capped.</span></span> <span><span class="nb">Watchdog-guarded.</span></span> <span>Generated from code.</span> <span>Drawn for the mill.</span> <span>Hidden screws.</span> <span class="manifesto-last">And one thin line of light.</span></p>
+        <p class="manifesto-notes">One pin per key, so any combination of keys reads correctly. A memory LCD that holds its picture without a backlight. Firmware updates by copying one file. LED current capped at 200&nbsp;mA, and a watchdog that restarts the pad if the scan loop ever stalls. Six screws, all under the feet.</p>
       </div>
-      <figure class="wide">
-        <img src="images/cad/colourways.png" width="1600" height="1100" loading="lazy"
-             alt="Four finishes side by side: chalk and graphite printed, silver and space grey milled.">
-        <figcaption>Printed in chalk or graphite, milled in silver or space grey.</figcaption>
+    </section>
+
+    <!-- Design: one slab, one seam. The seam leaves the side render and runs to the screen edges. -->
+    <section id="design" class="scene design studio-ground" data-scene="design" aria-labelledby="design-title">
+      <div class="column intro">
+        <h2 id="design-title" class="scene-title">One slab. One seam.</h2>
+        <p>A flat 90&nbsp;×&nbsp;90&nbsp;mm top over a darker base, 17.5&nbsp;mm tall, with nothing printed on its face. The two shells meet in a shadow gap that runs all the way round. That gap is the only line on the case, and it is where the light comes out.</p>
+      </div>
+      <figure class="shot">
+        <div class="frame studio">
+          <div class="layer" data-part="parallax">
+            <picture>
+              <source type="image/webp" srcset="images/cad/hero-800.webp 800w, images/cad/hero-1600.webp 1600w" sizes="100vw">
+              <img src="images/cad/hero.png" width="1600" height="1100" loading="lazy" decoding="async"
+                   alt="Render of the printed case in chalk from the front left: light top, dark base, twelve white keycaps in a dish, two black knobs and the display showing the media layer.">
+            </picture>
+          </div>
+        </div>
+        <figcaption>Chalk, the printed finish. Render.</figcaption>
       </figure>
-      <div class="pair">
-        <figure>
-          <img src="images/cad/side_profile.png" width="1600" height="1100" loading="lazy"
-               alt="The case from the side: one thin dark line runs round it at mid height.">
-          <figcaption>The seam runs round the case at one height.</figcaption>
+      <figure class="shot seam-shot">
+        <div class="frame studio">
+          <div class="layer">
+            <div class="box">
+            <span class="seam-line seam-left" data-part="seam-left" aria-hidden="true"></span>
+            <picture>
+              <source type="image/webp" srcset="images/cad/side_profile-800.webp 800w, images/cad/side_profile-1600.webp 1600w" sizes="100vw">
+              <img src="images/cad/side_profile.png" width="1600" height="1100" loading="lazy" decoding="async"
+                   alt="Render of the case from the left: a light top over a darker base, a thin dark gap between them, and a pale strip in the gap where the light bar sits.">
+            </picture>
+            <span class="seam-line seam-right" data-part="seam-right" aria-hidden="true"></span>
+            </div>
+          </div>
+        </div>
+        <figcaption>From the left: light top, dark base, and the gap between them.</figcaption>
+      </figure>
+      <div class="column split">
+        <figure class="plain">
+          <picture>
+            <source type="image/webp" srcset="images/cad/top_plan-800.webp 800w, images/cad/top_plan-1600.webp 1600w" sizes="(min-width: 48rem) 50vw, 100vw">
+            <img src="images/cad/top_plan.png" width="1600" height="1100" loading="lazy" decoding="async"
+                 alt="Render from directly above: a square case with two knobs and the display along the back and a four by three grid of keys in a recessed dish.">
+          </picture>
         </figure>
-        <figure>
-          <img src="images/cad/light_line.png" width="1600" height="1100" loading="lazy"
-               alt="The case at night with a thin line of light glowing in the seam on its side.">
-          <figcaption>At night the seam lights up. Colour and brightness are a guess until one is built.</figcaption>
-        </figure>
-        <figure>
-          <img src="images/cad/knob_detail.png" width="1600" height="1100" loading="lazy"
-               alt="Close-up of a knob with fine vertical grooves and a flat top.">
-          <figcaption>Knobs with fine grooves, plain bands and a flat top.</figcaption>
-        </figure>
-        <figure>
-          <img src="images/cad/exploded.png" width="1600" height="1100" loading="lazy"
-               alt="Exploded view: keycaps, switches, top shell, light bars, board, base, feet and screws.">
-          <figcaption>Hidden screws, a lens over the display, light bars in the seam.</figcaption>
-        </figure>
+        <p class="split-text">From above it is a square with one job per zone. Knobs and screen along the back, a four by three grid of keys in a shallow dish, and the same 4.275&nbsp;mm frame on the left, the right and the front.</p>
       </div>
     </section>
 
-    <div class="seam" aria-hidden="true"><span></span></div>
-
-    <section id="signature" class="chapter split">
-      <div class="text">
-        <h2>Signature edition</h2>
-        <p>
-          The underside of the milled case carries a hand-drawn signature and the words
-          Signature Edition, laser-marked into the anodised surface beside the centre foot.
-        </p>
-        <p>
-          The mark is flat artwork, not a cut: the laser shop gets it as a drawing at its place on the base.
-        </p>
+    <!-- Colourways: one parametric model, printed or milled. User-driven switcher over the real 2x2 render. -->
+    <section id="colourways" class="chapter colourways studio-ground" aria-labelledby="colourways-title">
+      <div class="column split-head">
+        <h2 id="colourways-title">Print it. Or mill it.</h2>
+        <p>One parametric model, two cases. Print it in PLA or PETG, or send the CNC variant to a machine shop for aluminium with continuous-curvature corners. The knobs are printed either way.</p>
       </div>
-      <figure>
-        <img src="images/cad/underside_aluminium.png" width="1600" height="1100" loading="lazy"
-             alt="The underside of the milled base: two black foot strips, a centre pad, and a signature with the caption Signature Edition.">
+      <figure class="column colourway">
+        <div class="plate colourway-plate">
+          <picture>
+            <source type="image/webp" srcset="images/cad/colourways-800.webp 800w, images/cad/colourways-1600.webp 1600w" sizes="(min-width: 64rem) 128rem, 200vw">
+            <img src="images/cad/colourways.png" width="1600" height="1100" loading="lazy" decoding="async" class="colourway-image"
+                 alt="Four renders in a grid of the same pad from the front left: Chalk printed, Graphite printed, Silver milled and Space grey milled.">
+          </picture>
+        </div>
+        <div class="finishes" role="group" aria-label="Finish" hidden>
+          <button type="button" class="finish" data-quadrant="0" data-name="Chalk" data-kind="printed" aria-pressed="true"><span class="swatch" style="--swatch:#e5e2dc" aria-hidden="true"></span>Chalk <span class="finish-kind">printed</span></button>
+          <button type="button" class="finish" data-quadrant="1" data-name="Graphite" data-kind="printed" aria-pressed="false"><span class="swatch" style="--swatch:#2a2d33" aria-hidden="true"></span>Graphite <span class="finish-kind">printed</span></button>
+          <button type="button" class="finish" data-quadrant="2" data-name="Silver" data-kind="milled" aria-pressed="false"><span class="swatch" style="--swatch:#c9ccd1" aria-hidden="true"></span>Silver <span class="finish-kind">milled</span></button>
+          <button type="button" class="finish" data-quadrant="3" data-name="Space grey" data-kind="milled" aria-pressed="false"><span class="swatch" style="--swatch:#5a5d63" aria-hidden="true"></span>Space grey <span class="finish-kind">milled</span></button>
+        </div>
+        <figcaption class="finish-caption" aria-live="polite">Chalk and Graphite are the printed variant, Silver and Space grey the milled one. Finishes are proposals; nothing has been printed or milled.</figcaption>
       </figure>
     </section>
 
-    <div class="seam" aria-hidden="true"><span></span></div>
-
-    <section id="inside" class="chapter split reverse">
-      <div class="text">
-        <h2>A real board, not hand wiring</h2>
-        <p>
-          An RP2354A, the RP2350 with its flash inside the package, sits on a four-layer board with every
-          key on its own pin. Hot-swap sockets take any MX switch. One USB-C port powers it, talks to the
-          computer and loads new firmware.
-        </p>
-        <p>
-          The whole board is generated by code, routed by its own router and checked against its schematic
-          on every build. <a href="images/pcb/schematic.pdf">Read the schematic</a>.
-        </p>
+    <!-- Details: close-ups. Each settles from a slight zoom as it scrolls in. -->
+    <section id="details" class="chapter details studio-ground" data-scene="details" aria-labelledby="details-title">
+      <div class="column">
+        <h2 id="details-title">Details, close up.</h2>
       </div>
-      <figure>
-        <img src="images/pcb/assembled-angle.png" width="1568" height="1568" loading="lazy"
-             alt="The populated circuit board at an angle: twelve switch positions, two encoders, the display socket.">
+      <div class="detail-grid">
+        <figure class="detail wide">
+          <div class="clip" data-part="settle">
+            <picture>
+              <source type="image/webp" srcset="images/cad/deck_detail-800.webp 800w, images/cad/deck_detail-1600.webp 1600w" sizes="(min-width: 48rem) 58vw, 100vw">
+              <img src="images/cad/deck_detail.png" width="1600" height="1100" loading="lazy" decoding="async"
+                   alt="Close render of the back of the deck: the display under a flush, black-masked lens between two grooved black knobs, white keycaps in front.">
+            </picture>
+          </div>
+          <figcaption>The glass lens sits 0.12&nbsp;mm under the top face, between two knobs in shallow wells.</figcaption>
+        </figure>
+        <figure class="detail narrow">
+          <div class="clip" data-part="settle">
+            <picture>
+              <source type="image/webp" srcset="images/cad/knob_detail-800.webp 800w, images/cad/knob_detail-1600.webp 1600w" sizes="(min-width: 48rem) 42vw, 100vw">
+              <img src="images/cad/knob_detail.png" width="1600" height="1100" loading="lazy" decoding="async"
+                   alt="Close render of one knob in low light: vertical grooves in a band, plain bands above and below, a flat top with a pointer line.">
+            </picture>
+          </div>
+          <figcaption>36 straight grooves in one band, a flat top and a pointer line. The knob clicks 36 times a turn.</figcaption>
+        </figure>
+        <figure class="detail narrow">
+          <div class="clip" data-part="settle">
+            <picture>
+              <source type="image/webp" srcset="images/cad/usb_detail-800.webp 800w, images/cad/usb_detail-1600.webp 1600w" sizes="(min-width: 48rem) 42vw, 100vw">
+              <img src="images/cad/usb_detail.png" width="1600" height="1100" loading="lazy" decoding="async"
+                   alt="Close render of the USB-C opening in the back of the case: a rounded rectangular cut-out with the port inside, in a flat pad where the seam stops.">
+            </picture>
+          </div>
+          <figcaption>One USB-C port for power, data and new firmware, in a flush pad where the seam stops short.</figcaption>
+        </figure>
+        <figure class="detail wide">
+          <div class="clip" data-part="settle">
+            <picture>
+              <source type="image/webp" srcset="images/cad/back_usb-800.webp 800w, images/cad/back_usb-1600.webp 1600w" sizes="(min-width: 48rem) 58vw, 100vw">
+              <img src="images/cad/back_usb.png" width="1600" height="1100" loading="lazy" decoding="async"
+                   alt="Render of the back of the pad with a USB-C cable drawn pulled out of the port.">
+            </picture>
+          </div>
+          <figcaption>From the back, with the cable drawn pulled out.</figcaption>
+        </figure>
+      </div>
+      <figure class="shot">
+        <div class="frame studio">
+          <div class="layer" data-part="settle">
+            <picture>
+              <source type="image/webp" srcset="images/cad/tilt-800.webp 800w, images/cad/tilt-1600.webp 1600w" sizes="100vw">
+              <img src="images/cad/tilt.png" width="1600" height="1100" loading="lazy" decoding="async"
+                   alt="Render from the side with the optional tilt bar under the back edge, raising the back of the pad.">
+            </picture>
+          </div>
+        </div>
+        <figcaption>An optional bar tilts the pad 6° towards you. Nothing else on the case changes.</figcaption>
       </figure>
     </section>
 
-    <div class="seam" aria-hidden="true"><span></span></div>
-
-    <section id="firmware" class="chapter">
-      <div class="text">
-        <h2>Firmware you can read</h2>
-        <p>
-          Written in Rust on embassy. Four layers for media, editing, navigation and numbers. The screen
-          shows what each key does right now, and the knobs change volume, scroll or anything you map.
-          Drag one file onto the board to update it.
-        </p>
+    <!-- Light: the studio goes dark and the line comes on, one LED at a time. -->
+    <section id="light" class="scene light" data-scene="light" aria-labelledby="light-title">
+      <div class="track"><div class="stage">
+        <h2 id="light-title" class="scene-title">Lights out. Line on.</h2>
+        <figure class="shot light-shot">
+          <div class="frame night">
+            <div class="layer">
+              <div class="night-veil" data-part="veil" aria-hidden="true"></div>
+              <div class="box">
+              <picture>
+                <source type="image/webp" srcset="images/cad/light_line-800.webp 800w, images/cad/light_line-1600.webp 1600w" sizes="100vw">
+                <img src="images/cad/light_line.png" width="1600" height="1100" loading="lazy" decoding="async"
+                     alt="Render at night of the side of the pad: dark base, light top, and a warm white line of light glowing in the gap between them.">
+              </picture>
+              <div class="drawn-line" aria-hidden="true">
+                <span data-part="led"></span><span data-part="led"></span><span data-part="led"></span><span data-part="led"></span>
+              </div>
+              </div>
+            </div>
+          </div>
+          <figcaption>Render. The colour and brightness of the glow are a guess: no optics were simulated and no LED has been lit.</figcaption>
+        </figure>
+        <div class="studio-veil" data-part="dim" aria-hidden="true"></div>
+      </div></div>
+      <div class="column split light-facts">
+        <p>Eight side-firing RGB LEDs sit on the board's left and right edges, four a side. A clear bar carries their light to a slit in the seam, so the pad glows along one thin line on each side instead of from a strip.</p>
+        <div>
+          <ul class="facts">
+            <li>Press a key and a ring of light runs outward from it.</li>
+            <li>Turn a knob and a dot of light follows it round the pad.</li>
+            <li>Change layer and the colour cross-fades in 300&nbsp;ms.</li>
+            <li>Turn caps lock on and the back corners go white.</li>
+            <li>Let the computer sleep and every LED goes dark.</li>
+          </ul>
+          <p class="small">Current is capped at 200&nbsp;mA, and dimming comes after the cap, so no setting can exceed it.</p>
+        </div>
       </div>
-      <figure class="wide screen">
-        <img src="images/ui/demo.gif" width="1104" height="573" loading="lazy"
-             alt="The display cycling through the media, navigation and number layers as keys are pressed.">
-        <figcaption>The screen as the simulator draws it.</figcaption>
+      <figure class="shot">
+        <div class="frame studio">
+          <div class="layer">
+            <picture>
+              <source type="image/webp" srcset="images/cad/section_light_line-800.webp 800w, images/cad/section_light_line-1600.webp 1600w" sizes="100vw">
+              <img src="images/cad/section_light_line.png" width="1600" height="1100" loading="lazy" decoding="async"
+                   alt="Cut-away render across the side of the pad: hatched case walls, a keycap and switch, and the small light bar standing in the base wall behind a thin skin, showing in the gap.">
+            </picture>
+          </div>
+        </div>
+        <figcaption>Cut through one LED. The bar stands in the base wall behind a 1&nbsp;mm skin and shows only in the gap.</figcaption>
       </figure>
+      <div class="column timeline">
+        <h3>Every LED, frame by frame</h3>
+        <figure>
+          <div class="plate sim pixel">
+            <img src="images/ui/led_timeline.png" width="1523" height="160" loading="lazy" decoding="async"
+                 alt="Chart of the eight LEDs over the demo session, one row per LED: violet, then cyan, then rainbow colours, dimming while idle and dark at the end.">
+          </div>
+          <figcaption>All eight LEDs across the simulator's demo session, one row each: the power-on wipe, the violet MEDIA layer breathing, a cross-fade to cyan EDIT, white caps-lock corners, the NUM rainbow, idle dimming, then dark for flash mode. Colours are brightened for the screen.</figcaption>
+        </figure>
+        <ul class="swatches">
+          <li><span class="swatch" style="--swatch:var(--layer-media)" aria-hidden="true"></span>MEDIA, breathing violet</li>
+          <li><span class="swatch" style="--swatch:var(--layer-edit)" aria-hidden="true"></span>EDIT, solid cyan</li>
+          <li><span class="swatch" style="--swatch:var(--layer-nav)" aria-hidden="true"></span>NAV, a green wave</li>
+          <li><span class="swatch rainbow" aria-hidden="true"></span>NUM, rainbow</li>
+        </ul>
+      </div>
     </section>
 
-    <div class="seam" aria-hidden="true"><span></span></div>
-
-    <section class="chapter specs" aria-labelledby="specs-title">
-      <h2 id="specs-title">What is in it</h2>
-      <dl>
-        <div><dt>Keys</dt><dd>12, MX hot-swap, one pin each, no diodes</dd></div>
-        <div><dt>Knobs</dt><dd>2 Alps EC11 encoders with push</dd></div>
-        <div><dt>Screen</dt><dd>nice!view, 160 × 68, always on</dd></div>
-        <div><dt>Light</dt><dd>8 side-emitting RGB LEDs in the case seam</dd></div>
-        <div><dt>Chip</dt><dd>RP2354A: RP2350 with 2 MB flash in the package</dd></div>
-        <div><dt>Board</dt><dd>84 × 82.5 mm, four layers, parts on one side</dd></div>
-        <div><dt>Port</dt><dd>One USB-C for power, data and flashing</dd></div>
-        <div><dt>Firmware</dt><dd>Rust, embassy, drag-and-drop UF2 updates</dd></div>
-      </dl>
+    <!-- Exploded: five clip-path bands of one render, pushed together, then opened to the exact picture. -->
+    <section id="exploded" class="scene exploded" data-scene="exploded" aria-labelledby="exploded-title">
+      <div class="track"><div class="stage">
+        <div class="exploded-text">
+          <h2 id="exploded-title" class="scene-title">Take it apart.</h2>
+          <p>Two knobs. Twelve keycaps on twelve MX switches. A glass lens and the top shell. The board. The base with its two light bars. Then six screws, two foot strips and a centre pad that hides the last two. Tape holds the lens and the feet.</p>
+          <ul class="layers">
+            <li data-part="label">Knobs</li>
+            <li data-part="label">Keycaps and switches</li>
+            <li data-part="label">Lens and top shell</li>
+            <li data-part="label">Board, base and light bars</li>
+            <li data-part="label">Screws, foot strips and centre pad</li>
+          </ul>
+        </div>
+        <figure class="exploded-figure">
+          <div class="bands-frame">
+          <div class="bands" role="img" aria-label="Exploded render, top to bottom: two knobs, twelve white keycaps, twelve black switches, the glass lens, the light top shell, the black circuit board with encoders and display, the dark base with two light bars, six screws, two foot strips and a centre pad.">
+            <picture class="band band-knobs" data-part="band" aria-hidden="true">
+              <source type="image/webp" srcset="images/cad/exploded-800.webp 800w, images/cad/exploded-1300.webp 1300w" sizes="(min-width: 48rem) 40vw, 90vw">
+              <img src="images/cad/exploded.png" width="1300" height="1700" loading="lazy" decoding="async" alt="">
+            </picture>
+            <picture class="band band-keys" data-part="band" aria-hidden="true">
+              <source type="image/webp" srcset="images/cad/exploded-800.webp 800w, images/cad/exploded-1300.webp 1300w" sizes="(min-width: 48rem) 40vw, 90vw">
+              <img src="images/cad/exploded.png" width="1300" height="1700" loading="lazy" decoding="async" alt="">
+            </picture>
+            <picture class="band band-top" data-part="band" aria-hidden="true">
+              <source type="image/webp" srcset="images/cad/exploded-800.webp 800w, images/cad/exploded-1300.webp 1300w" sizes="(min-width: 48rem) 40vw, 90vw">
+              <img src="images/cad/exploded.png" width="1300" height="1700" loading="lazy" decoding="async" alt="">
+            </picture>
+            <picture class="band band-board" data-part="band" aria-hidden="true">
+              <source type="image/webp" srcset="images/cad/exploded-800.webp 800w, images/cad/exploded-1300.webp 1300w" sizes="(min-width: 48rem) 40vw, 90vw">
+              <img src="images/cad/exploded.png" width="1300" height="1700" loading="lazy" decoding="async" alt="">
+            </picture>
+            <picture class="band band-hardware" data-part="band" aria-hidden="true">
+              <source type="image/webp" srcset="images/cad/exploded-800.webp 800w, images/cad/exploded-1300.webp 1300w" sizes="(min-width: 48rem) 40vw, 90vw">
+              <img src="images/cad/exploded.png" width="1300" height="1700" loading="lazy" decoding="async" alt="">
+            </picture>
+          </div>
+          </div>
+          <figcaption>Exploded render of the printed variant. Keycaps, switches, encoders and the display are reference shapes drawn from datasheets, not vendor models.</figcaption>
+        </figure>
+      </div></div>
     </section>
 
-    <div class="seam" aria-hidden="true"><span></span></div>
+    <!-- Inside: cut-aways and the print layout. Only the section zooms, slightly. -->
+    <section id="inside" class="chapter inside studio-ground" data-scene="inside" aria-labelledby="inside-title">
+      <div class="column split-head">
+        <h2 id="inside-title">Cut through the middle.</h2>
+        <p>The case is checked like a machined part. Every part is tested against every other part and every bought component, every named clearance is measured, and the printed variant is simulated layer by layer for overhangs and bridges.</p>
+      </div>
+      <figure class="shot">
+        <div class="frame studio">
+          <div class="layer" data-part="settle">
+            <picture>
+              <source type="image/webp" srcset="images/cad/section_usb_display-800.webp 800w, images/cad/section_usb_display-1600.webp 1600w" sizes="100vw">
+              <img src="images/cad/section_usb_display.png" width="1600" height="1100" loading="lazy" decoding="async"
+                   alt="Cut-away render through the middle of the pad: keys and switches on the left, hatched shells with two centre screws below, and on the right the display under its lens with the USB-C cable plugged in at the back.">
+            </picture>
+          </div>
+        </div>
+        <figcaption>Section through the USB port, the lens, the display and the two centre screws under the pad.</figcaption>
+      </figure>
+      <div class="column pair">
+        <figure class="plain">
+          <picture>
+            <source type="image/webp" srcset="images/cad/shells_inside-800.webp 800w, images/cad/shells_inside-1600.webp 1600w" sizes="(min-width: 48rem) 50vw, 100vw">
+            <img src="images/cad/shells_inside.png" width="1600" height="1100" loading="lazy" decoding="async"
+                 alt="Render of both case shells from inside: the dark base with screw bosses and support posts, and the light top with twelve switch openings, ribs and screw bosses.">
+          </picture>
+          <figcaption>Both shells from inside: lap ridges and light channels in the base, ribs and screw bosses under the plate.</figcaption>
+        </figure>
+        <figure class="plain">
+          <picture>
+            <source type="image/webp" srcset="images/cad/print_plate-800.webp 800w, images/cad/print_plate-1600.webp 1600w" sizes="(min-width: 48rem) 50vw, 100vw">
+            <img src="images/cad/print_plate.png" width="1600" height="1100" loading="lazy" decoding="async"
+                 alt="Render of the printed parts as laid out on a printer bed: the base lying flat, the top standing on its side wall, and a light bar, a knob, two feet and the tilt bar beside them.">
+          </picture>
+          <figcaption>Laid out for the printer: the base flat, the top standing on its side wall, the small parts beside them. Tipping and warping are not modelled.</figcaption>
+        </figure>
+      </div>
+      <p class="column check-strip">659 part pairs per variant, 0 clashes, every named clearance inside its limit. Checked by the model, not by a print.</p>
+    </section>
 
-    <section id="build" class="chapter">
-      <h2>Build one</h2>
-      <ol class="steps">
-        <li>
-          <h3>Order the board</h3>
-          <p>Upload the Gerbers, bill of materials and placement list to JLCPCB. They place every part but three.</p>
-          <a href="https://github.com/worxbend/macropad/blob/main/docs/ordering.md">Ordering guide</a>
-        </li>
-        <li>
-          <h3>Make the case</h3>
-          <p>Print the STL files, or send the STEP files to a CNC shop together with the signature drawing.</p>
-          <a href="https://github.com/worxbend/macropad/blob/main/cad/README.md">Case notes</a>
-        </li>
-        <li>
-          <h3>Put it together</h3>
-          <p>Solder the knobs and the display socket, fit the switches, close the case with six screws from below.</p>
-          <a href="https://github.com/worxbend/macropad/blob/main/docs/assembly.md">Assembly guide</a>
-        </li>
-        <li>
-          <h3>Load the firmware</h3>
-          <p>Hold BOOT, plug it in and copy <code>macropad.uf2</code> to the drive that appears.</p>
-          <a href="https://github.com/worxbend/macropad/blob/main/docs/flashing.md">Flashing guide</a>
-        </li>
+    <!-- Board: the PCB renders. A flip stage switches bare/populated and key side/bottom. -->
+    <section id="board" class="chapter board" data-scene="board" aria-labelledby="board-title">
+      <div class="column split-head">
+        <h2 id="board-title">A real circuit board. Every key on its own pin.</h2>
+        <div>
+          <p>An RP2354A (the RP2350 chip of the Raspberry Pi Pico&nbsp;2, with 2&nbsp;MB of flash in the package) on a four-layer board. Twelve keys on twelve GPIOs: no matrix, no diodes, no ghosting. Hot-swap sockets take any MX-style switch without soldering. Code in the repository places the parts, routes the board with its own router and checks it against the schematic on every build.</p>
+          <dl class="facts-list">
+            <div><dt>Chip</dt><dd>RP2354A, RP2350 with 2&nbsp;MB flash inside</dd></div>
+            <div><dt>Board</dt><dd>84&nbsp;×&nbsp;82.5&nbsp;mm, 4 layers, 1.6&nbsp;mm</dd></div>
+            <div><dt>Routing</dt><dd>797 tracks, 160 vias, 0 design-rule violations</dd></div>
+            <div><dt>Machine-placed parts</dt><dd>All on the bottom face</dd></div>
+          </dl>
+        </div>
+      </div>
+      <figure class="column board-angle">
+        <div class="plate kicad clip">
+          <div data-part="parallax">
+            <picture>
+              <source type="image/webp" srcset="images/pcb/assembled-angle-800.webp 800w, images/pcb/assembled-angle-1568.webp 1568w" sizes="(min-width: 64rem) 60rem, 100vw">
+              <img src="images/pcb/assembled-angle.png" width="1568" height="1568" loading="lazy" decoding="async"
+                   alt="Render of the populated board at an angle: twelve switches with orange stems, two encoder shafts and the display module on an olive-green board.">
+            </picture>
+          </div>
+        </div>
+        <figcaption>Populated board. The parts are block models at nominal heights, there to show position, not the makers' 3D models.</figcaption>
+      </figure>
+      <div class="column flip" data-flip>
+        <div class="flip-controls" hidden>
+          <div class="segmented" role="group" aria-label="Board">
+            <button type="button" data-flip-board="render" aria-pressed="false">Bare</button>
+            <button type="button" data-flip-board="assembled" aria-pressed="true">Populated</button>
+          </div>
+          <div class="segmented" role="group" aria-label="Side">
+            <button type="button" data-flip-side="top" aria-pressed="true">Key side</button>
+            <button type="button" data-flip-side="bottom" aria-pressed="false">Bottom</button>
+          </div>
+        </div>
+        <div class="flip-stage">
+          <figure class="flip-view" data-view="render-top">
+            <div class="plate kicad">
+              <picture>
+                <source type="image/webp" srcset="images/pcb/render-top-800.webp 800w, images/pcb/render-top-1568.webp 1568w" sizes="(min-width: 48rem) 40rem, 100vw">
+                <img src="images/pcb/render-top.png" width="1568" height="1568" loading="lazy" decoding="async"
+                     alt="Render of the bare circuit board, key side: twelve switch footprints labelled K0 to K11 with their GPIO numbers, two encoder footprints and the display header.">
+              </picture>
+            </div>
+            <figcaption>Bare board, key side. Every switch footprint is labelled with its key and GPIO.</figcaption>
+          </figure>
+          <figure class="flip-view" data-view="render-bottom">
+            <div class="plate kicad">
+              <picture>
+                <source type="image/webp" srcset="images/pcb/render-bottom-800.webp 800w, images/pcb/render-bottom-1568.webp 1568w" sizes="(min-width: 48rem) 40rem, 100vw">
+                <img src="images/pcb/render-bottom.png" width="1568" height="1568" loading="lazy" decoding="async"
+                     alt="Render of the bare circuit board, bottom face: pads for the chip, USB-C port, regulator, BOOT and RESET buttons, twelve hot-swap sockets and eight edge LEDs.">
+              </picture>
+            </div>
+            <figcaption>Bare board, bottom face, before parts.</figcaption>
+          </figure>
+          <figure class="flip-view is-shown" data-view="assembled-top">
+            <div class="plate kicad">
+              <picture>
+                <source type="image/webp" srcset="images/pcb/assembled-top-800.webp 800w, images/pcb/assembled-top-1568.webp 1568w" sizes="(min-width: 48rem) 40rem, 100vw">
+                <img src="images/pcb/assembled-top.png" width="1568" height="1568" loading="lazy" decoding="async"
+                     alt="Render of the populated board from above: two encoders, the display module and twelve switch blocks with orange stems.">
+              </picture>
+            </div>
+            <figcaption>Populated, key side: two encoders, the display socket and twelve switches.</figcaption>
+          </figure>
+          <figure class="flip-view" data-view="assembled-bottom">
+            <div class="plate kicad">
+              <picture>
+                <source type="image/webp" srcset="images/pcb/assembled-bottom-800.webp 800w, images/pcb/assembled-bottom-1568.webp 1568w" sizes="(min-width: 48rem) 40rem, 100vw">
+                <img src="images/pcb/assembled-bottom.png" width="1568" height="1568" loading="lazy" decoding="async"
+                     alt="Render of the populated bottom face: the chip next to the USB-C connector, BOOT and RESET buttons, twelve hot-swap sockets, and four side LEDs on each edge.">
+              </picture>
+            </div>
+            <figcaption>Populated, bottom face: chip, USB-C, regulator, BOOT and RESET, twelve hot-swap sockets, and four side LEDs on each edge.</figcaption>
+          </figure>
+        </div>
+      </div>
+      <div class="column split">
+        <figure class="plain">
+          <div class="plate kicad">
+            <picture>
+              <source type="image/webp" srcset="images/pcb/assembled-underside-800.webp 800w, images/pcb/assembled-underside-1568.webp 1568w" sizes="(min-width: 48rem) 50vw, 100vw">
+              <img src="images/pcb/assembled-underside.png" width="1568" height="1568" loading="lazy" decoding="async"
+                   alt="Render of the populated board from below at an angle: hot-swap sockets, the chip near the USB-C port, and side LEDs along both edges.">
+            </picture>
+          </div>
+          <figcaption>From below at an angle. Every machine-placed part is on this face.</figcaption>
+        </figure>
+        <p class="split-text">The circuit, the placement and every track come from Python in the repository. The schematic is a real KiCad sheet written from the same circuit, and the board is checked against it. <a href="images/pcb/schematic.pdf">Read the schematic (PDF, one A3 sheet)</a>.</p>
+      </div>
+    </section>
+
+    <!-- Firmware: an LCD scrubbed by scroll through every screen in order. -->
+    <section id="firmware" class="scene firmware" data-scene="firmware" aria-labelledby="firmware-title">
+      <div class="track"><div class="stage">
+        <h2 id="firmware-title" class="scene-title">A screen that always knows.</h2>
+        <div class="scrubber">
+          <ol class="screen-names" aria-hidden="true">
+            <li data-part="name">Power on</li>
+            <li data-part="name">MEDIA</li>
+            <li data-part="name">EDIT</li>
+            <li data-part="name">NAV</li>
+            <li data-part="name">NUM</li>
+            <li data-part="name">Layer change</li>
+            <li data-part="name">Knob turn</li>
+            <li data-part="name">System</li>
+            <li data-part="name">Idle</li>
+            <li data-part="name">Flash, holding</li>
+            <li data-part="name">Flash, ready</li>
+          </ol>
+          <div class="bezel">
+            <ol class="screens">
+              <li data-part="screen"><figure>
+                <img src="images/ui/splash.png" width="640" height="272" loading="lazy" decoding="async" alt="Display: MACROPAD in large pixel letters, firmware version 0.1.0 and a progress bar.">
+                <figcaption><strong>Power on.</strong> The title wipes in, then the firmware version.</figcaption>
+              </figure></li>
+              <li data-part="screen"><figure>
+                <img src="images/ui/media.png" width="640" height="272" loading="lazy" decoding="async" alt="Display, MEDIA layer: knob labels VOL, MUTE and BRIGHT, and key labels PREV, PLAY, NEXT, STOP, F13 to F20.">
+                <figcaption><strong>MEDIA.</strong> Transport keys, F13 to F20, volume and screen brightness on the knobs.</figcaption>
+              </figure></li>
+              <li data-part="screen"><figure>
+                <img src="images/ui/edit_typing.png" width="640" height="272" loading="lazy" decoding="async" alt="Display, EDIT layer with caps lock on: UNDO to LINE, with COPY and SAVE filled because they are held.">
+                <figcaption><strong>EDIT.</strong> Two keys held and caps lock on. Held keys fill in.</figcaption>
+              </figure></li>
+              <li data-part="screen"><figure>
+                <img src="images/ui/nav.png" width="640" height="272" loading="lazy" decoding="async" alt="Display, NAV layer: HOME, UP, END, PGUP, the arrows, PGDN, TAB-, TAB+, BACK and FWD, with UP outlined after a tap.">
+                <figcaption><strong>NAV.</strong> A key just tapped keeps its outline for 0.3&nbsp;s.</figcaption>
+              </figure></li>
+              <li data-part="screen"><figure>
+                <img src="images/ui/num.png" width="640" height="272" loading="lazy" decoding="async" alt="Display, NUM layer with num lock on: digits 0 to 9, BKSP and ENTER.">
+                <figcaption><strong>NUM.</strong> A keypad, with num lock shown.</figcaption>
+              </figure></li>
+              <li data-part="screen"><figure>
+                <img src="images/ui/layer_banner.png" width="640" height="272" loading="lazy" decoding="async" alt="Display: a dark band across the middle with EDIT in large letters and four layer pips.">
+                <figcaption><strong>Layer change.</strong> A band opens with the new layer's name.</figcaption>
+              </figure></li>
+              <li data-part="screen"><figure>
+                <img src="images/ui/knob_overlay.png" width="640" height="272" loading="lazy" decoding="async" alt="Display: a box reading VOL +5 over a dial scale.">
+                <figcaption><strong>Knob turn.</strong> Five clicks up. It counts clicks; it cannot read the computer's volume.</figcaption>
+              </figure></li>
+              <li data-part="screen"><figure>
+                <img src="images/ui/system.png" width="640" height="272" loading="lazy" decoding="async" alt="Display, system screen: the four layer names with NAV selected, a brightness bar, and reminders for the knobs.">
+                <figcaption><strong>System.</strong> Hold the left knob for layers and brightness.</figcaption>
+              </figure></li>
+              <li data-part="screen"><figure>
+                <img src="images/ui/idle.png" width="640" height="272" loading="lazy" decoding="async" alt="Display, idle: EDIT and an uptime of 00:00:49 among scattered star dots.">
+                <figcaption><strong>Idle.</strong> After 30&nbsp;s the name and uptime drift among the stars.</figcaption>
+              </figure></li>
+              <li data-part="screen"><figure>
+                <img src="images/ui/flash_hold.png" width="640" height="272" loading="lazy" decoding="async" alt="Display: FLASH MODE, keep holding both knobs, let go to cancel, and a progress bar.">
+                <figcaption><strong>Flash, holding.</strong> Keep both knobs down to restart for new firmware.</figcaption>
+              </figure></li>
+              <li data-part="screen"><figure>
+                <img src="images/ui/flash.png" width="640" height="272" loading="lazy" decoding="async" alt="Display: FLASH MODE, copy MACROPAD.UF2 to the RP2350 drive.">
+                <figcaption><strong>Flash, ready.</strong> Copy the file to the drive and you are done.</figcaption>
+              </figure></li>
+            </ol>
+          </div>
+        </div>
+        <p class="status-line">Simulator frames. The firmware builds and passes its tests; it has never run on a chip.</p>
+      </div></div>
+      <div class="column split firmware-more">
+        <p>The nice!view is a 160&nbsp;×&nbsp;68 memory LCD: always on and readable in sunlight. It shows the active layer, every key's label, both knob functions, caps and num lock, and a live typing-rate graph. Async Rust on embassy scans every key once a millisecond, and the same code draws these screens in a simulator on a PC.</p>
+        <figure class="demo" data-demo data-gif="images/ui/demo.gif">
+          <div class="plate sim pixel">
+            <img src="images/ui/pad.png" width="1104" height="573" loading="lazy" decoding="async" class="demo-image"
+                 alt="Simulator frame: the pad from above with STOP and F17 held, the display enlarged, and the keyboard and media reports the computer would receive.">
+          </div>
+          <figcaption>
+            Simulator output, not a recording. The real display and LED code running on a PC, with the USB reports the computer would receive.
+            <button type="button" class="button demo-play" hidden>Play the demo</button>
+            <a class="demo-link" href="images/ui/demo.gif">Watch the demo (GIF, 2.6&nbsp;MB)</a>
+          </figcaption>
+        </figure>
+      </div>
+      <div class="column split firmware-sheet">
+        <figure class="plain">
+          <div class="plate sim pixel">
+            <img src="images/ui/screens.png" width="808" height="1180" loading="lazy" decoding="async"
+                 alt="Sheet of all eleven display screens, each with the colours of the side LEDs at that moment.">
+          </div>
+          <figcaption>Every screen at once, each with the colours its side LEDs show.</figcaption>
+        </figure>
+        <table class="controls">
+          <caption>Controls</caption>
+          <tbody>
+            <tr><th scope="row">Tap the left knob</th><td>Next layer</td></tr>
+            <tr><th scope="row">Hold the left knob + a top-row key</th><td>Jump to layer 1 to 4</td></tr>
+            <tr><th scope="row">Hold the left knob + turn the right one</th><td>LED brightness, 8 steps down to off</td></tr>
+            <tr><th scope="row">Press the right knob</th><td>The layer's action: mute, Enter or a period</td></tr>
+            <tr><th scope="row">Hold both knobs for 1&nbsp;s</th><td>Restart as a USB drive for new firmware</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Keymap: the four stock layers, browsable; no JS shows all four in turn. -->
+    <section id="keymap" class="chapter keymap text-ground" aria-labelledby="keymap-title">
+      <div class="column split-head">
+        <h2 id="keymap-title">Your shortcuts. Your code.</h2>
+        <p>Four layers come in the stock keymap: MEDIA, EDIT, NAV and NUM. Tap the left knob for the next layer, or hold it and press a top-row key to jump. On every layer, all twelve keys, both knob turns and the right knob's press have their own job.</p>
+      </div>
+      <div class="column layers-browser" data-tabs>
+        <div class="layer-tabs" role="tablist" aria-label="Layers" hidden>
+          <button type="button" role="tab" id="tab-media" aria-controls="layer-media" aria-selected="true"><span class="swatch" style="--swatch:var(--layer-media)" aria-hidden="true"></span>MEDIA</button>
+          <button type="button" role="tab" id="tab-edit" aria-controls="layer-edit" aria-selected="false" tabindex="-1"><span class="swatch" style="--swatch:var(--layer-edit)" aria-hidden="true"></span>EDIT</button>
+          <button type="button" role="tab" id="tab-nav" aria-controls="layer-nav" aria-selected="false" tabindex="-1"><span class="swatch" style="--swatch:var(--layer-nav)" aria-hidden="true"></span>NAV</button>
+          <button type="button" role="tab" id="tab-num" aria-controls="layer-num" aria-selected="false" tabindex="-1"><span class="swatch rainbow" aria-hidden="true"></span>NUM</button>
+        </div>
+        <div class="layer-panel" id="layer-media" data-panel>
+          <h3 class="layer-name">MEDIA</h3>
+          <table class="keygrid"><caption>MEDIA keys, row by row</caption><tbody>
+            <tr><td>PREV</td><td>PLAY</td><td>NEXT</td><td>STOP</td></tr>
+            <tr><td>F13</td><td>F14</td><td>F15</td><td>F16</td></tr>
+            <tr><td>F17</td><td>F18</td><td>F19</td><td>F20</td></tr>
+          </tbody></table>
+          <dl class="knobs"><div><dt>Left knob turn</dt><dd>Volume</dd></div><div><dt>Right knob turn</dt><dd>Screen brightness</dd></div><div><dt>Right knob press</dt><dd>Mute</dd></div></dl>
+        </div>
+        <div class="layer-panel" id="layer-edit" data-panel>
+          <h3 class="layer-name">EDIT</h3>
+          <table class="keygrid"><caption>EDIT keys, row by row</caption><tbody>
+            <tr><td>UNDO</td><td>REDO</td><td>CUT</td><td>COPY</td></tr>
+            <tr><td>PASTE</td><td>ALL</td><td>SAVE</td><td>FIND</td></tr>
+            <tr><td>ESC</td><td>TAB/SH</td><td>DEL</td><td>LINE</td></tr>
+          </tbody></table>
+          <dl class="knobs"><div><dt>Left knob turn</dt><dd>Undo and redo</dd></div><div><dt>Right knob turn</dt><dd>Cursor left and right</dd></div><div><dt>Right knob press</dt><dd>Enter</dd></div></dl>
+        </div>
+        <div class="layer-panel" id="layer-nav" data-panel>
+          <h3 class="layer-name">NAV</h3>
+          <table class="keygrid"><caption>NAV keys, row by row</caption><tbody>
+            <tr><td>HOME</td><td>UP</td><td>END</td><td>PGUP</td></tr>
+            <tr><td>LEFT</td><td>DOWN</td><td>RIGHT</td><td>PGDN</td></tr>
+            <tr><td>TAB-</td><td>TAB+</td><td>BACK</td><td>FWD</td></tr>
+          </tbody></table>
+          <dl class="knobs"><div><dt>Left knob turn</dt><dd>Up and down arrow</dd></div><div><dt>Right knob turn</dt><dd>Previous and next tab</dd></div><div><dt>Right knob press</dt><dd>Enter</dd></div></dl>
+        </div>
+        <div class="layer-panel" id="layer-num" data-panel>
+          <h3 class="layer-name">NUM</h3>
+          <table class="keygrid"><caption>NUM keys, row by row</caption><tbody>
+            <tr><td>7</td><td>8</td><td>9</td><td>BKSP</td></tr>
+            <tr><td>4</td><td>5</td><td>6</td><td>ENTER</td></tr>
+            <tr><td>1</td><td>2</td><td>3</td><td>0</td></tr>
+          </tbody></table>
+          <dl class="knobs"><div><dt>Left knob turn</dt><dd>Volume</dd></div><div><dt>Right knob turn</dt><dd>Minus and plus</dd></div><div><dt>Right knob press</dt><dd>Period</dd></div></dl>
+        </div>
+      </div>
+      <div class="column split remap">
+        <ol class="steps-inline">
+          <li>Edit one Rust file: <code>firmware/core/src/keymap.rs</code>.</li>
+          <li>Run <code>make</code>. Tests reject a label that will not fit the screen, a macro too long for the queue and a key code out of range.</li>
+          <li>Hold both knobs for a second and copy <code>macropad.uf2</code> to the RP2350 drive.</li>
+        </ol>
+        <div>
+          <pre class="code"><code>media("PLAY", consumer::PLAY_PAUSE),
+ctrl("COPY", key::C),
+chord("REOPEN", modifier::CTRL | modifier::SHIFT, key::T),
+tap_hold("TAB/SH", Stroke::plain(key::TAB), Stroke::modifiers(modifier::SHIFT)),</code></pre>
+          <p class="small">No configurator app, no driver, no account. To the computer it is a USB keyboard with media keys, so your keymap goes wherever the pad goes. Brightness and the active layer reset at power-on. <a href="https://github.com/worxbend/macropad/blob/main/firmware/KEYMAP.md">Keymap guide</a></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Uses: every real use, phrased as what the keys and knobs do. No motion. -->
+    <section id="uses" class="chapter uses alu-ground" aria-labelledby="uses-title">
+      <div class="column split-head">
+        <h2 id="uses-title">Made for the work you repeat.</h2>
+        <p>Twelve keys and two knobs, each doing something different on every layer. Here is what they do for the people who use them, with the stock keymap or a line or two of your own.</p>
+      </div>
+      <div class="column use-group">
+        <h3>Create</h3>
+        <div class="use-list">
+          <div class="use"><h4>Video editing</h4><p class="use-how">EDIT layer</p><p>Undo, redo, cut, copy and paste under one hand. Turn the left knob to walk back through undo history. Turn the right one to send Left and Right arrow, which most editors use to step one frame.</p></div>
+          <div class="use"><h4>Streaming</h4><p class="use-how">MEDIA layer</p><p>Eight keys most keyboards do not have, F13 to F20, ready for scenes, sources and a "be right back" screen in your streaming software's hotkey settings. Volume stays on the left knob, and the right knob's press mutes the computer's sound.</p></div>
+          <div class="use"><h4>Music production</h4><p class="use-how">Your keymap</p><p>Put the shortcuts your music software already has (transport, record, loop, markers) on keys, and keep system volume on a knob. It sends keystrokes, not MIDI.</p></div>
+          <div class="use"><h4>Design tools</h4><p class="use-how">Your keymap</p><p>Zoom on one knob (the keymap guide shows exactly that) and undo history on the other. The twelve keys hold the tools you switch between most.</p></div>
+        </div>
+      </div>
+      <div class="column use-group">
+        <h3>Work</h3>
+        <div class="use-list">
+          <div class="use"><h4>Coding and IDEs</h4><p class="use-how">EDIT and NAV layers</p><p>SAVE, FIND, and a LINE key that selects the whole line in one press. NAV adds Home, End, Page Up and Page Down, with tabs on a knob. Want a command palette or a build key? One <code>chord()</code> line in the keymap.</p></div>
+          <div class="use"><h4>Office and meetings</h4><p class="use-how"><code>chord()</code> in the keymap</p><p>Put your call app's mute shortcut on one key and it is a single press away, labelled on the screen. The stock right-knob press mutes the speakers.</p></div>
+          <div class="use"><h4>Number entry</h4><p class="use-how">NUM layer</p><p>A full keypad: 0 to 9, Backspace and Enter, minus and plus on a knob, a decimal point on its press. Useful next to a laptop without one.</p></div>
+          <div class="use"><h4>Navigation and reading</h4><p class="use-how">NAV layer</p><p>Scroll with one knob, flip tabs with the other, Back and Forward on keys. The keymap guide includes a complete browser layer.</p></div>
+        </div>
+      </div>
+      <div class="column use-group">
+        <h3>Everyday</h3>
+        <div class="use-list">
+          <div class="use"><h4>Media control</h4><p class="use-how">MEDIA layer</p><p>Previous, play, next and stop on the top row. Volume on the left knob, screen brightness on the right, mute on its press.</p></div>
+          <div class="use"><h4>One-handed and accessible set-ups</h4><p class="use-how"><code>tap_hold()</code> and <code>sequence()</code></p><p>Twelve keys within one hand's reach. Tap-hold gives one key two jobs, a macro types up to 16 strokes from one press, and the hot-swap sockets take whichever MX switch feels right. The optional 6° bar tilts it towards you.</p></div>
+          <div class="use"><h4>Home lab and smart home</h4><p class="use-how">F13 to F20</p><p>The pad only speaks USB, so the computer does the rest. Bind F13 to F20 in a shortcut tool on the computer to run a script, switch a scene in your home-automation system or restart a lab service. No wireless, no network and no cloud on the pad itself.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Signature: the memorable moment. Drawn stroke by stroke, then landed on its laser mark. -->
+    <section id="signature" class="scene signature-scene" data-scene="signature" aria-labelledby="signature-title">
+      <div class="track"><div class="stage">
+        <span class="sig-hairline" data-part="hairline" aria-hidden="true"></span>
+        <div class="sig-text">
+          <h2 id="signature-title" class="scene-title">Signed underneath.</h2>
+          <figure class="signature" data-part="signature">
+            <!-- signature:svg -->
+          </figure>
+          <p class="sig-edition" data-part="edition">Signature Edition</p>
+          <p class="sig-body" data-part="body">Turn the milled case over. Beside the centre foot, a large O and then "leksandr B" in one joined stroke spell the designer's name, with Signature Edition beneath. It is a 0.3&nbsp;mm laser line, 34&nbsp;mm wide, marked into the anodised base from the same source file that draws it on this page.</p>
+        </div>
+        <div class="frame alu sig-render" data-part="render">
+          <div class="layer box">
+            <picture>
+              <source type="image/webp" srcset="images/cad/underside_aluminium-800.webp 800w, images/cad/underside_aluminium-1600.webp 1600w" sizes="(min-width: 48rem) 55vw, 100vw">
+              <img src="images/cad/underside_aluminium.png" width="1600" height="1100" loading="lazy" decoding="async" class="sig-target-image"
+                   alt="Render of the milled base from below: two black foot strips, a centre pad, the RESET and BOOT holes with their labels, the name worxbend / macropad, and the signature with the words Signature Edition.">
+            </picture>
+            <span class="sigbox" aria-hidden="true"></span>
+          </div>
+        </div>
+      </div></div>
+      <div class="column split sig-after">
+        <p class="small">This page draws the signature from <code>cad/macropad_case/signature.py</code> every time the site is built, so it always matches the laser file. Nothing has been marked yet: what you see is the artwork and a render of where it goes. <a href="images/signature.svg">The artwork as SVG</a></p>
+        <figure class="plain">
+          <picture>
+            <source type="image/webp" srcset="images/cad/underside-800.webp 800w, images/cad/underside-1600.webp 1600w" sizes="(min-width: 48rem) 40vw, 100vw">
+            <img src="images/cad/underside.png" width="1600" height="1100" loading="lazy" decoding="async"
+                 alt="Render of the printed base from below in graphite: two foot strips, a centre pad, the BOOT and RESET holes and the engraved name, with no signature.">
+          </picture>
+          <figcaption>The printed base: BOOT and RESET holes and the engraved name. The signature is laser-marked on the milled base.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- Specs: the facts in one list. -->
+    <section id="specs" class="chapter specs text-ground" aria-labelledby="specs-title">
+      <div class="column split-head">
+        <h2 id="specs-title">Tech specs</h2>
+        <dl class="spec-list">
+          <div><dt>Keys</dt><dd>12 MX-style, Kailh hot-swap sockets, one GPIO per key, no matrix, no diodes</dd></div>
+          <div><dt>Knobs</dt><dd>2 Alps EC11 encoders with push switch, 36 detents a turn</dd></div>
+          <div><dt>Display</dt><dd>nice!view, Sharp memory LCD, 160&nbsp;×&nbsp;68, monochrome, always on</dd></div>
+          <div><dt>Light</dt><dd>8 SK6812 SIDE-A side-emitting RGB LEDs, four a side, behind two light bars in the seam</dd></div>
+          <div><dt>Chip</dt><dd>RP2354A (RP2350 with 2&nbsp;MB flash in the package)</dd></div>
+          <div><dt>Board</dt><dd>84&nbsp;×&nbsp;82.5&nbsp;mm, 4 layers, 1.6&nbsp;mm. Machine-placed parts on the bottom face</dd></div>
+          <div><dt>Port</dt><dd>One USB-C for power, data and flashing. ESD protection and a 500&nbsp;mA resettable fuse</dd></div>
+          <div><dt>Case</dt><dd>90.0&nbsp;×&nbsp;90.0&nbsp;×&nbsp;17.5&nbsp;mm, 31.0&nbsp;mm to the top of the knobs. Printed or CNC-milled aluminium. Six hidden M2 screws. Optional 6° tilt bar</dd></div>
+          <div><dt>Firmware</dt><dd>Rust on embassy. 4 layers, macros, tap-hold keys, per-layer knob functions, animated display, reactive lighting</dd></div>
+          <div><dt>Computer</dt><dd>USB keyboard with media keys, 6-key rollover. No driver, no software</dd></div>
+          <div><dt>Updates</dt><dd>Drag and drop a UF2 file. Hold both knobs to start</dd></div>
+          <div><dt>Debug</dt><dd>SWD and power test pads. BOOT and RESET through the case floor</dd></div>
+          <div><dt>Status</dt><dd>Design files only. Not built</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <!-- Status: the honest chapter. The header pill points here. -->
+    <section id="status" class="chapter status alu-hi-ground" aria-labelledby="status-title">
+      <div class="column split-head">
+        <div>
+          <h2 id="status-title">Where it stands</h2>
+          <p class="lede">Everything on this page is design, simulation and automatic checks. Nobody has held one yet.</p>
+        </div>
+        <div>
+          <table class="status-table">
+            <caption>Checked on 2026-11-13</caption>
+            <thead><tr><th scope="col">Part</th><th scope="col">State</th><th scope="col">Checked by</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Circuit</th><td>Done: 51 nets, 71 machine-placed parts</td><td>Netlist self-check and 34 unit tests</td></tr>
+              <tr><th scope="row">Schematic</th><td>Done: ERC 0 errors, 0 warnings</td><td>KiCad 9</td></tr>
+              <tr><th scope="row">PCB</th><td>Fully routed: 797 tracks, 160 vias, DRC 0 violations</td><td>KiCad design-rule check</td></tr>
+              <tr><th scope="row">Case</th><td>659 part pairs per variant, 0 clashes</td><td>The case's own checks</td></tr>
+              <tr><th scope="row">Firmware</th><td>Builds; 220 tests pass</td><td>cargo test, board and HID checks</td></tr>
+              <tr class="not-yet"><th scope="row">Real hardware</th><td>None: no board ordered, no case printed or milled, no firmware flashed</td><td>Nothing yet</td></tr>
+            </tbody>
+          </table>
+          <h3>Still open</h3>
+          <ul class="open-points">
+            <li>The crystal is a substitute for the reference part. If USB does not start, look there first.</li>
+            <li>The pin orders of the display header and the side LEDs are still to be measured.</li>
+            <li>Every fit in the case is a guess until one print is measured.</li>
+            <li>How bright and even the light line is has not been simulated or tried.</li>
+          </ul>
+          <p><a href="https://github.com/worxbend/macropad#before-you-order">Read "Before you order" in full</a></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Build: the real sequence, plus the shop drawings. -->
+    <section id="build" class="chapter build text-ground" aria-labelledby="build-title">
+      <div class="column split-head">
+        <h2 id="build-title">Build one.</h2>
+        <p class="lede">Nobody has done this yet. The guides are written from the design files, so expect to find mistakes, and please report them.</p>
+      </div>
+      <ol class="column steps">
+        <li><h3>Read the open points</h3><p>Decide whether you accept them.</p><p><a href="https://github.com/worxbend/macropad#before-you-order">Before you order</a></p></li>
+        <li><h3>Order the board</h3><p>Upload the Gerbers, BOM and placement list to JLCPCB, then buy the parts they do not place.</p><p><a href="https://github.com/worxbend/macropad/blob/main/docs/ordering.md">Ordering guide</a> <a href="https://github.com/worxbend/macropad/tree/main/pcb/fab">Order files</a></p></li>
+        <li><h3>Make the case</h3><p>Print the STL files, or send the STEP files and the two shop sheets to a CNC shop, with the signature drawing for the laser.</p><p><a href="https://github.com/worxbend/macropad/blob/main/cad/README.md">Case notes</a></p></li>
+        <li><h3>Assemble</h3><p>Solder the two encoders and the display socket, test the bare board, fit the switches, and close the case with six screws from below.</p><p><a href="https://github.com/worxbend/macropad/blob/main/docs/assembly.md">Assembly guide</a></p></li>
+        <li><h3>Flash</h3><p>Hold BOOT, plug in, and copy <code>macropad.uf2</code> to the RP2350 drive.</p><p><a href="https://github.com/worxbend/macropad/blob/main/docs/flashing.md">Flashing guide</a></p></li>
       </ol>
-      <p class="caution">
-        Read <a href="https://github.com/worxbend/macropad#before-you-order">Before you order</a> first:
-        a few part orientations and pin orders are still unchecked against their datasheets.
-      </p>
+      <div class="column drawings">
+        <h3>Drawings for the shop</h3>
+        <figure class="drawing drawing-wide">
+          <a class="plate paper" href="images/cad/general_arrangement.png">
+            <img src="images/cad/general_arrangement.png" width="2400" height="1698" loading="lazy" decoding="async"
+                 alt="Engineering drawing on A3: top, front and right views of the case with dimensions of 90 by 90 millimetres and a 19.05 millimetre key pitch, plus a section through the USB port and the lens.">
+          </a>
+          <figcaption>General arrangement on A3 at 1.6:1. The dimension texts are computed from the model.</figcaption>
+        </figure>
+        <figure class="drawing">
+          <a class="plate paper" href="images/cad/drawing_base.png">
+            <img src="images/cad/drawing_base.png" width="2400" height="1698" loading="lazy" decoding="async"
+                 alt="Machine-shop drawing of the milled base: views from above and below, a section, a detail of the gap and lap joint, and a table of holes measured from datum A.">
+          </a>
+          <figcaption>Machine-shop sheet for the milled base: plans from above and below, section, gap detail and hole table.</figcaption>
+        </figure>
+        <figure class="drawing">
+          <a class="plate paper" href="images/cad/drawing_top.png">
+            <img src="images/cad/drawing_top.png" width="2400" height="1698" loading="lazy" decoding="async"
+                 alt="Machine-shop drawing of the milled top: views from above and below, a section, a detail of the gap and lap joint, and a table of holes, knob wells and the lens recess.">
+          </a>
+          <figcaption>Machine-shop sheet for the milled top. Tolerances are a proposal; nothing has been machined.</figcaption>
+        </figure>
+        <ul class="file-links">
+          <li><a href="images/pcb/schematic.pdf">Schematic (PDF)</a></li>
+          <li>Copper layers: <a href="images/pcb/copper-top.svg">top</a>, <a href="images/pcb/copper-ground.svg">ground</a>, <a href="images/pcb/copper-power.svg">power</a>, <a href="images/pcb/copper-bottom.svg">bottom</a> (SVG)</li>
+          <li>Assembly drawings: <a href="images/pcb/assembly-top.svg">top</a>, <a href="images/pcb/assembly-bottom.svg">bottom</a> (SVG)</li>
+        </ul>
+      </div>
     </section>
   </main>
 
-  <footer class="bottom">
-    <p>macropad is open hardware by worxbend. Source, issues and releases live on
-      <a href="https://github.com/worxbend/macropad">GitHub</a>.</p>
+  <footer class="foot">
+    <div class="column">
+      <p>macropad by worxbend. Source, issues and changes live on <a href="https://github.com/worxbend/macropad">GitHub</a>.</p>
+      <p>Every picture on this page is generated from the repository: renders, drawings and simulator frames. None is a photo, because no pad exists yet. No licence has been chosen yet, so the files are public to read but not yet licensed for reuse.</p>
+    </div>
   </footer>
 </body>
 </html>
