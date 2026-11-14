@@ -9,7 +9,7 @@ files say and what the automatic checks confirm, nothing more.
 
 <img src="../docs/images/pcb/render-top.png" alt="top face, bare board" width="48%"> <img src="../docs/images/pcb/render-bottom.png" alt="bottom face, bare board" width="48%">
 
-Bare-board renders (KiCad 9). Left: top face with the keys, knobs and display socket. Right: bottom
+Bare-board renders (KiCad 9). Left: top face with the keys, knobs and display header. Right: bottom
 face with every machine-placed part.
 
 <img src="../docs/images/pcb/assembled-angle.png" alt="populated board, key side" width="48%"> <img src="../docs/images/pcb/assembled-underside.png" alt="populated board, underside" width="48%">
@@ -66,7 +66,7 @@ It is a drawing of `circuit.py`, not a second source of truth:
   `Regulator_Linear:AP2112K-3.3`, `Power_Protection:USBLC6-2SC6`, `Logic_LevelTranslator:SN74LVC1T45DBV`,
   `Connector:USB_C_Receptacle_USB2.0_16P` and so on). Pin numbers, pin names and pin types are
   therefore KiCad's, not typed here. Two parts have no KiCad symbol and are drawn as boxes: the
-  side LED and the display socket.
+  side LED and the display header.
 - **`sheet_layout.py` places the parts and lists the drawn wires.** Every other pin gets its supply
   symbol or its net label by rule. A drawn wire names its net, and the build refuses a wire that
   touches a pin of another net.
@@ -92,7 +92,7 @@ nice!view pin orders are still `MEASURE` items; no library covers them.
 |---|---|
 | F.Cu | Signals that cross the chip area, ground pour |
 | In1.Cu | Ground plane, unbroken |
-| In2.Cu | 5 V plane. Inside it a 3.3 V island under the MCU, the display socket and the USB pair. Inside that a 1.1 V island under the chip |
+| In2.Cu | 5 V plane. Inside it a 3.3 V island under the MCU, the display header and the USB pair. Inside that a 1.1 V island under the chip |
 | B.Cu | All machine-placed parts, most signals, ground pour |
 
 Drawings of each layer: [top](../docs/images/pcb/copper-top.svg),
@@ -119,16 +119,22 @@ There is no autorouter program. `router.py` is a small grid router and `route.py
 do, in this order:
 
 1. **Four ground vias** in the MCU's exposed pad.
-2. **MCU supply pins.** Each pin runs to its own 100 nF capacitor. The supply via sits between the
+2. **1.1 V regulator**, in Raspberry Pi's RP2350A Minimal pattern (RP2350 datasheet 6.3.8), mirrored
+   for the bottom face. CIN (C11) sits across VREG_VIN (pin 49) and PGND (pin 47), COUT (C12) right
+   behind it; their ground pads are joined and share two hand-placed vias. VREG_LX runs from pin 48
+   between the pads of both capacitors to the inductor beyond them. VREG_FB runs from pin 50 to
+   COUT. A 0.3 mm link takes the output from the inductor's +1V1 pad over the chip on the top layer
+   into the 1.1 V island. Rule areas keep copper off the top and both inner layers under the
+   inductor and the VREG_LX track, and keep the bottom ground pour out from between the inductor's
+   pads. Then USB D+ and D-, which squeeze past the regulator to their series resistors.
+3. **MCU supply pins.** Each pin runs to its own 100 nF capacitor. The supply via sits between the
    pin and the capacitor, the ground via behind the capacitor, all on one line pointing away from
    the chip. These vias are placed by hand-computed geometry (`circuit.py`: `DECOUPLING_DISTANCE`,
    `SUPPLY_VIA_DISTANCE`, `GROUND_VIA_DISTANCE`), so they stay out of the lanes the neighbouring
    signal pins need.
-3. **1.1 V regulator.** Inductor to its two output capacitors with a 0.3 mm track, then on to the
-   via at VREG_FB that enters the 1.1 V island.
-4. **Crystal ground vias**, then **SWCLK and SWDIO** out of the chip.
-5. **Sensitive nets**, while the board is still empty: VREG_LX, the USB pair, the crystal nets,
-   VREG_AVDD. Then QSPI_SS, RUN, BOOT and VBUS.
+4. **Crystal ground vias**, then **RUN**, then **SWCLK and SWDIO** out of the chip.
+5. **Sensitive nets**, while the board is still empty: the USB lines from the connector, the crystal
+   nets, VREG_AVDD. Then QSPI_SS, BOOT and VBUS.
 6. **One via to the plane** for every remaining supply and ground pad.
 7. **MCU signals**, one pin at a time: first a track out of the 16 mm square around the chip, then
    the rest of the net. Pins next to a capacitor go first. `route_order.txt` moves some nets to the
@@ -148,10 +154,14 @@ again with that net moved to the front, until every net connects. The order it f
 | Router: clearance to pads, tracks, vias, holes and the edge; vias; fan-out; escapes; determinism (15 tests) | `test_router.py` | yes, in `make pcb-test` and CI |
 | Hand-placed vias have room | `router.py:add_via` | yes |
 | Every net connects through tracks, vias and inner planes alone, before the outer ground pours are added | `build.py` | yes |
-| Length limits: VREG_LX, USB_DM, USB_DP, XIN, XOUT, VREG_AVDD; USB pair mismatch under 2 mm; no via on VREG_LX, on USB D+ from connector to chip, or on D- after its resistor | `route.py:check_sensitive_lengths` | yes |
+| Length limits: VREG_LX, USB_DM, USB_DP, XIN, XOUT, VREG_AVDD, VREG_FB to COUT; USB pair mismatch under 2 mm; no via on VREG_LX, on USB D+ from connector to chip, or on D- after its resistor; VREG_AVDD at least 0.75 mm from VREG_LX | `route.py:check_sensitive_lengths` | yes |
+| No via and no top-layer track under the regulator inductor or the VREG_LX track | `route.py:check_regulator_keepout` | yes |
+| L1's polarity dot on B.SilkS and B.Fab sits at its +1V1 pad | `layout.py:check_placement` | yes |
+| Silkscreen text is at least 1.0 mm high (stroke 0.15 mm) | `silk.py:_text` | yes |
+| Every real part has a JLCPCB number, a manufacturer and a manufacturer part number | `circuit.py:check_sourcing` | yes, in `make pcb-test` |
 | KiCad DRC at every severity: no warning either (loose track end, silkscreen over a pad or the edge). One named exception: J1 differs from its library copy, because its silkscreen is cut at the board edge | `build.py:_check_no_warnings` | yes |
 | Every real part has a 3D model; no bottom-side model is taller than the gap to the case floor | `layout.py:write_models` | yes |
-| Order files: all 11 Gerbers present and newer than the board, drill file has one hole per via, BOM and placement list name the same 71 parts as `circuit.py`, every BOM line has a JLCPCB number | `fab.py:check_outputs` | yes, in `make pcb-fab` |
+| Order files: all 11 Gerbers present and newer than the board, drill file has one hole per via, both BOMs and the placement list name the same 72 parts as `circuit.py`, every BOM line has a JLCPCB number and a manufacturer part number, PCBWay quantities match the designators, every placement point lies inside its part's courtyard | `fab.py:check_outputs` | yes, in `make pcb-fab` |
 | Schematic ERC at every severity, and schematic netlist equals `circuit.py` | `build.py:write_schematic` | yes |
 | `circuit.py` pins against KiCad's library symbols; chip footprints against the symbols' footprints | `schematic.py` | yes |
 | Board equals schematic: footprints, values, pad nets (`--schematic-parity`) | `build.py:_check_no_warnings` | yes |
@@ -161,7 +171,7 @@ again with that net moved to the front, until every net connects. The order it f
 ## What a person still has to look at
 
 - **USB pair.** Routed as two short tracks, not as a tuned differential pair. Lengths are in
-  `routing.txt` (D+ 15.4 mm, D- 14.3 mm). From the series resistors to the chip both run on the
+  `routing.txt` (D+ 14.9 mm, D- 14.1 mm). From the series resistors to the chip both run on the
   bottom layer with no via. Near the connector D- changes layer twice: a USB-C receptacle has two
   pads per line and one line has to cross the other. No impedance was calculated. This is normal for
   full-speed USB (12 Mbit/s) over 15 mm; it would not be for high-speed.
@@ -177,13 +187,21 @@ again with that net moved to the front, until every net connects. The order it f
   (between the first two key rows), 5V (next to them), 3V3 (right of the BOOT button, seen from the
   bottom) and 1V1 (beside the inductor). The 1V1 pad hangs on the regulator output track. Nobody has
   put a probe on them.
-- **Regulator loop.** VREG_LX and the output link are short and checked for length, but nobody has
-  looked at the loop area by eye in KiCad. The inductor's part number and its polarity mark are not
-  verified against Raspberry Pi's hardware design guide.
-- **Crystal.** It sits 5 mm below XIN, as close as the two hot-swap sockets allow. The 15 pF load
-  capacitors are the reference design's values for the reference crystal. This crystal is a
-  different part with the same 10 pF load rating (see `docs/parts.md`). The oscillator is not measured.
-- **Thermal reliefs** are on for through-hole pads only (encoders, display socket, USB shell).
+- **Regulator loop.** The placement follows Raspberry Pi's reference, mirrored for the bottom face,
+  and the checks above hold it. Two departures: VREG_LX is 3.9 mm long, because it runs between the
+  pads of both capacitors to the inductor; and the second 4.7 µF (C13) sits at the probe pad end of
+  the output track, not at DVDD pin 23 as the datasheet suggests, because the crystal, its
+  capacitors and the escape tracks of pins 21 to 29 leave no room there. The footprint (Raspberry
+  Pi's, see `lib/SOURCES.txt`) puts a dot on the +1V1 pad on silkscreen and fabrication layers; on a
+  part mounted on the bottom face the dot rule is still to be confirmed against Abracon's drawing
+  and JLCPCB's preview. Nobody has measured the 1.1 V ripple.
+- **Crystal.** It sits 5 mm below XIN, as close as the two hot-swap sockets allow. It is Raspberry
+  Pi's reference part (ABM8-272-T3) with the reference 15 pF load capacitors and 1 kΩ. The
+  oscillator is not measured.
+- **LED data.** R9 (330 Ω) sits in series at the level shifter's output, as the SK6812 SIDE-A
+  datasheet asks. The value is a choice inside the reviewed 33 to 470 Ω range; nobody has looked at
+  the edge with a scope.
+- **Thermal reliefs** are on for through-hole pads only (encoders, display header, USB shell).
 - **No teardrops.** KiCad 9's Python interface can switch teardrops on per via, but only the editor
   draws them: tried here, a filled and saved board had none. Open the board in KiCad and run
   Edit > Edit Teardrops if you want them; that is a hand edit the next `make pcb-place` removes.
@@ -193,9 +211,10 @@ again with that net moved to the front, until every net connects. The order it f
   silkscreen warning.
 - **3D models** are block models with heights typed from memory of the datasheets. Use them to see
   the layout, not to measure. The case model has its own clearance checks.
-- **Placement list rotations.** `fab/cpl-jlcpcb.csv` carries KiCad's rotation of each footprint.
-  JLCPCB's library often expects another zero angle, most often for bottom-side parts, SOT-23 and
-  LEDs. Check every part in JLCPCB's placement preview before paying.
+- **Placement list.** `fab/cpl-jlcpcb.csv` puts each part at the centre of its body outline and
+  carries KiCad's rotation unchanged, also on the bottom face. Whether JLCPCB wants that or
+  (180 - r) is not settled; community exporters disagree. Check every part in JLCPCB's placement
+  preview before paying (`docs/ordering.md` has the checklist).
 - **Schematic layout.** The sheet is generated. It passes KiCad's checks and was looked at as a
   picture, but nobody has reviewed it as an engineer would review a hand-drawn schematic.
 - **Net names.** On the board, signal nets carry KiCad's leading slash (`/KEY3`), supply nets do not

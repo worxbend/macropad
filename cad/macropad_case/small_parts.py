@@ -104,9 +104,10 @@ def lens_outline() -> Sketch:
 
 
 def lens_mask_outline() -> Sketch:
-    """The black print on the underside of the lens: all of it except the window over the visible glass."""
+    """The black print on the underside of the lens: all of it except the window over the pixels."""
     display = BOARD.display
-    window = centred_rectangle((display.window_x, display.window_y), (display.window_length, display.window_width))
+    window = centred_rectangle((display.mask_window_x, display.window_y),
+                               (display.mask_window_length, display.window_width))
     return lens_outline() - window
 
 

@@ -188,7 +188,7 @@ _DISPLAY = Block(
 
 _LEVEL_SHIFTER = Block(
     "LED data: 3.3 V to 5 V", 254, 60, 68, 36,
-    places=(Place("U4", 26, 22), Place("C20", 50, 20), Place("C21", 58, 20)),
+    places=(Place("U4", 26, 22), Place("C20", 50, 20), Place("C21", 58, 20), Place("R9", 46, 30, 90)),
     wires=(
         Wire(V3, ("U4.1", (24, 12), (14, 12), (14, 26), "U4.5")),
         Wire(V5, ("U4.6", (28, 12), (32, 12))),

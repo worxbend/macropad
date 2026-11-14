@@ -7,16 +7,16 @@ level by level. The print variant adds what only a printer can make (45 degree f
 from math import radians, sqrt, tan
 
 from build123d import Align, Axis, Circle, Cone, Part, Plane, Polygon, Pos, Rectangle, RectangleRounded, Sketch
-from build123d import extrude, fillet, offset
+from build123d import extrude, fillet
 
 from . import signature
-from .solids import CUT_OVERSHOOT, box, case_outline, chamfered_slab, cylinder, discs, legend, millable, pcb_outline
-from .solids import rectangle, rounded_rectangle, slab, stadium
+from .solids import CUT_OVERSHOOT, box, case_outline, chamfered_slab, cylinder, discs, legend, millable, offset_sketch
+from .solids import pcb_outline, rectangle, rounded_rectangle, slab, stadium
 from .spec import BOARD, CASE, CENTRE_ROW, CNC, LEVELS, PRINT, buttons, bushing_hole, case_bounds, deck_pocket_front
 from .spec import dish_floor, dish_floor_radius, encoder_centres, foot_span, grown, key_centres, knob_well_diameter
 from .spec import label_field, lap_runs, led_slot_span, lens_opening, lens_recess, lens_rib_spans, mounting_holes
-from .spec import rib_lines, screw_rows, screw_seat, skin_chamfer, socket_posts, top_boss_diameters, usb_opening_size
-from .spec import usb_pad_span
+from .spec import rib_lines, screw_rows, screw_seat, skin_chamfer, socket_posts, top_boss_diameters, usb_corner_radii
+from .spec import usb_opening_size, usb_pad_span
 
 FAR = 500.0
 WIDTH = BOARD.board.width
@@ -29,6 +29,7 @@ LEGEND_GROW = 0.05
 UNDERSIDE_MARK = "worxbend / macropad"
 UNDERSIDE_MARK_SIZE = 5.1
 UNDERSIDE_MARK_GROW = 0.145
+BOSS_FIN_OVERLAP = 0.5  # mm a centre boss's fin reaches into the boss
 
 
 def base(variant: str) -> Part:
@@ -183,7 +184,7 @@ def _board_y_range(artwork: Sketch) -> tuple[float, float]:
 
 
 def _bolder(artwork: Sketch, grow: float) -> Sketch:
-    return offset(artwork, amount=grow)
+    return offset_sketch(artwork, grow)
 
 
 def underside_mark() -> Sketch:
@@ -221,13 +222,13 @@ def usb_cutout() -> Part:
     profile = usb_opening_profile()
     tunnel = extrude(at_the_port * profile, radius - back_face + CUT_OVERSHOOT) & slab(millable(plan, CNC), z_range)
     flare = CASE.usb_mouth_chamfer
-    return tunnel + extrude(at_the_port * offset(profile, amount=flare), flare, taper=45)
+    return tunnel + extrude(at_the_port * offset_sketch(profile, flare), flare, taper=45)
 
 
 def usb_opening_profile() -> Sketch:
     """The opening seen from behind, centred on the receptacle: X across, Y up."""
     width, height = usb_opening_size()
-    lower, upper = CASE.usb_corner_radii
+    lower, upper = usb_corner_radii()
     outline = Rectangle(width, height)
     outline = fillet(outline.vertices().group_by(Axis.Y)[0], lower)
     return fillet(outline.vertices().group_by(Axis.Y)[-1], upper)
@@ -392,7 +393,10 @@ def _print_boss_webs() -> list[Part]:
         on_a_rib = any(abs(y - line) < CASE.rib_width / 2 for line in rib_lines())
         if on_a_rib:
             fin_y = (y - CASE.rib_width / 2, y + CASE.rib_width / 2)
-            webs.append(_gusset((x - radius, LEVELS.rib_bottom), -LEVELS.rib_bottom, fin_y))
+            # The fin's inner face would only touch the boss along one line, an edge the STL cannot
+            # close; a block reaching into the boss makes the two one body.
+            into_the_boss = box((x - radius, x - radius + BOSS_FIN_OVERLAP), fin_y, (0, LEVELS.rib_bottom))
+            webs.append(_gusset((x - radius, LEVELS.rib_bottom), -LEVELS.rib_bottom, fin_y) + into_the_boss)
         else:
             webs.append(_corner_boss_web((x, y), radius))
     return webs

@@ -21,6 +21,9 @@ POSITION_TOLERANCE = 0.02
 # Passives are too dense for readable silkscreen. Connectors, chips and the other one-of-a-kind parts
 # keep their reference; the two buttons are named BOOT and RESET instead (see silk.py).
 SILK_LABELLED = {"USBC", "SOCKET5", "EC11", "MX_HOTSWAP", "QFN60", "SOT23-5", "SOT23-6", "F1206"}
+# Top-view position of a reference that would sit on other parts' pads at its library spot. J1's lands on
+# the USB series resistors, so it moves beside the connector's right shell leg.
+REFERENCE_POSITION = {"J1": (49.6, 8.9)}
 
 # JLCPCB 4-layer capability with margin: 0.09 mm track/space and 0.3 mm drill are their limits.
 TRACK_WIDTH = 0.15
@@ -100,6 +103,8 @@ def _place(board: pcbnew.BOARD, part: Part, open_pin_nets: dict[str, str]) -> pc
     footprint.Value().SetVisible(False)
     _remove_silkscreen_off_the_board(footprint)
     footprint.Reference().SetVisible(part.footprint_key in SILK_LABELLED)
+    if part.ref in REFERENCE_POSITION:
+        footprint.Reference().SetPosition(point(*REFERENCE_POSITION[part.ref]))
     if not part.machine_assembled:
         footprint.SetExcludedFromPosFiles(True)
     _connect(board, footprint, part, open_pin_nets)

@@ -128,9 +128,9 @@ def encoder(centre: tuple[float, float]) -> Part:
 
 
 def display_parts() -> dict[str, Part]:
-    """nice!view on its socket strip, in three solids so the pictures can colour them: the module
-    board with its socket, its header pins trimmed short and its solder tails, the LCD glass, and the
-    visible pixel area."""
+    """nice!view on a plain male header, in three solids so the pictures can colour them: the module
+    board with the parts under it, the header's body, its pins trimmed short and its solder tails, the
+    LCD glass, and the visible pixel area."""
     module = BOARD.display
     glass_top = BOARD.stack.display_glass_top
     module_bottom = glass_top - CASE.display_thickness
@@ -138,13 +138,25 @@ def display_parts() -> dict[str, Part]:
     board = centred_box((module.x, module.y), (module.length, module.width), (module_bottom, board_top))
     header_length = module.header_pitch * len(module.header_pins)
     header_centre = (module.header_x, module.y)
-    socket_strip = centred_box(header_centre, (module.header_pitch, header_length), (0, module_bottom))
+    header_body = centred_box(header_centre, (module.header_pitch, header_length), (0, module_bottom))
+    underside = box(_display_underside_x(), (module.y - module.width / 2, module.y + module.width / 2),
+                    (module_bottom - CASE.display_underside, module_bottom))
     tails = centred_box(header_centre, (1.2, header_length), (LEVELS.pcb_bottom - SOLDER_TAIL, LEVELS.pcb_bottom))
     pins = centred_box(header_centre, (1.2, header_length), (board_top, board_top + CASE.header_pin_height))
-    window_centre = (module.window_x, module.window_y)
-    pixels = centred_box(window_centre, (module.window_length, module.window_width), (glass_top - 0.1, glass_top))
+    # The glass is drawn centred on the lens mask's window, over the pixels; on the real module it sits
+    # about 0.4 mm further from the header (nice!view drawing).
+    window_centre = (module.mask_window_x, module.window_y)
+    pixel_area = (module.mask_window_length, module.window_width)
+    pixels = centred_box(window_centre, pixel_area, (glass_top - 0.1, glass_top))
     glass = centred_box(window_centre, CASE.display_glass, (board_top, glass_top)) - pixels
-    return {"display": board + socket_strip + tails + pins, "display_glass": glass, "display_pixels": pixels}
+    return {"display": board + underside + header_body + tails + pins, "display_glass": glass, "display_pixels": pixels}
+
+
+def _display_underside_x() -> tuple[float, float]:
+    """Board X range of the parts under the module: from beside the header to the free end. A guess at
+    their extent; the drawing gives only their height."""
+    module = BOARD.display
+    return module.header_x + module.header_pitch, module.x + module.length / 2
 
 
 def usb_receptacle() -> Part:
@@ -198,12 +210,16 @@ def boss_ring(centre: tuple[float, float]) -> Part:
 
 
 def display_foam() -> Part:
-    """Foam pad on the PCB under the free end of the display module, squeezed to the room there."""
+    """Foam pad on the PCB under the free end of the display module, squeezed to the room under its parts."""
     module = BOARD.display
-    module_bottom = BOARD.stack.display_glass_top - CASE.display_thickness
     _, side = CASE.display_foam
     free_end = module.x + module.length / 2 - side / 2 - 2.0
-    return centred_box((free_end, module.y), (side, side), (0, module_bottom))
+    return centred_box((free_end, module.y), (side, side), (0, display_room()))
+
+
+def display_room() -> float:
+    """Height from the PCB top to the parts under the display module: the room for its foam pad."""
+    return BOARD.stack.display_glass_top - CASE.display_thickness - CASE.display_underside
 
 
 def screw(centre: tuple[float, float], variant: str) -> Part:

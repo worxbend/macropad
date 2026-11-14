@@ -72,7 +72,7 @@ def _display_socket_symbol() -> LibSymbol:
     names = circuit.BOARD_SPEC["display"]["header_pins"]
     pins = tuple(BoxPin(str(n), name, "passive", "right", 2 * (n - 1) - (len(names) - 1))
                  for n, name in enumerate(names, start=1))
-    return box_symbol("macropad:nice_view_socket", "1x5 socket", (5, 6), pins)
+    return box_symbol("macropad:nice_view_socket", "1x5 header", (5, 6), pins)
 
 
 _PROJECT_SYMBOLS = {"LED_SIDE": _led_symbol, "SOCKET5": _display_socket_symbol}

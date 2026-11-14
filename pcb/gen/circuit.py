@@ -38,7 +38,8 @@ LCSC = {
     "SK6812SIDE-A": "C5378721",
     "MX hot-swap": "C49352235",
     "EC11E18244AU": "C202365",
-    "1x5 socket": "C50950",
+    # A 40-pin strip; break off five. The nice!view is soldered straight onto it (docs/parts.md).
+    "1x5 header": "C2337",
     "100nF": "C1525",
     "1uF": "C52923",
     "4.7uF": "C23733",
@@ -50,6 +51,37 @@ LCSC = {
     "5.1k": "C25905",
     "27R": "C25100",
     "33R": "C25105",
+    "330R": "C25104",
+}
+
+# Manufacturer and manufacturer part number of each LCSC part above, from the JLCPCB parts search on
+# 2026-11-14. Board houses that buy from distributors (PCBWay) order by these; see fab.py.
+MPN = {
+    "RP2354A": ("Raspberry Pi", "RP2354A"),
+    "AP2112K-3.3": ("Diodes Incorporated", "AP2112K-3.3TRG1"),
+    "USBLC6-2SC6": ("STMicroelectronics", "USBLC6-2SC6"),
+    "74LVC1T45": ("Diodes Incorporated", "74LVC1T45W6-7"),
+    "12MHz": ("Abracon", "ABM8-272-T3"),
+    "3.3uH": ("Abracon", "AOTA-B201610S3R3-101-T"),
+    "USB-C": ("HRO (Korean Hroparts Elec)", "TYPE-C-31-M-12"),
+    "nSMD050": ("TECHFUSE", "nSMD050"),
+    "TS-1187A": ("XKB Connection", "TS-1187A-B-A-B"),
+    "SK6812SIDE-A": ("OPSCO Optoelectronics", "SK6812SIDE-A"),
+    "MX hot-swap": ("HanElectricity", "CPG151101S11-2"),
+    "EC11E18244AU": ("Alps Alpine", "EC11E18244AU"),
+    "1x5 header": ("BOOMELE", "2.54-1*40P"),
+    "100nF": ("Samsung Electro-Mechanics", "CL05B104KO5NNNC"),
+    "1uF": ("Samsung Electro-Mechanics", "CL05A105KA5NQNC"),
+    "4.7uF": ("Samsung Electro-Mechanics", "CL05A475MP5NRNC"),
+    "2.2uF": ("Samsung Electro-Mechanics", "CL10A225KO8NNNC"),
+    "10uF": ("Samsung Electro-Mechanics", "CL10A106KP8NNNC"),
+    "15pF": ("FH (Guangdong Fenghua)", "0402CG150J500NT"),
+    "1k": ("UNI-ROYAL", "0402WGF1001TCE"),
+    "10k": ("UNI-ROYAL", "0402WGF1002TCE"),
+    "5.1k": ("UNI-ROYAL", "0402WGF5101TCE"),
+    "27R": ("UNI-ROYAL", "0402WGF270JTCE"),
+    "33R": ("UNI-ROYAL", "0402WGF330JTCE"),
+    "330R": ("UNI-ROYAL", "0402WGF3300TCE"),
 }
 
 FOOTPRINT = {
@@ -96,6 +128,11 @@ class Part:
     @property
     def lcsc(self) -> str:
         return "" if self.footprint_key in NOT_A_PART else LCSC[self.value]
+
+    @property
+    def manufacturer_part(self) -> tuple[str, str]:
+        """(manufacturer, manufacturer part number); empty for a footprint that is not a part."""
+        return ("", "") if self.footprint_key in NOT_A_PART else MPN.get(self.value, ("", ""))
 
     @property
     def machine_assembled(self) -> bool:
@@ -240,14 +277,17 @@ COUT_DISTANCE = 2.1
 INDUCTOR_DISTANCE = 3.65
 # The inductor sits 0.1 mm toward PGND, so its +1V1 pad clears the USB series resistors.
 INDUCTOR_SHIFT = -0.1
+# CIN and COUT sit 0.2 mm toward PGND: VREG_FB then runs straight up from pin 50 past CIN's 3.3 V pad,
+# and USB D- and D+ run straight up from pins 51 and 52 beside it.
+CAPACITOR_SHIFT = -0.2
 
 
 def _core_regulator() -> list[Part]:
     """On-chip 1.1 V switching regulator, values and layout from "Hardware design with RP2350"."""
     lx_x, pin_row_y = mcu_pin_xy(48)
     return [
-        Part("C11", "4.7uF", "C0402W", lx_x, pin_row_y - CIN_DISTANCE, 0, nets={"1": V3, "2": GND}),
-        Part("C12", "4.7uF", "C0402W", lx_x, pin_row_y - COUT_DISTANCE, 0, nets={"1": V1, "2": GND}),
+        Part("C11", "4.7uF", "C0402W", lx_x + CAPACITOR_SHIFT, pin_row_y - CIN_DISTANCE, 0, nets={"1": V3, "2": GND}),
+        Part("C12", "4.7uF", "C0402W", lx_x + CAPACITOR_SHIFT, pin_row_y - COUT_DISTANCE, 0, nets={"1": V1, "2": GND}),
         # Pad 1 is the +1V1 end and carries the polarity dot, as in Raspberry Pi's reference board.
         Part("L1", "3.3uH", "L2016", lx_x + INDUCTOR_SHIFT, pin_row_y - INDUCTOR_DISTANCE, 0, nets=INDUCTOR_PADS),
         # A second 4.7 uF on the output, at the probe pad end of the output track, away from LX and COUT.
@@ -299,10 +339,10 @@ def _usb_and_power() -> list[Part]:
         Part("R6", "5.1k", "R0402", 48.0, 6.6, 90, nets={"1": "CC2", "2": GND}),
         Part("U3", "USBLC6-2SC6", "SOT23-6", 46.8, 10.4, 0,
              nets={"1": "USB_D_N", "6": "USB_D_N", "3": "USB_D_P", "4": "USB_D_P", "2": GND, "5": VBUS}),
-        # The series resistors sit above their MCU pins (51 at x 41.2, 52 at x 41.6), beside the inductor and
-        # beyond the VREG_FB track. Both lines run straight up on the bottom layer; D+ leans right at the end.
-        Part("R7", "27R", "R0402", 41.4, 9.9, 90, nets={"1": "USB_D_N", "2": "USB_DM"}),
-        Part("R8", "27R", "R0402", 42.3, 9.9, 90, nets={"1": "USB_D_P", "2": "USB_DP"}),
+        # The series resistors sit above their MCU pins (51 at x 41.2, 52 at x 41.6), beside the inductor with
+        # their courtyards clear of its courtyard and of each other. Both lines run up on the bottom layer.
+        Part("R7", "27R", "R0402", 41.5, 10.8, 90, nets={"1": "USB_D_N", "2": "USB_DM"}),
+        Part("R8", "27R", "R0402", 42.45, 10.8, 90, nets={"1": "USB_D_P", "2": "USB_DP"}),
         Part("F1", "nSMD050", "F1206", 33.0, 3.4, 90, nets={"1": VBUS, "2": V5}),
         Part("U2", "AP2112K-3.3", "SOT23-5", 31.0, 9.4, 90,
              nets={"1": V5, "2": GND, "3": V5, "4": NO_NET, "5": V3}),
@@ -354,7 +394,7 @@ def _display() -> list[Part]:
     pins = display["header_pins"]
     first_pin_y = display["y"] - display["header_pitch"] * (len(pins) - 1) / 2
     return [
-        Part("J2", "1x5 socket", "SOCKET5", display["header_x"], first_pin_y, side=TOP,
+        Part("J2", "1x5 header", "SOCKET5", display["header_x"], first_pin_y, side=TOP,
              nets={str(n): signal_net[name] for n, name in enumerate(pins, start=1)}),
         Part("C19", "1uF", "C0402", 27.6, 14.6, 90, nets={"1": V3, "2": GND}),
     ]
@@ -368,7 +408,10 @@ def _leds() -> list[Part]:
     chain = right + left
     parts = [
         Part("U4", "74LVC1T45", "SOT23-6", 55.2, 8.4, 0,
-             nets={"1": V3, "2": GND, "3": "LED_DATA_3V3", "4": "LED_D0", "5": V3, "6": V5}),
+             nets={"1": V3, "2": GND, "3": "LED_DATA_3V3", "4": "LED_DATA_5V", "5": V3, "6": V5}),
+        # Series resistor at the level shifter's output (SK6812SIDE-A datasheet: a resistor in series with the
+        # data input). It slows the fast 5 V edges into the 42 mm track to the first LED.
+        Part("R9", "330R", "R0402", 54.1, 11.2, 90, nets={"1": "LED_DATA_5V", "2": "LED_D0"}),
         Part("C20", "100nF", "C0402", 52.4, 8.4, 90, nets={"1": V3, "2": GND}),
         Part("C21", "100nF", "C0402", 58.0, 8.4, 90, nets={"1": V5, "2": GND}),
         Part("C22", "2.2uF", "C0603", 79.6, 23.4, 0, nets={"1": V5, "2": GND}),
@@ -427,8 +470,19 @@ def check_netlist(parts: list[Part]) -> None:
     assert not dangling, f"nets with a single pad: {dangling}"
 
 
+def check_sourcing(parts: list[Part]) -> None:
+    """Every real part has a JLCPCB number, a manufacturer and a manufacturer part number."""
+    real = [part for part in parts if part.footprint_key not in NOT_A_PART]
+    no_lcsc = sorted({part.value for part in real if not part.lcsc.startswith("C")})
+    assert not no_lcsc, f"no JLCPCB part number for {no_lcsc}"
+    no_mpn = sorted({part.value for part in real if not all(part.manufacturer_part)})
+    assert not no_mpn, f"no manufacturer or part number for {no_mpn}"
+    assert LCSC.keys() == MPN.keys(), f"LCSC and MPN list different parts: {sorted(LCSC.keys() ^ MPN.keys())}"
+
+
 if __name__ == "__main__":
     circuit = all_parts()
     check_netlist(circuit)
+    check_sourcing(circuit)
     for net_name, pad_names in sorted(nets_to_pads(circuit).items()):
         print(f"{net_name:14} {' '.join(pad_names)}")

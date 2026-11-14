@@ -214,7 +214,7 @@
     },
     {
       "name": "display_glass_under_deck",
-      "value_mm": 0.38,
+      "value_mm": 2.98,
       "minimum_mm": 0.2,
       "ok": true
     },
@@ -226,7 +226,7 @@
     },
     {
       "name": "encoder_body_under_deck",
-      "value_mm": 0.5,
+      "value_mm": 2.5,
       "minimum_mm": 0.3,
       "ok": true
     },
@@ -280,7 +280,7 @@
     },
     {
       "name": "cnc_full_thread_past_screw_tip",
-      "value_mm": 1.1,
+      "value_mm": 0.6,
       "minimum_mm": 0.5,
       "ok": true
     },
@@ -291,6 +291,12 @@
       "ok": true
     },
     {
+      "name": "cnc_skin_over_deepest_drill_point",
+      "value_mm": 0.719,
+      "minimum_mm": 0.7,
+      "ok": true
+    },
+    {
       "name": "cnc_screw_head_below_underside",
       "value_mm": 0.9,
       "minimum_mm": 0.2,
@@ -298,25 +304,25 @@
     },
     {
       "name": "knob_to_well_floor_when_pressed",
-      "value_mm": 0.7,
+      "value_mm": 0.6,
       "minimum_mm": 0.3,
       "ok": true
     },
     {
       "name": "knob_to_well_floor_short_shaft",
-      "value_mm": 0.4,
+      "value_mm": 0.3,
       "minimum_mm": 0.0,
       "ok": true
     },
     {
       "name": "knob_pocket_to_bushing_when_pressed",
-      "value_mm": 0.8,
+      "value_mm": 0.9,
       "minimum_mm": 0.3,
       "ok": true
     },
     {
       "name": "knob_pocket_to_bushing_short_shaft",
-      "value_mm": 0.5,
+      "value_mm": 0.6,
       "minimum_mm": 0.3,
       "ok": true
     },
@@ -400,7 +406,7 @@
     },
     {
       "name": "led_inside_slot_height",
-      "value_mm": 2.4,
+      "value_mm": 2.0,
       "minimum_mm": 0.5,
       "ok": true
     },
@@ -424,8 +430,14 @@
     },
     {
       "name": "display_foam_compression",
-      "value_mm": 0.9,
+      "value_mm": 1.0,
       "minimum_mm": 0.5,
+      "ok": true
+    },
+    {
+      "name": "display_foam_squeezed_under_half",
+      "value_mm": 0.25,
+      "minimum_mm": 0.0,
       "ok": true
     },
     {
@@ -556,19 +568,25 @@
     },
     {
       "name": "lens_to_glass_under_press",
-      "value_mm": 0.32,
+      "value_mm": 2.92,
       "minimum_mm": 0.2,
       "ok": true
     },
     {
       "name": "header_pins_under_lens",
-      "value_mm": 0.78,
+      "value_mm": 2.38,
       "minimum_mm": 0.5,
       "ok": true
     },
     {
       "name": "lens_mask_window_inside_glass",
       "value_mm": 0.8,
+      "minimum_mm": 0.5,
+      "ok": true
+    },
+    {
+      "name": "lens_mask_window_inside_module",
+      "value_mm": 4.25,
       "minimum_mm": 0.5,
       "ok": true
     },
@@ -664,7 +682,7 @@
     },
     {
       "name": "chamfer_to_strip_recess",
-      "value_mm": 0.736,
+      "value_mm": 0.737,
       "minimum_mm": 0.6,
       "ok": true
     },
@@ -738,7 +756,7 @@
     },
     {
       "name": "thinnest_wall_tilt_bar",
-      "value": 0.935,
+      "value": 0.923,
       "limit": 0.8,
       "kind": "min",
       "unit": "mm",
@@ -1098,7 +1116,7 @@
     },
     {
       "name": "pressed_knob_to_top",
-      "value": 0.7,
+      "value": 0.6,
       "limit": 0.3,
       "kind": "min",
       "unit": "mm",
@@ -1106,7 +1124,7 @@
     },
     {
       "name": "knob_to_top",
-      "value": 1.096,
+      "value": 1.025,
       "limit": 0.8,
       "kind": "min",
       "unit": "mm",
@@ -1226,7 +1244,7 @@
     },
     {
       "name": "cnc_shell_seat_area",
-      "value": 249.545,
+      "value": 249.656,
       "limit": 150.0,
       "kind": "min",
       "unit": "mm^2",
@@ -1250,7 +1268,7 @@
     },
     {
       "name": "cnc_shell_seat_area_back",
-      "value": 66.916,
+      "value": 67.022,
       "limit": 5.0,
       "kind": "min",
       "unit": "mm^2",
@@ -1258,7 +1276,7 @@
     },
     {
       "name": "cnc_shell_seat_area_front",
-      "value": 118.076,
+      "value": 118.078,
       "limit": 5.0,
       "kind": "min",
       "unit": "mm^2",
@@ -1298,7 +1316,7 @@
     },
     {
       "name": "legend_stroke",
-      "value": 0.715,
+      "value": 0.722,
       "limit": 0.45,
       "kind": "min",
       "unit": "mm",
@@ -1314,7 +1332,7 @@
     },
     {
       "name": "legend_bed_engraving",
-      "value": 0.715,
+      "value": 0.722,
       "limit": 0.7,
       "kind": "min",
       "unit": "mm",
@@ -1386,7 +1404,7 @@
     },
     {
       "name": "show_face_overhang_print_top",
-      "value": 45.0,
+      "value": 44.751,
       "limit": 45.0,
       "kind": "max",
       "unit": "degrees",
@@ -1427,7 +1445,7 @@
     },
     {
       "name": "cnc_base_undercut_area",
-      "value": 0.683,
+      "value": 0.704,
       "limit": 5.0,
       "kind": "max",
       "unit": "mm^2",
@@ -1512,7 +1530,7 @@
       "part": "base",
       "widest_span_mm": 7.4,
       "limit_mm": 15.0,
-      "bed_contact_mm2": 5856.4,
+      "bed_contact_mm2": 5857.6,
       "minimum_contact_mm2": 100.0,
       "height_over_narrow_side": 0.1,
       "aspect_limit": 11.0,
@@ -1586,20 +1604,20 @@
       "limit_mm": 15.0,
       "bed_contact_mm2": 137.4,
       "minimum_contact_mm2": 100.0,
-      "height_over_narrow_side": 0.9,
+      "height_over_narrow_side": 1.2,
       "aspect_limit": 11.0,
       "brim_required": false,
       "longest_bridge_mm": 0.3,
       "bridge_at": [
         13.4,
         5.4,
-        -21.5
+        -26.0
       ],
       "deepest_cantilever_mm": 0.0,
       "cantilever_at": [
         5.9,
         3.5,
-        -9.9
+        -9.8
       ],
       "cantilever_limit_mm": 1.5,
       "ok": true

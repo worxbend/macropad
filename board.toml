@@ -51,11 +51,15 @@ header_pins = ["MOSI", "SCK", "3V3", "GND", "CS"]
 gpio_sck = 22       # SPI0 SCK
 gpio_mosi = 23      # SPI0 TX
 gpio_cs = 24
-# Visible glass, centred on the module but pushed away from the header. MEASURE.
+# The glass frame on the PCB silkscreen and the simulator's screen position. MEASURE.
 window_x = 43.5
 window_y = 11.0
 window_length = 27.0
 window_width = 12.0
+# Window in the lens mask: the active pixel area plus 0.35 mm at each end. The nice!view drawing puts the
+# active area 4.6 mm in from the header-side edge and 25.3 mm long (160 px). MEASURE.
+mask_window_x = 41.25
+mask_window_length = 26.0
 
 [leds]
 # SK6812 SIDE-A side-emitting RGB, on the bottom face at the left and right edges,
@@ -92,9 +96,11 @@ plate_top = 5.0            # MX plate top surface
 plate_thickness = 1.5
 switch_cutout = 14.0
 deck_top = 8.5             # raised deck over the encoders and the display
-display_glass_top = 7.0    # MEASURE: nice!view on its low-profile sockets
-encoder_body_top = 6.5
+# MEASURE: nice!view soldered to a plain 2.54 mm male header (C2337) whose 2.5 mm body stands on the
+# PCB: 2.5 + 1.0 module board + 0.9 glass, from the nice!view drawing. See docs/parts.md.
+display_glass_top = 4.4
+encoder_body_top = 4.5     # MEASURE: Alps EC11E drawing No. 2, mounting surface to the bushing shoulder
 encoder_bushing_diameter = 7.0
-encoder_shaft_top = 20.0
+encoder_shaft_top = 24.5   # MEASURE: Alps EC11E18244AU drawing No. 2, mounting surface to the shaft end
 socket_depth = 1.85        # hot-swap socket below the PCB bottom face
 underside_clearance = 5.0  # PCB bottom face to the case floor

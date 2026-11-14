@@ -19,8 +19,9 @@ from router import BACK, BOTH_LAYERS, FRONT, Pad, Router, Rules, Via
 
 PLANE_NETS = (GND, V1, V3, V5)
 # The USB lines from pins 51 and 52 squeeze past the regulator to their series resistors. They go straight
-# after it, before the decoupling vias of pins 53 and 54 take their lanes.
-REGULATOR_NEIGHBOURS = ("USB_DM", "USB_DP")
+# after it, before the decoupling vias of pins 53 and 54 take their lanes. D+ first: it has to lean right
+# to its resistor, and D- then fits on the inside.
+REGULATOR_NEIGHBOURS = ("USB_DP", "USB_DM")
 # Routed after the MCU supply, in this order. Limits are track lengths in mm that fail the build.
 SENSITIVE_NETS = ("USB_D_P", "USB_D_N", "XIN", "XOUT", "XTAL_DRIVE", "VREG_AVDD")
 # MCU nets whose other pads are right next to the chip. Routed whole, straight after the sensitive ones.
@@ -38,9 +39,9 @@ LENGTH_LIMIT = {"VREG_LX": 4.0, "USB_DM": 3.5, "USB_DP": 3.5, "XIN": 9.0, "XTAL_
                 "VREG_AVDD": 8.0}
 # VREG_FB is fed from COUT (RP2350 datasheet 6.3.8.1): one short track from pin 50 to the COUT pad.
 FEEDBACK_LENGTH_LIMIT = 3.0
-# It passes CIN's 3.3 V pad through this point, offset (x, y) from pin 50, hugging the pad, so that
-# USB D- and D+ still fit side by side between it and the USB series resistors.
-FEEDBACK_WAYPOINT = (0.2, -1.45)
+# It runs straight up from pin 50, past CIN's 3.3 V pad, to this point, offset (x, y) from the pin, and
+# then turns to COUT. USB D- and D+ run straight up beside it from pins 51 and 52.
+FEEDBACK_WAYPOINT = (0.0, -1.55)
 # VREG_AVDD is noise sensitive and VREG_LX is the switching node: their tracks stay this far apart,
 # centre to centre. The two pins are 0.8 mm apart, so this allows only the stubs at the pins.
 AVDD_TO_LX_MIN_DISTANCE = 0.75
@@ -58,8 +59,8 @@ _EXPOSED_PAD_VIA_OFFSETS = ((-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0))
 # notch of the 1.1 V island (layout.V1_ISLAND); the two ends of the wide 1.1 V link from the inductor's
 # +1V1 pad, over the chip on the top layer, into the core island.
 REGULATOR_VIAS = {
-    "ground_cin": (GND, -1.2, -circuit.CIN_DISTANCE),
-    "ground_cout": (GND, -1.2, -circuit.COUT_DISTANCE),
+    "ground_cin": (GND, circuit.CAPACITOR_SHIFT - 1.2, -circuit.CIN_DISTANCE),
+    "ground_cout": (GND, circuit.CAPACITOR_SHIFT - 1.2, -circuit.COUT_DISTANCE),
     "vin": (V3, 0.4, 0.95),
     "core_out": (V1, 0.6, -5.25),
     "core_in": (V1, 1.6, 0.95),

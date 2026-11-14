@@ -12,7 +12,7 @@ Parts: see [parts.md](parts.md).
 
 | Tool | For |
 |---|---|
-| Soldering iron and solder | 2 encoders, 1 socket, the display's header |
+| Soldering iron and solder | 2 encoders, the display's header (both ends) |
 | Multimeter | Short-circuit and voltage checks |
 | Metal tweezers | Testing the key sockets |
 | 1.5 mm hex key | The six M2 socket-head screws |
@@ -21,7 +21,7 @@ Parts: see [parts.md](parts.md).
 
 ## What is already on the board
 
-JLCPCB places all 71 parts on the bottom face. You solder three parts on the top face. The top
+JLCPCB places all 72 parts on the bottom face. You solder three parts on the top face. The top
 silkscreen says so: `hand-solder on this side: ENC1, ENC2, J2`.
 
 <img src="images/pcb/assembled-top.png" alt="Populated board, top face" width="48%"> <img src="images/pcb/assembled-bottom.png" alt="Populated board, bottom face" width="48%">
@@ -79,27 +79,30 @@ Unplug the board first.
 A knob that works backwards is a firmware setting, not a soldering fault. See
 [flashing.md](flashing.md#troubleshooting).
 
-## 5. Solder the display socket and fit the display
+## 5. Solder the display header and the display
 
-Unplug the board first.
+Unplug the board first. The display is soldered on, not plugged in: the case has room for a plain
+male header only (see [parts.md](parts.md)). The sockets that come with the nice!view are too tall;
+do not use them. Desoldering five pins is the only way to take the display off again.
 
-1. Solder the 5-pin socket J2 on the top face. Keep it square to the board.
-2. If your nice!view came with a loose pin header, solder the header to the module. Guess: most
-   shops ship it loose. Follow the shop's instructions for the low-profile pins. Trim the pins on
-   the glass side to 1.5 mm above the module's board: the lens lies 0.78 mm above trimmed pins.
-3. Check the pin order before you plug the display in. The board expects, from the back edge to the
-   front: MOSI, SCK, 3V3, GND, CS. This order is a `MEASURE` value from a community footprint.
-   Compare it with the labels on your module. A module with another order must not be plugged in.
-4. Plug the display in. The silkscreen under it says `glass this side up`. The module lies between
-   the knobs and reaches from the socket toward the right knob.
+1. Check the pin order first. The board expects, from the back edge to the front: MOSI, SCK, 3V3,
+   GND, CS. This order is a `MEASURE` value from a community footprint. Compare it with the labels
+   on your module. A module with another order must not be fitted.
+2. Break five pins off the 2.54 mm male header strip (C2337). Push the short ends through J2 from the
+   top face, plastic body flat on the board. Solder one pin from the bottom, check that the header
+   stands square, then solder the other four.
+3. Lay the nice!view on the long pins, glass up, its board resting flat on the header's plastic body.
+   The silkscreen under it says `glass this side up`. The module lies between the knobs and reaches
+   from the header toward the right knob. Solder the five pins on top of the module.
+4. Trim the pins to 1.5 mm above the module's board. The glass is then 4.4 mm above the PCB and the
+   lens lies 2.38 mm above the trimmed pins (both `MEASURE` values from the drawings).
 5. Plug in the USB cable. Expected: a splash screen with the firmware version, then the MEDIA
    layer with its key labels.
 
-The display is held only by its header. Stick an open-cell foam pad, 10 x 10 mm and 5 mm thick (a
-guess), on the PCB under the display's free end, between X 48 and 58 mm. The module squeezes it to
-4.1 mm. It is not optional: without it one
-degree of tilt lifts the free end 0.6 mm, and the case leaves 0.38 mm between the glass and the lens,
-on the assumption that the glass is 7.0 mm above the board.
+The display is held only by its header. Stick an open-cell foam pad, 10 x 10 mm and 2.5 mm thick (a
+guess), on the PCB under the display's free end, between X 48 and 58 mm. The parts under the module
+squeeze it to 1.5 mm. It is not optional: without it one degree of tilt lifts the free end 0.6 mm,
+and the module's solder joints carry every knock.
 
 ## 6. Prepare the case parts
 
@@ -150,7 +153,7 @@ Print or mill the parts first: [cad/README.md](../cad/README.md#printing).
 3. Fit the keycaps.
 4. Push the knobs onto the shafts until each stops on the end of its shaft. The pointer line goes on
    the side of the shaft's flat. Three ribs in the bore press on the shaft; they need a firm push. A
-   pressed knob stops 0.7 mm above the floor of its well.
+   pressed knob stops 0.6 mm above the floor of its well.
 5. Run the final test below before the next step.
 6. Stick the two foot strips and the centre pad into their recesses on the underside, last. They
    cover all six screws.

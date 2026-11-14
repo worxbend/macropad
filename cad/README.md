@@ -79,11 +79,23 @@ datasheets, not vendor models.
   end ledges. A sheet 0.1 mm too thick still ends under flush. Its corners are R 2.5, its recess R 2.6
   (R 2.65 in print, where the recess has 0.15 mm of fit and 0.17 mm more at the end that prints as a
   bridge, so the reveal after the guessed sag is 0.12 to 0.15 mm all round).
-  The mask leaves a 27 x 12 mm window over the visible glass, 1.5 mm off the lens centre as the glass
-  is: the board fixes the display, the opening under the lens must cover the whole module, and each end
-  ledge must stay 1.0 mm or wider, so the lens can neither move nor be shortened to centre the window. A 5 N press in the middle bends glass 0.06 mm onto a 0.38 mm
-  air gap. Clear cast acrylic of the same size bends 1.4 mm and touches the display: it is a fallback
-  only with a foam pad under the display and a light touch, and the check fails for it.
+  The mask leaves a 26 x 12 mm window over the pixels: the active area of the nice!view drawing (4.6 mm
+  in from the module's header end, 25.3 mm long) plus 0.35 mm at each end, 0.75 mm off the lens centre:
+  the board fixes the display, the opening under the lens must cover the whole module, and each end
+  ledge must stay 1.0 mm or wider, so the lens can neither move nor be shortened to centre the window.
+  The glass sits 2.98 mm under the lens on a plain male header (see the display stack below). A 5 N
+  press in the middle bends glass 0.06 mm. Clear cast acrylic of the same size bends 1.4 mm under the
+  same press; the gap takes that, but acrylic is not the part drawn.
+- **Display stack.** The nice!view is soldered straight onto a plain 2.54 mm male header (LCSC C2337,
+  BOOMELE 2.54-1*40P: 2.5 mm plastic body, 3 mm tail, 6 mm mating pin). The header's body stands on the
+  PCB and the module rests on it, so its board is 2.5 mm up and, with 1.0 mm of board and 0.9 mm of
+  LCD from the nice!view drawing, the glass top is 4.4 mm above the PCB (`display_glass_top`,
+  `MEASURE`). The case needs no change for it: the glass lies 2.98 mm under the lens and the trimmed
+  pins 2.38 mm. The listed C50950 socket (8.5 mm) and the nice!view's own kit sockets ("adding up to
+  a height of 7mm") put the glass at about 10.4 and 8.9 mm, above the 7.0 mm underside of the deck,
+  so the top would not close over them. A removable option is the Mill-Max 315-43-105-41-004000
+  socket with the 335-10-105-00-160000 header, 3.94 mm between the boards (Mill-Max PR685); set
+  `display_glass_top` to 5.84 and rebuild, and the checks size the foam pad again.
 - **Light line.** Each side wall of the base has a channel behind a 1.0 mm outer skin. A light bar stands
   in it, in front of the four side LEDs. In the gap the rim is cut away along the channel, so the top
   1.5 mm of the bar shows there, 1.25 mm back, 46.2 mm long. From 45° above, 0.65 mm of it is still in
@@ -95,15 +107,17 @@ datasheets, not vendor models.
   evenness are guesses. A printed base must be dark, or the 1.0 mm skin glows too.
   The bar stays natural, not smoked, and 1.25 mm back, not deeper: a tinted bar takes away light that
   only reaches the slit indirectly, and set further back less than 0.6 mm of it shows from 45° above.
-- **Knobs.** 14.4 mm, 13.0 mm tall (Z 9.0 to 22.0), standing 1.2 mm above the floor of a 15.5 mm well
+- **Knobs.** 14.4 mm, 17.6 mm tall (Z 8.9 to 26.5), standing 1.1 mm above the floor of a 15.5 mm well
   0.7 mm deep, so no bushing shows under them; the reveal round each knob is 0.55 mm. The end of the
-  bore sits on the end of the shaft, so the shaft sets the knob's height. Pressed 0.5 mm, a knob keeps
-  0.7 mm to its well floor and 0.8 mm over the bushing; on a shaft 0.3 mm short (a guess) it keeps 0.4
-  and 0.5 mm. 36 straight 90° V grooves, 0.35 mm deep, in one band that ends square like a turned
+  bore sits on the end of the shaft, so the shaft sets the knob's height: the Alps drawing puts the
+  shaft end of the EC11E18244AU 24.5 mm above the PCB (`MEASURE`). Pressed 0.5 mm, a knob keeps 0.6 mm
+  to its well floor and 0.9 mm over the bushing; on a shaft 0.3 mm short (a guess) it keeps 0.3 and
+  0.6 mm. 36 straight 90° V grooves, 0.35 mm deep, in one band that ends square like a turned
   ring, between two plain 1.6 mm bands; flat top; a radial pointer line 0.9 mm wide and 0.4 mm deep,
   from 2 to 6 mm off the axis, on the side of the D-shaft's flat. Three ribs in the bore reach 0.12 mm
   into the shaft (a guess for PETG or PLA), so a bore printed to size still grips. The knob is not
-  lower: the 20 mm shaft fixes its top, and a higher bottom would show the bushing. The knobs are
+  lower: the shaft fixes its top, and a higher bottom would show the bushing. A builder who wants a
+  lower knob shortens both shafts by the same amount and lowers `encoder_shaft_top` to match. The knobs are
   printed in both builds: they are not designed for turning in aluminium.
 - **Underside.** All six screws are hidden. Two foot strips, 84.6 x 7.0 mm with ends concentric to the
   corner screws, lie in 0.4 mm recesses and stand 1.2 mm proud. A centre pad covers the two centre
@@ -134,16 +148,18 @@ datasheets, not vendor models.
 - **Legends.** `BOOT`, `RESET` and `worxbend / macropad` on the underside: engraved 0.4 mm deep in the
   print variant, laser-marked on the milled base from `engraving_underside.dxf`. The top face carries
   no text. The print engraving lies on the bed, where the first layer is squeezed into every slot, so
-  the letters are drawn bolder: the thinnest slot is 0.71 mm (checked against 0.7 mm).
+  the letters are drawn bolder: the thinnest slot is 0.72 mm (checked against 0.7 mm).
 - **Signature.** A single-line signature reading "Oleksandr B" (34 x 19 mm, line 0.3 mm) and the caption `Signature Edition`
   are laser-marked on the underside of the base, beside the centre pad (`macropad_case/signature.py`).
   It is flat artwork, not geometry: the solids and the STEP/STL files do not contain it. Send
   `exports/drawings/engraving_underside.dxf` to the laser shop; it holds the signature at its place,
-  drawn as seen from above (mirrored, because it is read from below). Two clearance rows check that
+  drawn as seen from below and not mirrored, with its origin at datum A (see the DXF note below). Two
+  clearance rows check that
   it stays clear of the feet and the label field and that the line is wide enough for a laser.
 - **USB-C.** The opening is 13.5 x 7.5 mm, 0.5 mm round a 12.5 x 6.5 mm overmould, so a plug up to
   13.0 x 7.0 mm still enters. Seen from behind its lower corners are R 1.0 (in the base) and its upper
-  ones R 0.5 (in the top's 0.5 mm bite); the lead-in is 0.3 mm. It is not smaller: a 12.0 x 6.5 mm
+  ones R 0.52, the whole of the top's 0.52 mm bite, so the round starts at the seam and leaves no
+  sliver face; the lead-in is 0.3 mm. It is not smaller: a 12.0 x 6.5 mm
   opening would stop the plug the case is drawn for. It is the same on both sides of its centre line
   (checked).
 - **Tilt.** An optional bar under the back of the base tilts the pad by 6°. It needs no change to the case.
@@ -164,14 +180,25 @@ texts are computed from the model.
 
 Two more sheets are for the machine shop: the CNC base and the CNC top, each with a plan from above and
 from below, section B-B through the centre screws, the gap and the lap joint at 8:1 and a table of holes
-and recesses from datum A. The tolerance note on them (ISO 2768-m) is a proposal, not a tested requirement.
+and recesses from datum A. Each sheet has a title block (part number `MP-CASE-BASE-CNC` or
+`MP-CASE-TOP-CNC`, revision A, quantity, material, finish), one finish (bead blast, then clear Type II
+anodise, Class 1: the natural silver of the renders), ISO 2768-m as the general tolerance, tolerances on
+the critical fits (switch cut-outs 14.00 +0.05/0 after anodise, plate 1.50 ±0.05, S1-S6 positions ±0.05,
+lap ridge and groove ±0.03, lens recess depth 1.25 ±0.05, USB opening ±0.1), the thread callout
+`M2x0.4-6H, 2.5 min full thread, drill ⌀1.6 x 3.7, do not exceed 3.8` and a 3:1 detail of the USB
+opening with the cutter its rounds need. The base sheet carries the laser-mark note. Nothing has been
+made from these sheets; the anodise build-up is a guess.
 
 | | |
 | --- | --- |
 | ![base sheet](../docs/images/cad/drawing_base.png) | ![top sheet](../docs/images/cad/drawing_top.png) |
 
 `exports/drawings/` also holds three DXF outlines. `engraving_underside.dxf` is the underside text and
-the signature, for laser-marking the milled base, drawn as seen from above (mirrored). `lens.dxf` is the
+the signature, for laser-marking the milled base. It is drawn as seen from below, not mirrored, with its
+origin at datum A: seen from below with the USB edge away from you, datum A is the top-right corner of
+the outline box, so a point at (X, Y) in the hole table is at (-X, -Y) in the DXF. Layer `MARK` is what
+the laser marks; layer `REF` holds the outline, the six counterbores, the BOOT and RESET holes and the
+foot slots, for registration only. The model keeps the artwork as seen from above. `lens.dxf` is the
 lens and `lens_mask.dxf` its black mask.
 
 ## Parts
@@ -187,7 +214,7 @@ lens and `lens_mask.dxf` its black mask.
 | `centre_pad` | 1 | as the strips, 1.4 mm | `exports/centre_pad.*` |
 | `tilt_bar` (optional) | 1 | any | `exports/tilt_bar.*` |
 
-Size: 90.0 x 90.0 mm, 17.5 mm tall, 31.0 mm from the underside to the top of the knobs. The foot strips
+Size: 90.0 x 90.0 mm, 17.5 mm tall, 35.5 mm from the underside to the top of the knobs. The foot strips
 add 1.2 mm.
 
 The left and right light bar are the same part, turned around. The two foot strips are identical.
@@ -202,8 +229,8 @@ Hardware:
   **Never M2 x 12 in the printed top**: its tip would come through the 0.8 mm skin under the dish floor.
 - Double-sided tape for the lens: two pieces of about 1.3 x 14.6 mm, 30 mm² in all. Measure the glass,
   then pick 0.13 mm or 0.2 mm tape so the lens ends just under the top face (the thickness is a guess).
-- An open-cell foam pad 10 x 10 mm and 5 mm thick, squeezed to 4.1 mm under the free end of the
-  display (a guess)
+- An open-cell foam pad 10 x 10 mm and 2.5 mm thick, squeezed to 1.5 mm under the parts at the free
+  end of the display (a guess)
 - Six closed-cell foam rings, 0.8 mm thick, 5 mm across with a 2.4 mm hole, one on each base boss
   (a guess: cut them from foam tape with two punches)
 - Thin double-sided tape or glue for the foot strips and the centre pad
@@ -251,13 +278,14 @@ uv pip install --python .venv/bin/python -e .
    659 pairs each. Any shared volume over 0.05 mm³ fails. Keycaps are blocks that cover the whole key travel.
    The tilt bar against the back foot strip is skipped, because the bar takes that strip's recess. Each
    knob is a press fit on its shaft: only the volume of its crush ribs may overlap the shaft.
-2. **Named clearances.** 81 gaps computed from the dimensions: USB plug to its opening, keycap to the
+2. **Named clearances.** 84 gaps computed from the dimensions: USB plug to its opening, keycap to the
    dish rim, lens to the glass and how far a 5 N press bends it, screw engagement and thread for both
    screws, the tap drill's point under the dish floor, switch cut-outs and the lens recess after a
    printed bridge sags, the gap and the lap joint on a PCB 10 % too thick, the PCB still clamped on a
    board 10 % too thin, the knob pressed on a shaft 0.3 mm short, the crush rib interference (0.08 to
    0.2 mm), the bushing in its hole after a printed hole shrinks, the posts under the sockets, the foam
-   under the display, floor under each recess and each engraving, and more.
+   under the display, the lens mask's window over the module, the skin over a tap drill at its depth
+   limit, floor under each recess and each engraving, and more.
 3. **Measurements on the finished solids.** These do not trust how the model was built.
    - Every part is one valid solid with a volume. A boolean that went wrong shows up here first.
    - Thinnest wall of every part: 3000 surface points per part, a ray through the material from each.
@@ -332,7 +360,7 @@ Faults these checks found while the case was drawn, all fixed in the model:
 - A tilt bar tongue round the screw holes was a ring 0.75 mm wide. The tongue lies between the screws now.
 - The tilt bar's strip recess came within 0.5 mm of its side faces. The bar is 1.0 mm wider now, with its
   outer top edge chamfered.
-- The underside mark at 4.6 mm had a 0.42 mm stroke. It is 5.1 mm now, drawn bolder (0.71 mm).
+- The underside mark at 4.6 mm had a 0.42 mm stroke. It is 5.1 mm now, drawn bolder (0.72 mm).
 - The front break-away chair under the printed top was drawn clockwise and came out below the part;
   the show-face check found the front-left corner bare. Both chairs are drawn the same way now.
 - The flat between the underside chamfer and the back foot strip recess was measured on a square box
@@ -347,13 +375,13 @@ gone or changed. Their limits are the same or stricter.
 | Check | Measures now | Value, minimum |
 | --- | --- | --- |
 | `keycap_to_deck` | back edge of the back keycaps to the rim of the key dish | 3.1, 0.4 |
-| `display_glass_under_deck` | display glass to the underside of the lens | 0.38, 0.2 |
+| `display_glass_under_deck` | display glass to the underside of the lens | 2.98, 0.2 |
 | `bezel_land_under_chamfer`, now `lens_ledge_thickness` | thickness of the two ledges that carry the lens | 0.9, 0.8 (was 0.2) |
 | `tilt_bar_to_screw_counterbore` | wall of the bar's 5.6 mm hole around the 4.4 mm counterbore under it | 0.6, 0.5 |
 | `cone_inside_floor`, now `screw_skin_inside_floor` | floor left above the print skin that closes each counterbore (the cones are gone) | 1.8, 0.5 |
 | `pressed_keycap_to_top` | an 18.3 mm skirt with 0.3 mm corners, pressed, instead of the DSA cap | 0.94, 0.4 |
 | `chamfer_to_strip_recess` | measured on the print outline itself, not on a square box; the milled outline has its own row, `cnc_chamfer_to_strip_recess` | 0.74, 0.6 (was 0.4); 0.57, 0.4 |
-| `knob_to_well_floor_when_pressed` | as before, with the knob seated on the end of its shaft | 0.7, 0.3 |
+| `knob_to_well_floor_when_pressed` | as before, with the knob seated on the end of its shaft | 0.6, 0.3 |
 | `led_to_light_bar` | LED to the bar's inner face, past the lip | 0.35, 0.1 |
 | `screw_tip_to_hole_end` | as before | 0.6, 0.6 (was 0.2) |
 | `usb_plug_to_opening` | as before | 0.5, 0.4 (was 0.2) |
@@ -419,7 +447,7 @@ bed height 0 to 8.3 mm and from 81.7 to 90.0 mm (the corners and both dish walls
 gives one finish all round.
 
 The engraved text is 0.4 mm deep, on the face that lies on the bed. Its letters are drawn bolder than
-the font, so the thinnest slot is 0.71 mm (measured on the artwork): the first layer is squeezed into
+the font, so the thinnest slot is 0.72 mm (measured on the artwork): the first layer is squeezed into
 each slot and closes about 0.2 mm of it (a guess).
 
 The screws cut their own thread in the 1.8 mm holes of the top. A hole printed lying down comes out about
@@ -435,7 +463,9 @@ an M2 x 12 screw comes through the 0.8 mm skin under the dish floor.
 - Every pocket is opened with a 1.5 mm radius, so a 3 mm end mill reaches every internal corner.
   Gaps narrower than 3 mm are left solid: the corner bosses are joined to the walls.
 - The switch cut-outs have dog-bone reliefs in the corners. The 14.0 mm square is still clear.
-- No undercuts. The print variant's 45° fillers, boss webs and text are not in the CNC variant.
+- No undercuts, except the USB opening's rounds: their axes run along Y, so they need a ball-nose or
+  bull-nose cutter of R 1.0 (base) and R 0.52 or smaller (top) in a 3D finishing pass; the sheets have a
+  detail of it. The print variant's 45° fillers, boss webs and text are not in the CNC variant.
 - The lap grooves in the top open toward the cavity. A flat end mill clears them; a chamfer mill cuts the
   45° outer wall and leaves the conical ends drawn in the model.
 - A 90° chamfer mill cuts everything that is at 45°: the rims, the edges at the gap, the walls of the
@@ -460,16 +490,26 @@ an M2 x 12 screw comes through the 0.8 mm skin under the dish floor.
   no parallel flats to clamp. A mill needs no skin over the counterbores.
 - The deepest pocket of either shell is 7.0 mm from the face it is cut from, 2.3 times the 3 mm cutter
   (checked against 3.0).
-- Material and finish (a proposal; nothing has been milled): 6061-T6. Fine bead blast (120 to 150 grit
-  glass bead), then Type II sulphuric anodise, 10 to 15 µm (a guess), dyed clear (Silver) or grey
-  (Space grey). Mask the six tapped M2 holes, or chase them with an M2 6H tap after anodising.
-  Anodise grows each face by about 0.01 to 0.02 mm (a guess); every fit here leaves 0.1 mm or more per
-  side, so nothing is cut to allow for it. Break unmarked edges 0.05 mm. The 0.3 mm chamfers are
-  cosmetic: measure them after blasting. The same block is on both CNC sheets.
-- Screws: M2 x 8 in tapped blind holes. Drill 1.6 mm to 3.7 mm at full diameter (the 118° point ends at
-  4.18 mm, 0.82 mm under the dish floor), tap M2 with a bottoming tap to 3.0 mm of full thread or more.
-  The screw takes 1.9 mm of thread (an M2 nut is 1.6 mm tall) and ends 1.1 mm before the full thread
-  does. A tap leaving about 0.6 mm of a 3.7 mm hole without full thread is a guess.
+- Material and finish (nothing has been milled): 6061-T6. Bead blast all over (120 to 150 grit glass
+  bead), then anodise to MIL-A-8625 Type II, Class 1 (clear, not dyed), 8 to 12 µm: the natural silver
+  of the renders. Space grey stays a render colourway only. Mask the six tapped M2 holes, or chase them
+  with an M2 6H tap after anodising. Anodise grows each face by about 0.004 to 0.006 mm (a guess: half
+  the coating); the toleranced fits on the sheets hold after anodise. Break unmarked edges 0.05 mm. The
+  0.3 mm chamfers are cosmetic: measure them after blasting. The same block is on both CNC sheets.
+- Screws: M2 x 8 in tapped blind holes, called out as `M2x0.4-6H, 2.5 min full thread, drill ⌀1.6 x
+  3.7, do not exceed 3.8`. 2.5 mm of thread plus three pitches (1.2 mm) is the 3.7 mm hole, as PCBWay's
+  tapped-hole guide asks. The 118° point ends at 4.18 mm, 0.82 mm under the dish floor; at the 3.8 mm
+  limit it leaves 0.72 mm (checked against 0.7). The screw takes 1.9 mm of thread (an M2 nut is 1.6 mm
+  tall) and ends 0.6 mm before the full thread does.
+- Every exported STEP and STL is read back after `export` (`macropad_case/roundtrip.py`): one valid,
+  closed solid per part file and 81 in `assembly.step`, no free edges, volume within 0.1 % of the part
+  in memory and of its STL, which must be watertight, and the STEP product named. The milled parts
+  must also have no face under 0.05 mm² and no edge under 0.01 mm. The product names are
+  `MP-CASE-BASE-CNC rev A` and `MP-CASE-TOP-CNC rev A`.
+- Why the check exists: OCCT's STEP writer leaves out, without a warning, every face that touches an
+  offset curve. Offsetting the CNC outline's Bezier corners made such curves, and `base.step` came out
+  as two open shells without the rim the top seats on. `solids.offset_sketch` now rebuilds those faces
+  on B-spline copies of their edges (within 0.00003 mm), so no offset curve reaches a solid.
 - The plate is 1.5 mm thick, which MX switches need to clip in.
 
 The light bars, the knobs, the foot strips and the tilt bar stay printed, in both builds. The knobs are
@@ -480,8 +520,8 @@ of, and none of that is drawn. The pictures of the milled variant show graphite 
 
 1. Print variant: cut the six skins out of the counterbores in the base.
 2. Put a foam ring on each of the six base bosses.
-3. Trim the display's header pins to 1.5 mm above its board. Stick the foam pad on the PCB under the
-   display's free end, then plug the display in.
+3. The display is soldered to its header on the PCB (see `docs/assembly.md`). Stick the foam pad on
+   the PCB under the display's free end.
 4. Lower the assembled PCB onto the six bosses.
 5. Drop a light bar into each side channel, between the PCB edge and the outer skin, lip up and toward
    the inside. The board's edge now holds it in. No tape is needed.
@@ -494,7 +534,7 @@ of, and none of that is drawn. The pictures of the milled variant show graphite 
    To open the case again, peel them off first.
 
 The nice!view is held only by its header. The foam pad under its free end is not optional: squeezed
-from 5.0 to 4.1 mm, it keeps the display from tilting up to the lens.
+from 2.5 to 1.5 mm under the module's parts, it keeps the display level under the lens.
 
 ### Tilt bar
 
@@ -508,22 +548,24 @@ bar leaves the BOOT and RESET holes free. The pad then rests on its front strip 
 ## Assumptions to measure
 
 These came from datasheets, footprints and photos, not from parts on a desk. Each is one number in
-`board.toml` (first three), in `macropad_case/spec.py`, in `macropad_case/components.py` or, for the
+`board.toml` (the rows that name `stack.` or `display.`), in `macropad_case/spec.py`, in `macropad_case/components.py` or, for the
 picture colours, in `macropad_case/render.py`.
 
 | What | Value | Where |
 | --- | --- | --- |
-| nice!view glass top above the PCB | 7.0 mm | `stack.display_glass_top` |
+| nice!view glass top above the PCB, on a plain male header | 4.4 mm | `stack.display_glass_top` |
 | nice!view header position and pin order | 1.27 mm from the short edge | `display.header_x` |
-| Visible glass area and its offset | 27 x 12 mm, 1.5 mm off centre | `display.window_*` |
-| nice!view module thickness | 2.9 mm | `display_thickness` |
+| Glass frame on the PCB silkscreen and the simulator's screen position | 27 x 12 mm, 1.5 mm off centre | `display.window_*` |
+| Lens mask window over the pixels | 26 x 12 mm, 0.75 mm off centre | `display.mask_window_*`, `display.window_width` |
+| nice!view module, board bottom to glass top, and parts under the board | 1.9 mm, 1.0 mm | `display_thickness`, `display_underside` |
+| Encoder body top and shaft end above the PCB (Alps drawing No. 2) | 4.5 mm, 24.5 mm | `stack.encoder_body_top`, `stack.encoder_shaft_top` |
 | nice!view glass outline and board thickness (pictures only) | 30 x 13.6 mm, 1.0 mm | `display_glass`, `display_board_thickness` |
 | Encoder body footprint | 12.4 x 13.4 mm | `encoder_body` |
 | Encoder threaded bushing length | 7.0 mm; the PCB's block model in `pcb/gen/models.py` draws 5.0 mm. The case takes the larger | `bushing_length` |
 | Encoder shaft length tolerance (a guess) | 0.3 mm short | `shaft_length_tolerance` |
 | Encoder D-shaft, across the flat | 4.5 mm | `shaft_flat` |
 | Encoder terminal positions | from the KiCad EC11E footprint | `components.ENCODER_PINS` |
-| Side LED body | 4.0 x 1.6 x 1.6 mm | `led_body` |
+| Side LED body (Opsco datasheet) | 4.0 x 1.6 x 2.0 mm | `led_body` |
 | Keycap: skirt above the plate when pressed, top above the plate | 2.0 mm, 14.5 mm | `keycap_*` |
 | Keycap shape in the pictures | DSA: 12.7 mm top, 7.4 mm tall | `keycap_profile` |
 | MX switch housing above the plate | 15.6 mm rim, 6.6 mm tall, stem to 10.2 mm | `components.MX_*` |
@@ -541,7 +583,7 @@ picture colours, in `macropad_case/render.py`.
 | Printed hole lying down comes out small by (a guess) | 0.15 mm | `print_hole_shrink` |
 | Full thread a bottoming tap leaves in a 3.7 mm hole (a guess) | 3.0 mm | `cnc_full_thread` |
 | Display header pins once trimmed | 1.5 mm above the module board | `header_pin_height` |
-| Foam pad under the display (a guess) | 10 x 10 mm, 5.0 mm free, squeezed to 4.1 mm | `display_foam` |
+| Foam pad under the display (a guess) | 10 x 10 mm, 2.5 mm free, squeezed to 1.5 mm | `display_foam` |
 | Foam rings on the base bosses (a guess) | 0.8 mm free, 0.4 mm of room on a 1.6 mm board | `boss_ring` |
 | Hot-swap socket body, for the posts under it | from the Kailh footprint | `socket_post_offset` |
 | Widest keycap skirt the dish must clear | 18.3 mm, 0.3 mm corners | `keycap_worst_skirt` |

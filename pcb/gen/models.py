@@ -105,13 +105,13 @@ def _encoder(footprint: pcbnew.FOOTPRINT) -> list[Solid]:
 
 
 def _display_socket(footprint: pcbnew.FOOTPRINT) -> list[Solid]:
-    """The socket strip with the nice!view module plugged in, at the height board.toml gives its glass."""
+    """The male header with the nice!view module soldered on, at the height board.toml gives its glass."""
     display = BOARD_SPEC["display"]
     pins = display["header_pins"]
     first_pin_y = display["y"] - display["header_pitch"] * (len(pins) - 1) / 2
     dx, dy = -display["header_x"], -first_pin_y  # board coordinates -> socket footprint coordinates
     glass_top = _STACK["display_glass_top"]
-    module_top = glass_top - 1.0
+    module_top = glass_top - 0.9  # 0.9 mm of LCD on a 1.0 mm board (nice!view drawing)
     module_bottom = module_top - 1.0
     module = _centred(display["x"] + dx, display["y"] + dy, display["length"], display["width"])
     glass = _centred(display["window_x"] + dx, display["window_y"] + dy,

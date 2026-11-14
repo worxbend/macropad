@@ -15,6 +15,16 @@ BOARD_TOML = Path(__file__).resolve().parents[2] / "board.toml"
 PRINT = "print"
 CNC = "cnc"
 VARIANTS = (PRINT, CNC)
+# The milled parts as a machine shop knows them: the STEP product name and the drawing's title block.
+REVISION = "A"
+CNC_PART_NUMBERS = {"base": "MP-CASE-BASE-CNC", "top": "MP-CASE-TOP-CNC"}
+
+
+def part_label(name: str, variant: str) -> str:
+    """Product name written into a part's STEP file."""
+    if variant == CNC:
+        return f"{CNC_PART_NUMBERS[name]} rev {REVISION}"
+    return f"macropad {name} ({variant})"
 
 
 def _namespace(value):
@@ -101,7 +111,10 @@ class Case:
     pilot_depth: float = 4.2
     cnc_tap_drill: tuple[float, float] = (1.6, 3.7)  # diameter, depth at full diameter; the drill point comes on top
     cnc_drill_point_angle: float = 118.0
-    cnc_full_thread: float = 3.0  # guess: a bottoming tap leaves about 0.6 mm of a 3.7 mm hole without full thread
+    cnc_tap_drill_limit: float = 3.8  # the drawing's 'do not exceed' depth at full diameter
+    # M2x0.4-6H, 2.5 min full thread: PCBWay's tapped-hole guide asks for 3 pitches (1.2) of drill past the
+    # thread, and 2.5 + 1.2 = 3.7.
+    cnc_full_thread: float = 2.5
     min_screw_engagement: float = 3.0  # self-tapped in plastic
     cnc_min_screw_engagement: float = 1.6  # the height of an M2 nut
     screw_head: tuple[float, float] = (3.8, 2.0)  # ISO 4762 M2 cap head: diameter, height
@@ -134,8 +147,8 @@ class Case:
 
     knob_diameter: float = 14.4  # the smallest that still covers the bushing hole by 3 mm under its grooves
     # Knob underside above the floor of its well, not pressed. The knob seats on the end of the shaft,
-    # so this is set by the shaft; 1.2 makes the knob 13.0 mm tall, a whole number of 0.2 mm layers.
-    knob_to_well_floor: float = 1.2
+    # so this is set by the shaft; 1.1 makes the knob 17.6 mm tall, a whole number of 0.2 mm layers.
+    knob_to_well_floor: float = 1.1
     knob_well_depth: float = 0.7  # each knob stands in a shallow well, so no bushing shows under it
     knob_well_reveal: float = 0.55  # between the knob and the wall of its well
     knob_grooves: int = 36  # guess: the land between two grooves is wider than one 0.4 mm line
@@ -151,10 +164,14 @@ class Case:
     knob_rib_interference: float = 0.12  # guess for PETG or PLA: how far each rib reaches into the shaft
     encoder_press_travel: float = 0.5
     shaft_length_tolerance: float = 0.3  # guess: a shaft this much shorter lets the knob sit this much lower
-    # Room above the bushing inside the knob: the press travel, the shaft tolerance and a margin.
-    knob_bushing_room: float = 1.3
+    # Room above the bushing inside the knob: the press travel, the shaft tolerance and a margin. 1.4 puts
+    # the pocket's roof on the 0.2 mm layer grid of the knob, which prints top face down.
+    knob_bushing_room: float = 1.4
 
-    display_thickness: float = 2.9  # MEASURE: nice!view module, PCB bottom to glass top
+    # nice!view drawing: a 1.0 mm board, 0.9 mm of LCD over it, and about 1.0 mm of parts and the folded
+    # display flex under its free end.
+    display_thickness: float = 1.9  # MEASURE: nice!view module, PCB bottom to glass top
+    display_underside: float = 1.0  # MEASURE: parts and flex under the module's board
     display_glass: tuple[float, float] = (30.0, 13.6)  # MEASURE: LCD glass on the module, length and width
     display_board_thickness: float = 1.0  # MEASURE: the module's own PCB
     lens: tuple[float, float, float] = (39.0, 14.6, 1.0)  # guess: cover glass, length, width, thickness
@@ -181,9 +198,9 @@ class Case:
     usb_plug: tuple[float, float] = (12.5, 6.5)  # plug overmould width, height
     usb_margin: float = 0.5  # round the overmould: a 13.0 x 7.0 plug still enters
     usb_mouth_chamfer: float = 0.3  # a fine lead-in that reads as a bright line, not a bevel
-    # Corners of the opening as seen from behind: the lower ones in the base (a bull-nose cutter from
-    # above), the upper ones in the top (the same from below), which takes only a 0.5 mm bite.
-    usb_corner_radii: tuple[float, float] = (1.0, 0.5)
+    # Lower corners of the opening as seen from behind, in the base (a bull-nose cutter from above).
+    # The upper pair is in the top's small bite; see `usb_corner_radii`.
+    usb_lower_corner_radius: float = 1.0
 
     button_hole_diameter: float = 2.5
     button_body: tuple[float, float] = (5.1, 1.5)  # tact switch width, height
@@ -193,7 +210,7 @@ class Case:
     socket_post: tuple[float, float] = (4.0, 3.0)  # X, Y
     socket_post_offset: tuple[float, float] = (-0.6, -3.75)  # from the key centre: the middle of the socket body
     socket_post_gap: float = 0.15  # under the socket; the post top then lies on a 0.2 mm layer
-    display_foam: tuple[float, float] = (5.0, 10.0)  # guess: open-cell foam under the display's free end, free thickness, side
+    display_foam: tuple[float, float] = (2.5, 10.0)  # guess: open-cell foam under the display's free end, free thickness, side
     foot_recess_depth: float = 0.4
     foot_recess_fit: float = 0.2  # a recess is this much larger than its strip on every side
     label_field: tuple[float, float] = (66.0, 8.0)  # the flat area kept free for the mark: length, width
@@ -209,7 +226,8 @@ class Case:
     # from the bar's hole over each corner screw (a tongue round the holes would be a 0.75 mm ring).
     tilt_tongue: tuple[float, float, float] = (0.15, 0.3, 1.7)
 
-    led_body: tuple[float, float, float] = (4.0, 1.6, 1.6)  # MEASURE: along the edge, depth, height
+    # Opsco SK6812SIDE-A datasheet p. 4: 4.0 x 2.0 x 1.6, emitting face 4.0 x 2.0. MEASURE.
+    led_body: tuple[float, float, float] = (4.0, 1.6, 2.0)  # along the edge, depth, height
     led_window_margin: float = 1.0
     led_sill: float = 1.0  # floor of the light channel above the cavity floor
     # The light bar shows only through the gap, so the light reaches the eye indirectly. A guess:
@@ -409,6 +427,14 @@ def usb_opening_size() -> tuple[float, float]:
     """Width and height of the USB opening: the plug overmould and a margin all round."""
     width, height = CASE.usb_plug
     return width + 2 * CASE.usb_margin, height + 2 * CASE.usb_margin
+
+
+def usb_corner_radii() -> tuple[float, float]:
+    """Lower and upper corner radii of the USB opening. The upper corners take the whole of the top's
+    bite above the seam (Z 0), so the round starts at the seam: a smaller radius left a 0.02 mm flat
+    there, a sliver face in top.step."""
+    bite = LEVELS.usb_centre + usb_opening_size()[1] / 2
+    return CASE.usb_lower_corner_radius, bite
 
 
 def usb_pad_span() -> tuple[float, float]:

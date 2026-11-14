@@ -260,7 +260,7 @@ def _display_decal() -> Decal:
     """The simulator's picture, laid on the lit area of the display as the user reads it."""
     picture = Image.open(DISPLAY_PICTURE).convert("RGB").resize(DISPLAY_PICTURE_SIZE, Image.Resampling.BOX)
     width, height = DISPLAY_ACTIVE_AREA
-    left = BOARD.display.window_x - width / 2
+    left = BOARD.display.mask_window_x - width / 2
     back = -BOARD.display.window_y + height / 2
     origin = np.array((left, back, BOARD.stack.display_glass_top))
     return Decal(np.asarray(picture) / 255.0, origin, np.array((width, 0.0, 0.0)), np.array((0.0, -height, 0.0)))

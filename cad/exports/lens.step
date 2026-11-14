@@ -1,7 +1,7 @@
 ISO-10303-21;
 HEADER;
 FILE_DESCRIPTION(('Open CASCADE Model'),'2;1');
-FILE_NAME('Open CASCADE Shape Model','2026-11-13T19:51:37',('Author'),(
+FILE_NAME('macropad lens (print)','2026-11-14T07:25:36',('Author'),(
     'Open CASCADE'),'Open CASCADE STEP processor 8.0','build123d',
   'Unknown');
 FILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));
@@ -15,7 +15,7 @@ DATA;
 #4 = PRODUCT_DEFINITION_SHAPE('','',#5);
 #5 = PRODUCT_DEFINITION('design','',#6,#9);
 #6 = PRODUCT_DEFINITION_FORMATION('','',#7);
-#7 = PRODUCT('=>[0:1:1:2]','=>[0:1:1:2]','',(#8));
+#7 = PRODUCT('macropad lens (print)','macropad lens (print)','',(#8));
 #8 = PRODUCT_CONTEXT('',#2,'mechanical');
 #9 = PRODUCT_DEFINITION_CONTEXT('part definition',#2,'design');
 #10 = SHAPE_REPRESENTATION('',(#11,#15),#19);
@@ -41,7 +41,7 @@ GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((#23)) GLOBAL_UNIT_ASSIGNED_CONTEXT(
 #26 = PRODUCT_DEFINITION_SHAPE('','',#27);
 #27 = PRODUCT_DEFINITION('design','',#28,#31);
 #28 = PRODUCT_DEFINITION_FORMATION('','',#29);
-#29 = PRODUCT('COMPOUND','COMPOUND','',(#30));
+#29 = PRODUCT('macropad lens (print)','macropad lens (print)','',(#30));
 #30 = PRODUCT_CONTEXT('',#2,'mechanical');
 #31 = PRODUCT_DEFINITION_CONTEXT('part definition',#2,'design');
 #32 = ADVANCED_BREP_SHAPE_REPRESENTATION('',(#11,#33),#683);
@@ -808,7 +808,8 @@ SHAPE_REPRESENTATION_RELATIONSHIP() );
 #690 = ITEM_DEFINED_TRANSFORMATION('','',#11,#15);
 #691 = PRODUCT_DEFINITION_SHAPE('Placement','Placement of an item',#692
   );
-#692 = NEXT_ASSEMBLY_USAGE_OCCURRENCE('4','=>[0:1:1:2]','',#5,#27,$);
+#692 = NEXT_ASSEMBLY_USAGE_OCCURRENCE('4','macropad lens (print)','',#5,
+  #27,$);
 #693 = PRODUCT_RELATED_PRODUCT_CATEGORY('part',$,(#29));
 ENDSEC;
 END-ISO-10303-21;

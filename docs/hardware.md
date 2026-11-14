@@ -35,7 +35,7 @@ Top view, USB at the back:
 
 <img src="images/pcb/assembly-top.svg" alt="Assembly drawing, top face" width="48%"> <img src="images/pcb/assembly-bottom.svg" alt="Assembly drawing, bottom face" width="48%">
 
-- **Top face:** the two encoders and the 5-pin display socket. These three are soldered by hand.
+- **Top face:** the two encoders and the 5-pin display header. These three are soldered by hand.
   The switches plug into their sockets through the board.
 - **Bottom face:** everything else. The MCU, USB-C port, regulator, crystal and both buttons sit
   under the display. The hot-swap sockets sit under the keys. The LEDs sit on the left and right
@@ -53,12 +53,14 @@ The KiCad file is `pcb/kicad/macropad.kicad_sch`.
 
 - **USB-C.** 5.1 kΩ on both CC pins, USBLC6 ESD diodes, 27 Ω series resistors (R7, R8) right at the
   MCU pins, 500 mA resettable fuse. From the resistors to the chip the pair runs on the bottom layer
-  with no via: D+ 15.43 mm and D- 14.26 mm from connector to MCU. No impedance was calculated.
+  with no via: D+ 14.93 mm and D- 14.08 mm from connector to MCU. No impedance was calculated.
 - **Power.** VBUS through the fuse is the 5 V rail (LEDs, level shifter). An AP2112K makes 3.3 V.
-  The RP2354A makes its own 1.1 V core supply with the on-chip switching regulator and L1.
+  The RP2354A makes its own 1.1 V core supply with the on-chip switching regulator and L1, laid out
+  in Raspberry Pi's reference pattern (input and output capacitors side by side at the pins, the
+  inductor beyond them, no copper under the inductor on the other layers).
   About 7.5 µF sits on the 5 V rail; USB 2.0 allows 10 µF at plug-in.
 - **Clock.** 12 MHz crystal with a 1 kΩ series resistor on XOUT and 15 pF load capacitors.
-  The crystal is a substitute with the reference load rating (10 pF); see [parts](parts.md).
+  The crystal is Raspberry Pi's reference part, the ABM8-272-T3; see [parts](parts.md).
 - **Flashing.** BOOT pulls QSPI_SS low through 1 kΩ, which starts the ROM USB bootloader.
   RESET pulls RUN low. Both buttons are on the bottom face and reached through holes in the case floor.
 - **Keys and knobs.** Each switch connects one GPIO to ground. The firmware turns on the internal
@@ -68,7 +70,8 @@ The KiCad file is `pcb/kicad/macropad.kicad_sch`.
   page, not from a part on a desk.
 - **Display.** SPI0 (SCK GPIO22, MOSI GPIO23), chip select GPIO24, active high. Header order
   from the back edge to the front: MOSI, SCK, 3V3, GND, CS. `MEASURE`: check it against your module.
-- **LEDs.** GPIO9, through a 74LVC1T45 to 5 V logic, then eight SK6812 SIDE-A in a chain: right side
+- **LEDs.** GPIO9, through a 74LVC1T45 to 5 V logic and a 330 Ω series resistor (R9), then eight
+  SK6812 SIDE-A in a chain: right side
   back to front, then left side front to back. The firmware caps total LED current at about 200 mA
   and turns the LEDs off when the host sleeps.
 
@@ -114,14 +117,14 @@ case model; the pads are flat copper, so nothing can collide.
 |---|---|
 | F.Cu | Signals, ground pour |
 | In1.Cu | Ground plane |
-| In2.Cu | 5 V plane, with a 3.3 V island under the MCU and the display socket |
+| In2.Cu | 5 V plane, with a 3.3 V island under the MCU and the display header |
 | B.Cu | Parts, signals, ground pour |
 
 Design rules: 0.15 mm track and gap, 0.6 mm via with a 0.3 mm drill, 0.3 mm copper to board edge.
 Pictures of each layer: [top](images/pcb/copper-top.svg), [ground](images/pcb/copper-ground.svg),
 [power](images/pcb/copper-power.svg), [bottom](images/pcb/copper-bottom.svg).
 
-Routing: 797 tracks, 160 vias, 1305.5 mm of track, 0 unrouted pads. The router is a small grid
+Routing: 802 tracks, 161 vias, 1299.1 mm of track, 0 unrouted pads. The router is a small grid
 router in `pcb/gen/router.py`; the routing plan is `pcb/gen/route.py`. No third-party autorouter is used.
 
 ## Mechanical stack
@@ -135,11 +138,11 @@ Heights from `board.toml`, measured from the PCB top face.
 | USB-C body | 3.26 mm below the PCB bottom face |
 | PCB | 1.6 mm thick |
 | Switch plate top | 5.0 mm (plate 1.5 mm thick, 14.0 mm cut-outs) |
-| Encoder body top | 6.5 mm |
-| Display glass top | 7.0 mm (`MEASURE`: nice!view on low-profile sockets) |
+| Encoder body top | 4.5 mm (`MEASURE`: Alps drawing No. 2) |
+| Display glass top | 4.4 mm (`MEASURE`: nice!view soldered on a plain male header with a 2.5 mm body) |
 | Top face of the case | 8.5 mm |
-| Lens underside | 7.38 mm (0.38 mm above the glass) |
-| Encoder shaft top | 20.0 mm |
+| Lens underside | 7.38 mm (2.98 mm above the glass) |
+| Encoder shaft top | 24.5 mm (`MEASURE`: Alps EC11E18244AU drawing No. 2) |
 
 <img src="images/cad/section_usb_display.png" alt="Cut through the USB port, the lens, the display and the centre screws" width="48%"> <img src="images/cad/section_light_line.png" alt="Cut through one LED, the PCB edge and the light bar" width="48%">
 
@@ -185,7 +188,7 @@ Nothing below has been printed or milled. The model passes its own checks, and t
   face of a printed base and laser-marked on a milled one.
 - **USB-C.** A 13.5 x 7.5 mm opening with rounded corners and a 0.3 mm lead-in: a plug overmould up to
   13.0 x 7.0 mm fits. The PCB edge shows in it; a black solder mask hides it.
-- **Size.** 90.0 x 90.0 x 17.5 mm, 31.0 mm from the underside to the top of the knobs. The foot strips
+- **Size.** 90.0 x 90.0 x 17.5 mm, 35.5 mm from the underside to the top of the knobs. The foot strips
   add 1.2 mm.
 - **Two variants.** `cad/exports/print/` for FDM printing, `cad/exports/cnc/` for 3-axis milling with a
   3 mm end mill and a chamfer mill. Light bars, knobs, foot strips and the tilt bar are always printed;

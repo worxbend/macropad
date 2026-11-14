@@ -9,7 +9,8 @@ L_Abracon_AOTA-B201610.kicad_mod: from Raspberry Pi's RP2350A Minimal design fil
   Kept: the pads (0.7 x 1.7 mm at +/-0.7 mm), the silkscreen and fabrication dots on the pad 1 side, the
   body and courtyard rectangles. Pad 1 is the +1V1 end, as in Raspberry Pi's board.
   Changed here: the 3D model link and Raspberry Pi's part properties are left out; the body outline
-  strokes are 0.05 mm instead of 0.01 mm.
+  strokes are 0.05 mm instead of 0.01 mm; the silkscreen dot moves from the lower to the upper outer
+  corner of pad 1 (y -0.7 instead of +0.7), where it clears the USB series resistor beside it.
 C_0402_1005Metric_Wide.kicad_mod: from the same Raspberry Pi RP2350A Minimal design files, footprint
   RPI_COMPILED:generic_capc1005x50_wide, MIT License, Copyright (c) 2026 Raspberry Pi Ltd.
   Kept: the pads (0.47 x 0.55 mm at +/-0.515 mm) and the body outline.

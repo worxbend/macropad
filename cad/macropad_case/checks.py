@@ -9,7 +9,7 @@ import trimesh
 from build123d import Box, Part, Pos, Rot
 
 from . import measure, printsim, selftest, signature
-from .components import MX_FLANGE, at, components, encoder, keycap, led, pcb, worst_keycap_skirt
+from .components import MX_FLANGE, at, components, display_room, encoder, keycap, led, pcb, worst_keycap_skirt
 from .parts import base_body, drill_point_height, printed_text, socket_post_top, switch_cutout_length, top_chairs
 from .parts import underside_mark, usb_cutout
 from .small_parts import BAR_TO_TOP, case_parts, desk_plane_drop, knob_crush_ribs, knob_pointer_outline, lens_outline
@@ -156,12 +156,13 @@ def _board_support_margins() -> list[tuple[str, float, float]]:
     free, room, _ = CASE.boss_ring
     tolerance = BOARD.board.thickness * PCB_THICKNESS_TOLERANCE
     foam_free, _ = CASE.display_foam
-    display_room = BOARD.stack.display_glass_top - CASE.display_thickness
     socket_bottom = LEVELS.pcb_bottom - BOARD.stack.socket_depth
     return [
         ("pcb_clamped_thin_pcb", free - (room + tolerance), 0.0),
         ("boss_ring_not_solid_thick_pcb", room - tolerance, FOAM_SOLID_SHARE * free),
-        ("display_foam_compression", foam_free - display_room, 0.5),
+        ("display_foam_compression", foam_free - display_room(), 0.5),
+        # A guess: squeezed to less than half, open-cell foam takes a set and stops holding the module up.
+        ("display_foam_squeezed_under_half", display_room() - foam_free / 2, 0.0),
         ("socket_post_to_socket", socket_bottom - socket_post_top(), 0.05),
         ("socket_post_gap_headroom", 0.2 - (socket_bottom - socket_post_top()), 0.0),
     ]
@@ -202,6 +203,9 @@ def _screw_margins() -> list[tuple[str, float, float]]:
         ("cnc_screw_engagement", cnc_engagement, CASE.cnc_min_screw_engagement),
         ("cnc_full_thread_past_screw_tip", CASE.cnc_full_thread - cnc_engagement, 0.5),
         ("cnc_skin_over_drill_point", LEVELS.plate_top - drill_end, CASE.min_wall),
+        # At the drawing's depth limit the skin under the dish floor is thinner than the wall rule; the
+        # limit only bounds a drill that runs 0.1 deep, so it is held to 0.7 here.
+        ("cnc_skin_over_deepest_drill_point", LEVELS.plate_top - CASE.cnc_tap_drill_limit - drill_point_height(), 0.7),
         ("cnc_screw_head_below_underside", CASE.cnc_counterbore_depth - head_height, 0.2),
     ]
 
@@ -253,8 +257,18 @@ def _lens_margins() -> list[tuple[str, float, float]]:
         ("print_lens_fit_after_bridge_sag", CASE.print_lens_fit + CASE.print_lens_end_room - CASE.print_bridge_sag, 0.0),
         ("lens_to_glass_under_press", air_gap - _lens_sag(), 0.2),
         ("header_pins_under_lens", LEVELS.lens_bottom - pin_tops, 0.5),
-        ("lens_mask_window_inside_glass", min(glass_length - display.window_length, glass_width - display.window_width) / 2, 0.5),
+        ("lens_mask_window_inside_glass",
+         min(glass_length - display.mask_window_length, glass_width - display.window_width) / 2, 0.5),
+        ("lens_mask_window_inside_module", _mask_window_margin(), 0.5),
     ]
+
+
+def _mask_window_margin() -> float:
+    """Smallest distance from the lens mask's window to the ends of the display module, along it."""
+    display = BOARD.display
+    half_window = display.mask_window_length / 2
+    module_start, module_end = display.x - display.length / 2, display.x + display.length / 2
+    return min(display.mask_window_x - half_window - module_start, module_end - display.mask_window_x - half_window)
 
 
 def _inside(inner: tuple, outer: tuple) -> float:

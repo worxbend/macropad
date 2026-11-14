@@ -3,13 +3,14 @@
 from pathlib import Path
 
 import matplotlib
-from build123d import Axis, Bezier, Box, Circle, Cylinder, Line, Part, Plane, Pos, Rectangle, RectangleRounded
-from build123d import Sketch, Text, Wire, chamfer, extrude, make_face, mirror, offset
+from build123d import Axis, Bezier, Box, Circle, Cylinder, Face, GeomType, Line, Part, Plane, Pos, Rectangle
+from build123d import RectangleRounded, Rot, Sketch, Text, ThreePointArc, Wire, chamfer, extrude, make_face, mirror
+from build123d import offset
+from OCP.BRepBuilderAPI import BRepBuilderAPI_NurbsConvert
 
 from .spec import BOARD, CASE, CNC, PRINT, Span, case_bounds, grown
 
 CUT_OVERSHOOT = 0.01  # cuts run past the face they open so no zero-thickness skin is left
-STADIUM_FLAT = 1e-4  # a rounded rectangle needs a side between its corners, however short
 # DejaVu Sans Bold ships inside matplotlib, so the engraved text is the same on every machine.
 LEGEND_FONT = Path(matplotlib.get_data_path()) / "fonts" / "ttf" / "DejaVuSans-Bold.ttf"
 
@@ -58,9 +59,19 @@ def rounded_rectangle(span: Span, radius: float) -> Sketch:
 
 
 def stadium(span: Span) -> Sketch:
-    """A slot shape: a rectangle whose two short sides are half circles."""
+    """A slot shape: two straight sides joined by half circles. Built from its four edges, because a
+    rounded rectangle needs a short flat between its corners, which left 0.0001 mm faces in the STEP."""
     (x_low, x_high), (y_low, y_high) = span
-    return rounded_rectangle(span, min(x_high - x_low, y_high - y_low) / 2 - STADIUM_FLAT)
+    length, width = max(x_high - x_low, y_high - y_low), min(x_high - x_low, y_high - y_low)
+    radius, half_flat = width / 2, (length - width) / 2
+    outline = Wire([
+        Line((-half_flat, -radius), (half_flat, -radius)),
+        ThreePointArc((half_flat, -radius), (half_flat + radius, 0), (half_flat, radius)),
+        Line((half_flat, radius), (-half_flat, radius)),
+        ThreePointArc((-half_flat, radius), (-half_flat - radius, 0), (-half_flat, -radius)),
+    ])
+    along_y = Rot(0, 0, 90) if y_high - y_low > x_high - x_low else Rot()
+    return Pos((x_low + x_high) / 2, -(y_low + y_high) / 2) * along_y * (Sketch() + make_face(outline))
 
 
 def case_outline(variant: str, grow: float = 0.0) -> Sketch:
@@ -72,7 +83,27 @@ def case_outline(variant: str, grow: float = 0.0) -> Sketch:
     if variant == PRINT:
         return rounded_rectangle(grown(case_bounds(), grow), CASE.print_corner_radius + grow)
     outline = _continuous_outline(case_bounds())
-    return offset(outline, amount=grow) if grow else outline
+    return offset_sketch(outline, grow) if grow else outline
+
+
+def offset_sketch(sketch: Sketch, amount: float) -> Sketch:
+    """`offset` that leaves no offset curve behind. Offsetting a spline (the CNC corners, a glyph)
+    gives an offset curve, and OCCT's STEP writer silently leaves out every face that touches one:
+    base.step came out as an open shell that way. Those faces are rebuilt on B-spline copies of
+    their edges; the rest stay as they are."""
+    grown = offset(sketch, amount=amount)
+    if not grown.edges().filter_by(GeomType.OFFSET):
+        return grown
+    return Sketch() + [_without_offset_curves(face) for face in grown.faces()]
+
+
+def _without_offset_curves(face: Face) -> Face:
+    if not face.edges().filter_by(GeomType.OFFSET):
+        return face
+    # The conversion turns the plane into a B-spline surface too; a face made from the converted
+    # wires lies on a plane again, so the pocket floors and the rim stay planar for CAM.
+    splined = Face(BRepBuilderAPI_NurbsConvert(face.wrapped, True).Shape())
+    return Face(splined.outer_wire(), splined.inner_wires())
 
 
 def _continuous_outline(span: Span) -> Sketch:
@@ -136,7 +167,7 @@ def millable(pocket: Sketch, variant: str) -> Sketch:
     if variant != CNC:
         return pocket
     radius = CASE.cnc_corner_radius
-    return offset(offset(pocket, amount=-radius), amount=radius)
+    return offset_sketch(offset_sketch(pocket, -radius), radius)
 
 
 def overlap_volume(first: Part, second: Part) -> float:
