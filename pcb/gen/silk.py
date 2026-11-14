@@ -47,6 +47,42 @@ def _text(board: pcbnew.BOARD, text: str, x: float, y: float, layer: int, size: 
     board.Add(label)
 
 
+def fit_footprint_silk(footprint: pcbnew.FOOTPRINT) -> None:
+    """Brings a library footprint's silkscreen up to the legibility minimums: the visible reference to the
+    minimum text size, and every stroked line to the minimum width. KiCad's stock footprints draw 0.12 mm."""
+    reference = footprint.Reference()
+    if reference.IsVisible() and _is_silk(reference):
+        reference.SetTextSize(pcbnew.VECTOR2I(_mm(_TEXT_SIZE), _mm(_TEXT_SIZE)))
+        reference.SetTextThickness(_mm(_TEXT_SIZE * _STROKE_RATIO))
+    for item in footprint.GraphicalItems():
+        stroked_silk = item.GetClass() == "PCB_SHAPE" and _is_silk(item) and not item.IsFilled()
+        if stroked_silk and item.GetWidth() < _mm(_LINE_WIDTH):
+            item.SetWidth(_mm(_LINE_WIDTH))
+
+
+def check_minimums(board: pcbnew.BOARD) -> None:
+    """Every visible silkscreen text and every stroked silkscreen line on the board meets the minimums."""
+    texts = [item for item in board.GetDrawings() if item.GetClass() == "PCB_TEXT"]
+    shapes = [item for item in board.GetDrawings() if item.GetClass() == "PCB_SHAPE"]
+    for footprint in board.GetFootprints():
+        texts += [field for field in footprint.GetFields() if field.IsVisible()]
+        texts += [item for item in footprint.GraphicalItems() if item.GetClass() == "PCB_TEXT"]
+        shapes += [item for item in footprint.GraphicalItems() if item.GetClass() == "PCB_SHAPE"]
+    for text in filter(_is_silk, texts):
+        height, stroke = pcbnew.ToMM(text.GetTextHeight()), pcbnew.ToMM(text.GetTextThickness())
+        assert height >= _TEXT_SIZE - 1e-6 and stroke >= _LINE_WIDTH - 1e-6, (
+            f"silkscreen text {text.GetShownText(False)!r} is {height} mm high with a {stroke} mm stroke, "
+            f"minimum {_TEXT_SIZE} / {_LINE_WIDTH}")
+    for shape in filter(_is_silk, shapes):
+        width = pcbnew.ToMM(shape.GetWidth())
+        assert shape.IsFilled() or width >= _LINE_WIDTH - 1e-6, \
+            f"silkscreen line of {width} mm at {shape.GetPosition()}, minimum {_LINE_WIDTH} mm"
+
+
+def _is_silk(item: pcbnew.BOARD_ITEM) -> bool:
+    return item.GetLayer() in (pcbnew.F_SilkS, pcbnew.B_SilkS)
+
+
 def _rectangle(board: pcbnew.BOARD, centre: tuple[float, float], length: float, width: float) -> None:
     shape = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_RECT)
     shape.SetStart(pcbnew.VECTOR2I(_mm(centre[0] - length / 2), _mm(centre[1] - width / 2)))

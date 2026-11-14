@@ -10,7 +10,7 @@ This board has 11 extended parts. The fee and the prices are not listed here, be
 
 ## Machine-placed (JLCPCB assembly, bottom face)
 
-72 parts in 23 BOM lines. The table matches `pcb/fab/bom-jlcpcb.csv`, which `make pcb-fab` checks
+72 parts in 24 BOM lines. The table matches `pcb/fab/bom-jlcpcb.csv`, which `make pcb-fab` checks
 against the circuit.
 
 | Part | Value | Qty | JLCPCB # | Type | Stock | Why this one |
@@ -26,9 +26,9 @@ against the circuit.
 | Buttons | TS-1187A | 2 | C318884 | Basic | 814 103 | BOOT and RESET |
 | RGB LED | SK6812SIDE-A, 4 x 1.6 mm | 8 | C5378721 | Extended | 110 485 | Side-emitting: shines out of the PCB edge |
 | Hot-swap socket | HanElectricity CPG151101S11-2 | 12 | C49352235 | Extended | 29 503 | |
-| Capacitor | 100 nF 0402 | 22 | C1525 | Basic | 32 M | |
+| Capacitor | 100 nF 0402 | 21 | C1525 | Basic | 32 M | |
 | Capacitor | 1 µF 0402 | 1 | C52923 | Basic | 10 M | |
-| Capacitor | 4.7 µF 0402 | 4 | C23733 | Basic | 631 376 | |
+| Capacitor | 4.7 µF 0402 | 5 | C23733 | Basic | 631 376 | C5 at DVDD pin 23 on the standard footprint, C11-C14 on the wide one |
 | Capacitor | 2.2 µF 0603 | 3 | C23630 | Basic | 3.1 M | 5 V rail: regulator input and one per LED row |
 | Capacitor | 10 µF 0603 | 1 | C19702 | Basic | 12 M | 3.3 V regulator output |
 | Capacitor | 15 pF C0G 0402 | 2 | C1548 | Basic | 984 188 | |

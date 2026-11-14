@@ -123,7 +123,7 @@ _MCU = Block(
 _DECOUPLING_PITCH = 7
 _DECOUPLING_PINS = circuit.DECOUPLING_CAPS | circuit.SECOND_SUPPLY_CAPS
 _DECOUPLING = Block(
-    "MCU decoupling: one 100 nF for each supply pin", 82, 114, 88, 30,
+    "MCU decoupling: 100 nF for each supply pin, 4.7 uF at pin 23", 82, 114, 88, 30,
     places=tuple(Place(ref, 6 + _DECOUPLING_PITCH * n, 14) for n, ref in enumerate(_DECOUPLING_PINS)),
     notes=tuple(Note(f"pin {pin}", 4 + _DECOUPLING_PITCH * n, 27) for n, pin in enumerate(_DECOUPLING_PINS.values())),
 )

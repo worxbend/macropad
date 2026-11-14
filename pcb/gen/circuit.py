@@ -188,6 +188,10 @@ MCU_FIXED_SIGNALS = {
 DECOUPLING_CAPS = {"C1": 1, "C2": 6, "C3": 11, "C4": 20, "C5": 23, "C6": 30, "C7": 38, "C8": 39, "C9": 45,
                    "C10": 53}
 DECOUPLED_PINS = list(DECOUPLING_CAPS.values())
+# DVDD pin 23, the core supply pin furthest from the regulator, gets 4.7 uF instead of 100 nF. RP2350 datasheet
+# 6.1.3: "The DVDD pin furthest from the regulator should be decoupled with a 4.7µF capacitor close to the pin";
+# 6.3.8.1 recommends this second 4.7 uF on the core supply at DVDD pin 23, away from LX and COUT.
+BULK_DECOUPLED_PIN = 23
 # ADC_AVDD (44) and QSPI_IOVDD (54) are each tied to the 3.3 V pin beside them (45, 53) and reach that
 # pin's capacitor. Their own 100 nF has no room in front of the pin, where signals leave the chip. It
 # sits as near as it fits: capacitor -> MCU pin.
@@ -252,7 +256,7 @@ def _decoupling_caps() -> list[Part]:
         out_x, out_y = _OUTWARD[_mcu_side(pin)]
         shift_x, shift_y = DECOUPLING_SHIFT.get(pin, (0.0, 0.0))
         caps.append(Part(
-            ref, "100nF", "C0402",
+            ref, "4.7uF" if pin == BULK_DECOUPLED_PIN else "100nF", "C0402",
             pad_x + out_x * DECOUPLING_DISTANCE + shift_x, pad_y + out_y * DECOUPLING_DISTANCE + shift_y,
             rotation=_RADIAL_ROTATION[_mcu_side(pin)],
             nets={"1": MCU_POWER_PINS[pin], "2": GND},
@@ -290,9 +294,9 @@ def _core_regulator() -> list[Part]:
         Part("C12", "4.7uF", "C0402W", lx_x + CAPACITOR_SHIFT, pin_row_y - COUT_DISTANCE, 0, nets={"1": V1, "2": GND}),
         # Pad 1 is the +1V1 end and carries the polarity dot, as in Raspberry Pi's reference board.
         Part("L1", "3.3uH", "L2016", lx_x + INDUCTOR_SHIFT, pin_row_y - INDUCTOR_DISTANCE, 0, nets=INDUCTOR_PADS),
-        # A second 4.7 uF on the output, at the probe pad end of the output track, away from LX and COUT.
-        # Raspberry Pi's Minimal board has one COUT; the review asked for this one at DVDD pin 23, where the
-        # escape tracks of pins 24 to 29 leave no room.
+        # A further 4.7 uF on the output, at the probe pad end of the output track. The datasheet's second
+        # 4.7 uF at DVDD pin 23 is that pin's decoupling capacitor (BULK_DECOUPLED_PIN). This one is extra, and
+        # nearer to COUT than datasheet 6.3.8.1 wants; see "Regulator loop" in pcb/README.md.
         Part("C13", "4.7uF", "C0402W", 37.5, 11.0, 90, nets={"1": V1, "2": GND}),
         Part("C14", "4.7uF", "C0402W", 37.0, 13.7, 0, nets={"1": "VREG_AVDD", "2": GND}),
         Part("R1", "33R", "R0402", 35.0, 13.7, 0, nets={"1": "VREG_AVDD", "2": V3}),
@@ -315,6 +319,7 @@ def _clock_and_reset() -> list[Part]:
         Part("SW14", "TS-1187A", "TACT", spec["reset"]["x"], spec["reset"]["y"], 0,
              nets={"1": "RUN", "2": GND}),
         # Next to the BOOT button, so the long track across the board is the one behind the resistor.
+        # Beside pin 60 it blocks the escapes of KEY4, KEY8 and DISP_CS (three tries, see pcb/README.md "R4").
         Part("R4", "1k", "R0402", 35.6, 22.3, 90, nets={"1": "QSPI_SS", "2": "BOOT"}),
         Part("SW13", "TS-1187A", "TACT", spec["boot"]["x"], spec["boot"]["y"], 0,
              nets={"1": "BOOT", "2": GND}),

@@ -60,6 +60,7 @@ def place() -> None:
     nets = board.GetNetCount() - 1 - len(open_pin_nets)
     print(f"placed {len(board.GetFootprints())} footprints, {nets} nets, {len(open_pin_nets)} open pins")
     route.write_copper(board, result.router)
+    layout.add_keepouts_above_bottom(board, result.switch_node_keepouts)
     if not result.unrouted:
         _check_connected_without_pours(board)
     layout.add_outer_ground_pours(board)
@@ -72,7 +73,8 @@ def place() -> None:
         print("UNROUTED", line)
     if not result.unrouted:
         route.check_sensitive_lengths(result)
-        route.check_regulator_keepout(result.router, route.regulator_keepouts(board))
+        route.check_regulator_keepout(result.router, [route.inductor_keepout(board)] + result.switch_node_keepouts)
+        route.check_no_pour_under_regulator(pcbnew.LoadBoard(str(BOARD_PATH)))
     write_images()
 
 

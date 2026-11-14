@@ -105,6 +105,7 @@ def _place(board: pcbnew.BOARD, part: Part, open_pin_nets: dict[str, str]) -> pc
     footprint.Reference().SetVisible(part.footprint_key in SILK_LABELLED)
     if part.ref in REFERENCE_POSITION:
         footprint.Reference().SetPosition(point(*REFERENCE_POSITION[part.ref]))
+    silk.fit_footprint_silk(footprint)
     if not part.machine_assembled:
         footprint.SetExcludedFromPosFiles(True)
     _connect(board, footprint, part, open_pin_nets)
@@ -216,13 +217,19 @@ def add_fiducial_keepouts(board: pcbnew.BOARD) -> None:
         board.Add(area)
 
 
-def add_regulator_keepouts(board: pcbnew.BOARD) -> None:
-    """No copper under the regulator inductor and the VREG_LX track on the other layers, and no bottom-layer
-    pour between the inductor's pads (RP2350 datasheet 6.3.8)."""
-    for layer in (pcbnew.F_Cu, pcbnew.In1_Cu, pcbnew.In2_Cu):
-        for rect in route.regulator_keepouts(board):
-            _rule_area(board, layer, rect, tracks_and_vias=True)
+def add_inductor_keepouts(board: pcbnew.BOARD) -> None:
+    """No copper under the regulator inductor on the other layers, and no bottom-layer pour between its pads
+    (RP2350 datasheet 6.3.8)."""
+    add_keepouts_above_bottom(board, [route.inductor_keepout(board)])
     _rule_area(board, pcbnew.B_Cu, route.inductor_gap(board), tracks_and_vias=False)
+
+
+def add_keepouts_above_bottom(board: pcbnew.BOARD, rects: list[tuple]) -> None:
+    """Rule areas with no copper on the top and the two inner layers. The VREG_LX keepouts come from the routed
+    track (route.switch_node_keepouts), so they are added after routing."""
+    for layer in route.REGULATOR_KEEPOUT_LAYERS:
+        for rect in rects:
+            _rule_area(board, layer, rect, tracks_and_vias=True)
 
 
 def _rule_area(board: pcbnew.BOARD, layer: int, rect: tuple, tracks_and_vias: bool) -> None:
@@ -369,7 +376,8 @@ def build_board(board_path: Path, open_pin_nets: dict[str, str]) -> pcbnew.BOARD
     placed = {part.ref: _place(board, part, open_pin_nets) for part in parts}
     check_placement(placed)
     silk.add_labels(board)
+    silk.check_minimums(board)
     add_inner_planes(board)
     add_fiducial_keepouts(board)
-    add_regulator_keepouts(board)
+    add_inductor_keepouts(board)
     return board

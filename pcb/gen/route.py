@@ -15,7 +15,7 @@ import pcbnew
 import circuit
 import schematic
 from circuit import BOARD_SPEC, GND, V1, V3, V5, VBUS
-from router import BACK, BOTH_LAYERS, FRONT, Pad, Router, Rules, Via
+from router import BACK, BOTH_LAYERS, FRONT, Pad, Router, Rules, Track, Via
 
 PLANE_NETS = (GND, V1, V3, V5)
 # The USB lines from pins 51 and 52 squeeze past the regulator to their series resistors. They go straight
@@ -45,8 +45,10 @@ FEEDBACK_WAYPOINT = (0.0, -1.55)
 # VREG_AVDD is noise sensitive and VREG_LX is the switching node: their tracks stay this far apart,
 # centre to centre. The two pins are 0.8 mm apart, so this allows only the stubs at the pins.
 AVDD_TO_LX_MIN_DISTANCE = 0.75
-# How far the copper keepout reaches beyond the inductor's pads and the VREG_LX track.
+# How far the copper keepout reaches beyond the inductor's pads and the VREG_LX copper.
 REGULATOR_KEEPOUT_MARGIN = 0.2
+# Layers that must have no copper under the inductor and the VREG_LX node; the bottom layer carries them.
+REGULATOR_KEEPOUT_LAYERS = (pcbnew.F_Cu, pcbnew.In1_Cu, pcbnew.In2_Cu)
 USB_PAIR_MISMATCH_LIMIT = 2.0  # mm; full-speed USB tolerates far more, this only catches a detour
 # Nets that must stay on the bottom layer, over the unbroken ground plane, from pad to pad.
 NO_VIA_NETS = ("VREG_LX", "USB_DM", "USB_DP", "USB_D_P")
@@ -81,6 +83,7 @@ class RoutingResult:
     router: Router
     unrouted: list[str] = field(default_factory=list)  # "NET: pad" for every pad left unconnected
     feedback_length: float = 0.0  # VREG_FB, pin 50 to the COUT pad
+    switch_node_keepouts: list[tuple] = field(default_factory=list)  # see switch_node_keepouts()
 
     def report_lines(self) -> list[str]:
         router = self.router
@@ -134,10 +137,18 @@ def _load_obstacles(board: pcbnew.BOARD, router: Router) -> dict[str, list[Pad]]
     mask_radius = circuit.FIDUCIAL_MASK_DIAMETER / 2
     for x, y in circuit.FIDUCIALS:
         router.add_keepout((x - mask_radius, y - mask_radius, x + mask_radius, y + mask_radius), (BACK,))
-    grow = router.rules.via_diameter / 2  # the keepout holds the centres; the copper keeps out of the area
-    for left, top, right, bottom in regulator_keepouts(board):
-        router.add_keepout((left - grow, top - grow, right + grow, bottom + grow), (FRONT,))
+    _keep_top_layer_clear(router, inductor_keepout(board))
     return pads
+
+
+def _keep_top_layer_clear(router: Router, rect: tuple) -> None:
+    grow = router.rules.via_diameter / 2  # the keepout holds the centres; the copper keeps out of the area
+    router.add_keepout(_grown(rect, grow), (FRONT,))
+
+
+def _grown(rect: tuple, margin: float) -> tuple:
+    left, top, right, bottom = rect
+    return left - margin, top - margin, right + margin, bottom + margin
 
 
 def _in_any(rectangles: list[tuple], x: float, y: float, grow: float) -> bool:
@@ -156,6 +167,11 @@ def _plane_tests(v3_island: list[tuple], v1_island: list[tuple]) -> dict:
     }
 
 
+def _via_pad(via: Via) -> Pad:
+    """A via as a pad on both layers, so a route can start from it."""
+    return Pad(f"via at ({via.x:.1f}, {via.y:.1f})", via.net, (via.x, via.y) * 2, BOTH_LAYERS)
+
+
 def _pin_number(pad: Pad) -> int:
     return int(pad.name.split(".")[1])
 
@@ -170,6 +186,7 @@ class _Plan:
         self.head_start = setup.head_start
         self.unrouted: list[str] = []
         self.feedback_length = 0.0
+        self.switch_node_keepouts: list[tuple] = []
         self.routed_nets: set[str] = set(PLANE_NETS)
         self.on_plane: set[Pad] = set()  # plane-net pads that already reach their plane
         self.by_net: dict[str, list[Pad]] = {}
@@ -256,6 +273,9 @@ class _Plan:
         switch_pad = next(pad for pad, net in circuit.INDUCTOR_PADS.items() if net == "VREG_LX")
         self.pair("VREG_LX", "U1.48", f"L1.{switch_pad}")  # from the pin: no copper drawn inside the inductor pad
         self.routed_nets.add("VREG_LX")
+        self.switch_node_keepouts = switch_node_keepouts(self.router, self.pad("U1.48"))
+        for rect in self.switch_node_keepouts:
+            _keep_top_layer_clear(self.router, rect)
         self.pair(V3, "U1.49", "C11.1")
         self.to_via(self.pad("U1.49"), via["vin"])
         self.pair(GND, "U1.47", "C11.2")
@@ -276,8 +296,7 @@ class _Plan:
         failed = self.router.route_net(V1, output, wide=True)
         self.unrouted += [f"{V1}: {name}" for name in failed]
         self.to_via(self.pad(f"L1.{inductor_output}"), via["core_out"], wide=True)
-        link_start = Pad("core_out", V1, (via["core_out"].x, via["core_out"].y) * 2, BOTH_LAYERS)
-        self.to_via(link_start, via["core_in"], wide=True)
+        self.to_via(_via_pad(via["core_out"]), via["core_in"], wide=True)
         self.on_plane.update(output + [self.pad(name) for name in ("C11.1", "C11.2", "C12.2")])
 
     def hand_via(self, net: str, x: float, y: float) -> Via:
@@ -367,7 +386,7 @@ def route(board: pcbnew.BOARD, setup: Setup) -> RoutingResult:
     plan.plane_fan_out()
     plan.mcu_escapes()
     plan.signals()
-    return RoutingResult(router, plan.unrouted, plan.feedback_length)
+    return RoutingResult(router, plan.unrouted, plan.feedback_length, plan.switch_node_keepouts)
 
 
 def write_copper(board: pcbnew.BOARD, router: Router) -> None:
@@ -411,16 +430,24 @@ def check_sensitive_lengths(result: RoutingResult) -> None:
     assert gap >= AVDD_TO_LX_MIN_DISTANCE, f"VREG_AVDD runs {gap:.2f} mm from VREG_LX, limit {AVDD_TO_LX_MIN_DISTANCE} mm"
 
 
-def regulator_keepouts(board: pcbnew.BOARD) -> list[tuple]:
-    """Rectangles with no copper on the top and the two inner layers (RP2350 datasheet 6.3.8): the inductor,
-    and the VREG_LX track from its pin to the inductor."""
-    margin = REGULATOR_KEEPOUT_MARGIN
+def inductor_keepout(board: pcbnew.BOARD) -> tuple:
+    """No copper on the top and the two inner layers under the regulator inductor (RP2350 datasheet 6.3.8.1)."""
     inductor = _rect_around([_rect(pad.GetBoundingBox()) for pad in board.FindFootprintByReference("L1").Pads()])
-    lx_pin = next(pad for pad in board.FindFootprintByReference("U1").Pads() if pad.GetNumber() == "48")
-    lx_x, _ = circuit.mcu_pin_xy(48)
-    left, top, right, bottom = inductor
-    return [(left - margin, top - margin, right + margin, bottom + margin),
-            (lx_x - margin, bottom + margin, lx_x + margin, _rect(lx_pin.GetBoundingBox())[3])]
+    return _grown(inductor, REGULATOR_KEEPOUT_MARGIN)
+
+
+def switch_node_keepouts(router: Router, lx_pin: Pad) -> list[tuple]:
+    """No copper on the top and the two inner layers under the VREG_LX node (RP2350 datasheet 6.3.8.1): one
+    rectangle around the pin and around each routed VREG_LX segment. Built from the routed copper, so the
+    keepout follows the track wherever the router put it."""
+    copper = [lx_pin.rect] + [_track_box(track) for track in router.tracks if track.net == "VREG_LX"]
+    return [_grown(rect, REGULATOR_KEEPOUT_MARGIN) for rect in copper]
+
+
+def _track_box(track: Track) -> tuple:
+    half_width = track.width / 2
+    (x1, y1), (x2, y2) = track.start, track.end
+    return min(x1, x2) - half_width, min(y1, y2) - half_width, max(x1, x2) + half_width, max(y1, y2) + half_width
 
 
 def inductor_gap(board: pcbnew.BOARD) -> tuple:
@@ -436,7 +463,7 @@ def _rect_around(rects: list[tuple]) -> tuple:
 
 
 def check_regulator_keepout(router: Router, keepouts: list[tuple]) -> None:
-    """No via and no top-layer track under the inductor or the VREG_LX track (RP2350 datasheet 6.3.8)."""
+    """No via and no top-layer track inside the keepout under the inductor and VREG_LX (RP2350 datasheet 6.3.8)."""
     for rect in keepouts:
         for via in router.vias:
             assert not _circle_meets_rect(via.x, via.y, router.rules.via_diameter / 2, rect), \
@@ -444,6 +471,41 @@ def check_regulator_keepout(router: Router, keepouts: list[tuple]) -> None:
         for track in router.tracks:
             if track.layer == FRONT:
                 assert not _segment_meets_rect(track, rect), f"{track.net} track under the regulator inductor or VREG_LX"
+
+
+def check_no_pour_under_regulator(board: pcbnew.BOARD) -> None:
+    """On the filled board: no zone copper on the top or inner layers under the VREG_LX tracks, its pin or the
+    inductor's pads. The rule areas should keep it out; this catches a rule area that misses its copper."""
+    lx_net = schematic.board_net_name("VREG_LX")
+    lx_tracks = [track for track in board.GetTracks()
+                 if track.GetClass() == "PCB_TRACK" and track.GetNetname() == lx_net]
+    assert lx_tracks, "no VREG_LX track on the board"
+    lx_pin = next(pad for pad in board.FindFootprintByReference("U1").Pads() if pad.GetNumber() == "48")
+    copper = [(track.GetStart(), track.GetEnd(), track.GetWidth() // 2) for track in lx_tracks]
+    copper += [_pad_capsule(pad) for pad in [lx_pin, *board.FindFootprintByReference("L1").Pads()]]
+    for zone in board.Zones():
+        if zone.GetIsRuleArea():
+            continue
+        for layer in REGULATOR_KEEPOUT_LAYERS:
+            if not zone.IsOnLayer(layer):
+                continue
+            fill = zone.GetFilledPolysList(layer)
+            for start, end, reach in copper:
+                assert not fill.Collide(pcbnew.SEG(start, end), reach), (
+                    f"{zone.GetNetname()} pour on {board.GetLayerName(layer)} under the regulator near "
+                    f"({pcbnew.ToMM(start.x):.2f}, {pcbnew.ToMM(start.y):.2f})")
+
+
+def _pad_capsule(pad: pcbnew.PAD) -> tuple[pcbnew.VECTOR2I, pcbnew.VECTOR2I, int]:
+    """A rectangular pad as a centre line along its long side and half its short side: (start, end, reach)."""
+    box = pad.GetBoundingBox()
+    reach = min(box.GetWidth(), box.GetHeight()) // 2
+    centre = box.GetCenter()
+    if box.GetHeight() > box.GetWidth():
+        start, end = pcbnew.VECTOR2I(centre.x, box.GetTop() + reach), pcbnew.VECTOR2I(centre.x, box.GetBottom() - reach)
+    else:
+        start, end = pcbnew.VECTOR2I(box.GetLeft() + reach, centre.y), pcbnew.VECTOR2I(box.GetRight() - reach, centre.y)
+    return start, end, reach
 
 
 def _point_segment_distance(point: tuple[float, float], start: tuple[float, float], end: tuple[float, float]) -> float:

@@ -607,3 +607,40 @@ On a 1.44 mm board the foam rings still press it up against the top's bosses (ch
 Not modelled: the MCU and the small parts on the PCB bottom (all under 1 mm, with 5 mm of room), cables,
 the two pieces of lens tape and the mask on the lens. The foam pad and the foam rings are drawn as
 the blocks they are squeezed to.
+
+### Measurement checklist
+
+Every value tagged `MEASURE` in `board.toml` and `cad/`, with what to put a tool on. Nothing on this
+list has been measured yet. Use a 0.01 mm digital caliper unless the row says otherwise; measure two
+samples where you have them and take the worse one.
+
+After a change: in `board.toml`, run `make pcb cad firmware`; in `cad/macropad_case/spec.py` or
+`cad/macropad_case/components.py`, run `make cad`. A check that fails after a real measurement is a
+finding: fix the design, do not loosen the check. Keep the `MEASURE` tag until the number comes from
+a part, then replace it with a note of what was measured and how.
+
+| Key | Now | Measure on | Tool | Update | Drives |
+| --- | --- | --- | --- | --- | --- |
+| `stack.display_glass_top` | 4.4 mm | nice!view soldered to the C2337 header on a bare board: PCB top face to glass top | Caliper depth rod or height gauge | `board.toml` | `display_glass_under_deck` (0.2), `lens_to_glass_under_press`, `header_pins_under_lens` |
+| `display.header_x` | 25.27 mm (1.27 mm in) | nice!view: header pin row centre to the module's short edge | Caliper | `board.toml` | J2 position on the PCB (`make pcb-place`), `display_module_inside_opening`, clash check |
+| `display.header_pins` | MOSI, SCK, 3V3, GND, CS | nice!view: pin labels from the back edge to the front | Eyes and a continuity tester against the module's traces | `board.toml` | J2 nets in `pcb/gen/circuit.py`: ERC and schematic parity in `make pcb-place`, silkscreen |
+| `display.window_*` | 43.5, 11.0; 27 x 12 mm | nice!view: visible glass outline, relative to the module centre | Caliper | `board.toml` | Silkscreen frame, simulator (`make -C firmware check-pins`), `display_window_inside_module` |
+| `display.mask_window_*` | 41.25; 26 mm long | nice!view showing a full white frame: lit pixel area | Caliper, or a photo with a ruler in frame | `board.toml` | `lens_mask.dxf`, `lens_mask_window_inside_glass`, `lens_mask_window_inside_module` |
+| `stack.encoder_body_top` | 4.5 mm | EC11E18244AU: mounting face to bushing shoulder | Caliper | `board.toml` | `encoder_body_under_deck` (0.3), clash check |
+| `stack.encoder_shaft_top` | 24.5 mm | EC11E18244AU: mounting face to shaft end | Caliper | `board.toml` | `knob_to_well_floor_short_shaft`, `knob_pocket_to_bushing_*`, knob height |
+| `encoder_body` | 12.4 x 13.4 mm | EC11E body, X and Y | Caliper | `cad/macropad_case/spec.py` | Clash check (encoder against the top) |
+| `bushing_length` | 7.0 mm | EC11E threaded bushing above the body | Caliper | `cad/macropad_case/spec.py` | `knob_pocket_to_bushing_*`, clash check |
+| `shaft_flat` | 4.5 mm | EC11E D-shaft across the flat | Caliper or micrometer | `cad/macropad_case/spec.py` | Knob bore and `knob_rib_interference` |
+| `display_thickness` | 1.9 mm | nice!view: module board bottom to glass top | Caliper | `cad/macropad_case/spec.py` | `header_pins_under_lens`, clash check |
+| `display_underside` | 1.0 mm | nice!view: tallest part or folded flex under the module board | Caliper depth rod | `cad/macropad_case/spec.py` | Clash check (display against the PCB and the foam pad) |
+| `display_glass` | 30 x 13.6 mm | nice!view: LCD glass length and width | Caliper | `cad/macropad_case/spec.py` | `lens_mask_window_inside_glass`, pictures |
+| `display_board_thickness` | 1.0 mm | nice!view module PCB | Caliper | `cad/macropad_case/spec.py` | `header_pins_under_lens` |
+| `led_body` | 4.0 x 1.6 x 2.0 mm | SK6812SIDE-A: along the edge, depth, height | Caliper | `cad/macropad_case/spec.py` | `led_inside_slot_height` (0.5), clash check |
+| `keycap_pressed_bottom`, `keycap_top` | 2.0 mm, 14.5 mm | Your switch and keycap on a plate: skirt bottom at full travel, cap top | Caliper depth rod | `cad/macropad_case/spec.py` | Clash check (keycap sweep against the top) |
+| `components.ENCODER_PINS` | from the KiCad footprint | EC11E terminal positions against its drawing | Caliper | `cad/macropad_case/components.py` | Clash check (pins and tabs against the base) |
+| `components.MX_*` | 15.6 mm rim, 6.6 mm housing, stem 10.2 mm | One MX switch | Caliper | `cad/macropad_case/components.py` | `switch_flange_to_dish_floor` (0.25), clash check |
+| `components.USB_PLUG_TIP` | 8.25 x 2.4 x 6.5 mm | The cable you will use: metal tip of the plug | Caliper | `cad/macropad_case/components.py` | Plug in the clash check and the pictures; the opening uses `usb_plug` (`usb_plug_to_opening`) |
+| `components.DISPLAY_ACTIVE_AREA` | 25.2 x 10.71 mm | nice!view lit area | Caliper | `cad/macropad_case/components.py` | Pictures only |
+
+The numbers in brackets are each check's minimum in millimetres; `cad/exports/checks.json` lists them
+all with their current values.

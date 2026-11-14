@@ -13,9 +13,9 @@ Read [Before you order](../README.md#before-you-order) first. Parts and stock: [
 | File | What it is |
 |---|---|
 | `pcb/fab/macropad-gerbers.zip` | 11 Gerber layers and 2 drill files |
-| `pcb/fab/bom-jlcpcb.csv` | Bill of materials: 23 lines, 72 parts, each with its JLCPCB part number |
+| `pcb/fab/bom-jlcpcb.csv` | Bill of materials: 24 lines, 72 parts, each with its JLCPCB part number |
 | `pcb/fab/cpl-jlcpcb.csv` | Placement list: position, side and rotation of the 72 parts |
-| `pcb/fab/bom-pcbway.csv` | The same 23 lines for PCBWay: quantity, manufacturer and part number, LCSC number (see [Other board houses](#other-board-houses)) |
+| `pcb/fab/bom-pcbway.csv` | The same 24 lines for PCBWay: quantity, manufacturer and part number, LCSC number (see [Other board houses](#other-board-houses)) |
 
 The files in the repository belong to the board in `pcb/kicad/`. `make pcb-fab` checks that: every
 Gerber is newer than the board file, the drill file has one hole per via, both BOMs, the placement
@@ -71,7 +71,7 @@ The board uses 0.15 mm tracks and gaps and 0.3 mm via drills. That is inside JLC
 1. Upload `bom-jlcpcb.csv` as the BOM. Its columns are `Comment, Designator, Footprint, LCSC Part #`.
 2. Upload `cpl-jlcpcb.csv` as the placement file. Its columns are
    `Designator, Mid X, Mid Y, Layer, Rotation`.
-3. On the parts page, every one of the 23 lines must be matched and in stock. The inductor (C42411119)
+3. On the parts page, every one of the 24 lines must be matched and in stock. The inductor (C42411119)
    was short on 2026-11-14 (9 in stock, minimum buy 27): see [parts.md](parts.md#substitutions-i-made-and-what-to-check).
 4. If a part is short, do not let the site pick a replacement on its own. Look at
    [parts.md](parts.md#substitutions-i-made-and-what-to-check) first. Three parts have no drop-in
@@ -118,7 +118,7 @@ fix belongs in `pcb/gen/fab.py`, not in a hand-edited CSV. The CSV is generated.
 
 1. The layer count, the size and the quantities are right.
 2. Assembly side is Bottom.
-3. All 23 BOM lines are confirmed.
+3. All 24 BOM lines are confirmed.
 4. You looked at every row of the table in step 6.
 5. You accept that this is an untested design.
 
@@ -142,7 +142,11 @@ JLCPCB does not place these. Buy them yourself. Numbers and notes are in [parts.
    silver), the six tapped M2 holes masked or chased after anodising, ISO 2768-m with the critical fits
    toleranced. Ask the shop to confirm the 1.0 mm light-channel skin, the USB opening's rounds (they need
    a ball-nose or bull-nose cutter) and laser marking after anodise in its quote. `make cad` reads every
-   exported STEP back and fails unless each is one closed solid. Nothing has been milled yet.
+   exported STEP back and fails unless each is one closed solid. That read-back uses OCCT, the same
+   kernel that wrote the files; no other CAD or CAM program has opened them here. The shop's CAM and
+   design-for-manufacture review is the real check: ask for its findings and read them before you pay.
+   The case fits rest on part dimensions nobody has measured yet; measure the parts first with the
+   [measurement checklist](../cad/README.md#measurement-checklist). Nothing has been milled yet.
 
 JLCPCB can also solder the encoders and the header as through-hole parts. They sit on the top face,
 so that makes it a two-sided assembly order. This repository's placement list does not include them.

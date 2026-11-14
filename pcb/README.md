@@ -125,8 +125,9 @@ do, in this order:
    between the pads of both capacitors to the inductor beyond them. VREG_FB runs from pin 50 to
    COUT. A 0.3 mm link takes the output from the inductor's +1V1 pad over the chip on the top layer
    into the 1.1 V island. Rule areas keep copper off the top and both inner layers under the
-   inductor and the VREG_LX track, and keep the bottom ground pour out from between the inductor's
-   pads. Then USB D+ and D-, which squeeze past the regulator to their series resistors.
+   inductor and the VREG_LX node, and keep the bottom ground pour out from between the inductor's
+   pads. The VREG_LX rule areas are drawn after routing, round pin 48 and each routed VREG_LX segment
+   with 0.2 mm to spare, so they follow the track wherever the router put it. Then USB D+ and D-, which squeeze past the regulator to their series resistors.
 3. **MCU supply pins.** Each pin runs to its own 100 nF capacitor. The supply via sits between the
    pin and the capacitor, the ground via behind the capacitor, all on one line pointing away from
    the chip. These vias are placed by hand-computed geometry (`circuit.py`: `DECOUPLING_DISTANCE`,
@@ -156,8 +157,9 @@ again with that net moved to the front, until every net connects. The order it f
 | Every net connects through tracks, vias and inner planes alone, before the outer ground pours are added | `build.py` | yes |
 | Length limits: VREG_LX, USB_DM, USB_DP, XIN, XOUT, VREG_AVDD, VREG_FB to COUT; USB pair mismatch under 2 mm; no via on VREG_LX, on USB D+ from connector to chip, or on D- after its resistor; VREG_AVDD at least 0.75 mm from VREG_LX | `route.py:check_sensitive_lengths` | yes |
 | No via and no top-layer track under the regulator inductor or the VREG_LX track | `route.py:check_regulator_keepout` | yes |
+| No filled pour on the top or inner layers under the VREG_LX tracks, pin 48 or the inductor's pads, read back from the filled board | `route.py:check_no_pour_under_regulator` | yes |
 | L1's polarity dot on B.SilkS and B.Fab sits at its +1V1 pad | `layout.py:check_placement` | yes |
-| Silkscreen text is at least 1.0 mm high (stroke 0.15 mm) | `silk.py:_text` | yes |
+| Silkscreen: every visible text, footprint references included, at least 1.0 mm high with a 0.15 mm stroke; every stroked line at least 0.15 mm wide (the generator widens the stock footprints' 0.12 mm lines) | `silk.py:check_minimums` | yes |
 | Every real part has a JLCPCB number, a manufacturer and a manufacturer part number | `circuit.py:check_sourcing` | yes, in `make pcb-test` |
 | KiCad DRC at every severity: no warning either (loose track end, silkscreen over a pad or the edge). One named exception: J1 differs from its library copy, because its silkscreen is cut at the board edge | `build.py:_check_no_warnings` | yes |
 | Every real part has a 3D model; no bottom-side model is taller than the gap to the case floor | `layout.py:write_models` | yes |
@@ -179,7 +181,7 @@ again with that net moved to the front, until every net connects. The order it f
   C22, C23, and nine 100 nF). The USB 2.0 specification allows a device 10 µF at plug-in. The LED
   rows now have 2.2 µF each instead of 10 µF; the firmware caps LED current at about 200 mA.
   Nobody has looked at the 5 V rail with a scope while the LEDs switch.
-- **Decoupling.** Each MCU supply pin has its own 100 nF. Ten sit 2 mm in front of their pin.
+- **Decoupling.** Each MCU supply pin has its own capacitor: 100 nF, except 4.7 µF (C5) at DVDD pin 23, the core pin furthest from the regulator (RP2350 datasheet 6.1.3). Ten sit 2 mm in front of their pin.
   Two do not fit there: C33 (QSPI_IOVDD, pin 54) sits beside C10 and is tracked to it; C32
   (ADC_AVDD, pin 44) sits 4 mm away behind C9 and connects through the 3.3 V plane. Pins 44 and 54
   are also tracked to the pin beside them, so each reaches that pin's capacitor.
@@ -189,12 +191,18 @@ again with that net moved to the front, until every net connects. The order it f
   put a probe on them.
 - **Regulator loop.** The placement follows Raspberry Pi's reference, mirrored for the bottom face,
   and the checks above hold it. Two departures: VREG_LX is 3.9 mm long, because it runs between the
-  pads of both capacitors to the inductor; and the second 4.7 µF (C13) sits at the probe pad end of
-  the output track, not at DVDD pin 23 as the datasheet suggests, because the crystal, its
-  capacitors and the escape tracks of pins 21 to 29 leave no room there. The footprint (Raspberry
+  pads of both capacitors to the inductor; and an extra 4.7 µF (C13) sits at the probe pad end of
+  the output track, nearer COUT than datasheet 6.3.8.1 likes. The datasheet's second 4.7 µF at DVDD
+  pin 23 is that pin's own decoupling capacitor (C5, `circuit.py: BULK_DECOUPLED_PIN`), in the
+  0402 spot in front of the pin where the 100 nF was. The footprint (Raspberry
   Pi's, see `lib/SOURCES.txt`) puts a dot on the +1V1 pad on silkscreen and fabrication layers; on a
   part mounted on the bottom face the dot rule is still to be confirmed against Abracon's drawing
   and JLCPCB's preview. Nobody has measured the 1.1 V ripple.
+- **R4 (BOOT to QSPI_SS).** It sits next to the BOOT button, so QSPI_SS, the flash chip-select
+  inside the package, carries a 12.9 mm stub to it. Three tries put R4 beside pin 60: at (47.1, 13.3)
+  with two routing-order searches, and at (46.6, 12.9) with the BOOT track pinned to two hand-placed
+  vias. Each left KEY4, KEY8 or DISP_CS with no way out of the chip, and the last one also overlapped
+  U3's courtyard. The stub is short against the flash clock rate; nobody has looked at it with a scope.
 - **Crystal.** It sits 5 mm below XIN, as close as the two hot-swap sockets allow. It is Raspberry
   Pi's reference part (ABM8-272-T3) with the reference 15 pF load capacitors and 1 kΩ. The
   oscillator is not measured.
