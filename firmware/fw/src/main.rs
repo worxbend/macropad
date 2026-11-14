@@ -1,7 +1,7 @@
 //! Macropad firmware for the RP2354A.
 //!
 //! The scan loop below runs every millisecond; USB, the display and the LEDs are separate tasks
-//! that read what it publishes.
+//! that read what it publishes. Key K0 held at start runs the hardware test mode instead.
 #![no_std]
 #![no_main]
 
@@ -9,6 +9,8 @@ mod board;
 mod display;
 mod inputs;
 mod leds;
+mod log;
+mod reset;
 mod state;
 mod usb;
 
@@ -18,14 +20,21 @@ use embassy_rp::watchdog::Watchdog;
 use embassy_rp::{bind_interrupts, dma, pio, rom_data};
 use embassy_time::{Duration, Ticker, Timer};
 use macropad_core::engine::Reports;
+use macropad_core::hardware_test::{self, HardwareTest, ENTRY_SAMPLES};
 use macropad_core::keymap::LAYERS;
 use macropad_core::pad::Pad;
+use macropad_core::reset::ResetCause;
+// A probe build logs over RTT and prints a panic there before it halts.
+#[cfg(feature = "probe")]
+use {defmt_rtt as _, panic_probe as _};
 // A panic stops the scan loop, so the watchdog below restarts the pad half a second later.
+#[cfg(not(feature = "probe"))]
 use panic_halt as _;
 
 use crate::board::Board;
 use crate::inputs::Scanner;
-use crate::state::{publish, REPORTS};
+use crate::log::info;
+use crate::state::{publish, Shown, REPORTS};
 
 bind_interrupts!(struct Irqs {
     USBCTRL_IRQ => embassy_rp::usb::InterruptHandler<USB>;
@@ -45,25 +54,44 @@ const FAREWELL: Duration = Duration::from_millis(150);
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
     let board = Board::take(embassy_rp::init(Default::default()));
-    usb::start(spawner, board.usb);
+    info!("boot: macropad firmware {=str}", env!("CARGO_PKG_VERSION"));
+    let mut watchdog = Watchdog::new(board.watchdog);
+    let reset_cause = reset::cause(&watchdog);
+    info!("boot: reset cause {=str}", reset_cause.label());
+    let scanner = Scanner::new(board.keys, board.left_knob, board.right_knob);
+    let test_requested = hardware_test_requested(&scanner).await;
     // Each task is spawned exactly once, so its single-slot pool cannot be full.
     spawner.spawn(display::run(board.display).unwrap());
     spawner.spawn(leds::run(board.leds).unwrap());
-    let mut watchdog = Watchdog::new(board.watchdog);
     watchdog.pause_on_debug(true);
     watchdog.start(WATCHDOG_TIMEOUT);
-    scan_forever(Scanner::new(board.keys, board.left_knob, board.right_knob), watchdog).await
+    if test_requested {
+        info!("boot: hardware test mode");
+        test_forever(scanner, watchdog).await
+    }
+    usb::start(spawner, board.usb);
+    scan_forever(scanner, watchdog, reset_cause).await
 }
 
-async fn scan_forever(mut scanner: Scanner, mut watchdog: Watchdog) -> ! {
-    let mut pad = Pad::new(&LAYERS);
+/// Key K0 read closed in each of the first few milliseconds.
+async fn hardware_test_requested(scanner: &Scanner) -> bool {
+    let mut key_samples = [0; ENTRY_SAMPLES];
+    for sample in &mut key_samples {
+        Timer::after(SCAN_PERIOD).await;
+        *sample = scanner.raw().keys;
+    }
+    hardware_test::requested(&key_samples)
+}
+
+async fn scan_forever(mut scanner: Scanner, mut watchdog: Watchdog, reset_cause: ResetCause) -> ! {
+    let mut pad = Pad::after_reset(&LAYERS, reset_cause);
     let mut published = Reports::default();
     let mut ticker = Ticker::every(SCAN_PERIOD);
     loop {
         watchdog.feed(WATCHDOG_TIMEOUT);
         let reports = pad.tick(&scanner.sample());
         let view = pad.view();
-        publish(view);
+        publish(Shown::Pad(view));
         if view.flash_requested {
             restart_as_usb_drive().await;
         }
@@ -71,6 +99,19 @@ async fn scan_forever(mut scanner: Scanner, mut watchdog: Watchdog) -> ! {
             REPORTS.signal(reports);
             published = reports;
         }
+        ticker.next().await;
+    }
+}
+
+/// The hardware test mode: no USB, the raw contacts on the display, the LEDs one by one.
+/// It ends when the pad is unplugged.
+async fn test_forever(scanner: Scanner, mut watchdog: Watchdog) -> ! {
+    let mut test = HardwareTest::default();
+    let mut ticker = Ticker::every(SCAN_PERIOD);
+    loop {
+        watchdog.feed(WATCHDOG_TIMEOUT);
+        test.tick(scanner.raw());
+        publish(Shown::HardwareTest(test.view()));
         ticker.next().await;
     }
 }

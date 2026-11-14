@@ -14,7 +14,19 @@ from .spec import foot_span, foot_thickness, grown, led_slot_span, lens_span, sc
 BAR_TO_TOP = 0.1  # the light bar ends this far under the top shell
 # The end of the knob's bore sits on the end of the shaft: that sets the knob's height.
 BORE_END = BOARD.stack.encoder_shaft_top
+# Below this the knob's bore is round, like the shaft below its flat; above it the bore is a D.
+BORE_D_START = BORE_END - CASE.shaft_flat_length + CASE.knob_flat_margin
 GROOVE_CUTTER_PAST = 0.2  # the V profile that cuts a knob groove runs this far past the knob's surface
+# How each printed part lies on the print bed: a rotation that brings its bed face to the lowest Z.
+PRINT_POSES = {
+    "base": Rot(0, 0, 0),
+    "top": Rot(0, -90, 0),  # standing on its left side wall
+    "diffuser_left": Rot(0, -90, 0),  # outer face down
+    "knob_left": Rot(180, 0, 0),  # top face down, so it takes the finish of the bed and every cavity opens upward
+    "foot_strip_back": Rot(0, 0, 0),
+    "centre_pad": Rot(0, 0, 0),
+    "tilt_bar": Rot(CASE.tilt_angle, 0, 0),  # sloped underside down
+}
 
 
 def diffuser_left() -> Part:
@@ -50,10 +62,17 @@ def knob() -> Part:
     body = chamfer(body.edges().group_by(Axis.Z)[0], CASE.chamfer)
     bushing_pocket_diameter = BOARD.stack.encoder_bushing_diameter + 1.0
     bushing_pocket = cylinder((0, 0), bushing_pocket_diameter, (LEVELS.knob_bottom - CUT_OVERSHOOT, LEVELS.knob_bushing_roof))
+    return body - bushing_pocket - knob_bore() - _knob_grooves() - _knob_pointer() + knob_crush_ribs()
+
+
+def knob_bore(d_start: float = BORE_D_START) -> Part:
+    """The bore at the knob's place over the origin: round up to `d_start`, a D above it, to the end
+    of the shaft. The shaft is round below its flat, so a D all the way down would stop the knob on
+    the round part, high above its seat."""
     clearance = CASE.knob_bore_clearance
+    round_bore = cylinder((0, 0), CASE.shaft_diameter + clearance, (LEVELS.knob_bottom, d_start))
     d_bore = d_profile(CASE.shaft_diameter + clearance, CASE.shaft_flat + clearance)
-    bore = slab(d_bore, (LEVELS.knob_bottom, BORE_END))
-    return body - bushing_pocket - bore - _knob_grooves() - _knob_pointer() + knob_crush_ribs()
+    return round_bore + slab(d_bore, (d_start, BORE_END))
 
 
 def _knob_grooves() -> list[Part]:

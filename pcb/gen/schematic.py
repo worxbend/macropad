@@ -49,7 +49,8 @@ _SYMBOL_BY_FOOTPRINT = {
     "C0402": "Device:C", "C0402W": "Device:C", "C0603": "Device:C", "R0402": "Device:R", "L2016": "Device:L", "F1206": "Device:Polyfuse",
     "XTAL3225": "Device:Crystal_GND24", "TACT": "Switch:SW_Push", "MX_HOTSWAP": "Switch:SW_Push",
     "USBC": "Connector:USB_C_Receptacle_USB2.0_16P", "EC11": "Device:RotaryEncoder_Switch_MP",
-    "TESTPAD": "Connector:TestPoint", "HOLE_M2": "Mechanical:MountingHole", "FIDUCIAL": "Mechanical:Fiducial",
+    "TESTPAD": "Connector:TestPoint", "HOLE_M2": "Mechanical:MountingHole",
+    "HOLE_M2_GND": "Mechanical:MountingHole_Pad", "FIDUCIAL": "Mechanical:Fiducial",
 }
 _SYMBOL_BY_VALUE = {
     "RP2354A": "MCU_RaspberryPi:RP2354A", "AP2112K-3.3": "Regulator_Linear:AP2112K-3.3",
@@ -85,11 +86,13 @@ def symbol_for(part: Part, library: SymbolLibrary) -> LibSymbol:
 
 
 def check_part_against_symbol(part: Part, symbol: LibSymbol) -> None:
-    """circuit.py may only name pins the symbol has, and must use the footprint the symbol was drawn for."""
+    """circuit.py may only name pins the symbol has, and must use the footprint the symbol was drawn for, or a
+    project copy of it with only the paste changed (circuit.DERIVED_FOOTPRINTS; layout.py checks the copper)."""
     unknown = set(part.nets) - {pin.number for pin in symbol.pins}
     assert not unknown, f"{part.ref}: {symbol.lib_id} has no pins {sorted(unknown)}"
     library_footprint = symbol.property_value("Footprint")
-    assert library_footprint in ("", part.footprint), (
+    stock_footprint = circuit.DERIVED_FOOTPRINTS.get(part.footprint, part.footprint)
+    assert library_footprint in ("", stock_footprint), (
         f"{part.ref}: {symbol.lib_id} is drawn for {library_footprint}, circuit.py uses {part.footprint}")
 
 
@@ -230,9 +233,10 @@ def _place_part(drawing: Drawing, part: Part, symbol: LibSymbol, place: Place, o
     drawing.lib_symbols[symbol.lib_id] = symbol
     fields = _field_positions(place, symbol, origin)
     in_bom = "yes" if part.lcsc else "no"
+    dnp = "yes" if part.dnp else "no"
     lines = [
         f'(symbol (lib_id "{symbol.lib_id}") {_at(origin, place.rotation)} (unit 1) (exclude_from_sim no) '
-        f'(in_bom {in_bom}) (on_board yes) (dnp no) (uuid "{symbol_uuid(part.ref)}")',
+        f'(in_bom {in_bom}) (on_board yes) (dnp {dnp}) (uuid "{symbol_uuid(part.ref)}")',
         f'(property "Reference" "{part.ref}" {fields["Reference"]})',
         f'(property "Value" "{part.value}" {fields["Value"]})',
         f'(property "Footprint" "{part.footprint}" {_at(origin)} {_HIDDEN})',

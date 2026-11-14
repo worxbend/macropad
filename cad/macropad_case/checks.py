@@ -6,18 +6,20 @@ from math import pi, sqrt
 
 import numpy as np
 import trimesh
-from build123d import Box, Part, Pos, Rot
+from build123d import Box, Circle, Part, Pos
 
-from . import measure, printsim, selftest, signature
+from . import coupons, measure, printsim, selftest, signature
 from .components import MX_FLANGE, at, components, display_room, encoder, keycap, led, pcb, worst_keycap_skirt
-from .parts import base_body, drill_point_height, printed_text, socket_post_top, switch_cutout_length, top_chairs
-from .parts import underside_mark, usb_cutout
-from .small_parts import BAR_TO_TOP, case_parts, desk_plane_drop, knob_crush_ribs, knob_pointer_outline, lens_outline
-from .small_parts import tilt_bar_body
-from .solids import case_outline, overlap_volume, rectangle, slab, stadium
-from .spec import BACK_ROW, BOARD, CASE, CNC, FRONT_ROW, LEVELS, PRINT, VARIANTS, buttons, bushing_hole, case_bounds
-from .spec import dish_rim, encoder_centres, foot_span, grown, key_centres, knob_well_diameter, label_field
-from .spec import lens_opening, lens_recess, lens_span, screw_length, screw_seat
+from .drawings import LENS_RECESS_PLUS
+from .parts import base_body, drill_point_height, printed_text, socket_post_top, switch_cutout_length, tap_drill
+from .parts import top_chairs, underside_mark, usb_cutout
+from .small_parts import BAR_TO_TOP, BORE_D_START, BORE_END, PRINT_POSES, case_parts, desk_plane_drop
+from .small_parts import knob_crush_ribs, knob_pointer_outline, lens_outline, tilt_bar_body
+from .solids import case_outline, centred_box, overlap_volume, rectangle, slab, stadium
+from .spec import BACK_ROW, BOARD, CASE, CENTRE_ROW, CNC, CNC_TAPPED_HOLES, FRONT_ROW, LEVELS, PRINT, VARIANTS
+from .spec import buttons, bushing_hole, case_bounds, dish_rim, encoder_centres, foot_span
+from .spec import ground_bond_hole, grown, key_centres, knob_well_diameter, label_field, lens_opening, lens_recess
+from .spec import lens_span, mounting_holes, screw_length, screw_rows, screw_seat, top_boss_diameters
 
 CLASH_VOLUME = 0.05  # mm^3; below this two solids only touch
 OVERHANG_COSINE = 0.72  # faces steeper than about 46 degrees from vertical need something under them
@@ -32,6 +34,7 @@ PRESS_FITS = {frozenset((f"knob_{side}", f"encoder_{side}")): index for index, s
 # standing, so its faces across the layers sit at the board's key and encoder positions.
 LAYERED_PARTS = ("base", "diffuser_left", "knob_left", "foot_strip_back", "centre_pad", "tilt_bar")
 LENS_PUSH = 0.3  # mm; the lens must hit its ledges before it has moved this far down
+KNOB_LIFT_REACH = 3.0  # mm; a knob still on its shaft this far above its seat is reported as this far
 # A height at which each shell's outline has its full size: above the underside chamfer, and in the plate.
 OUTLINE_HEIGHTS = {"base": LEVELS.floor_bottom + CASE.underside_chamfer + 0.5, "top": LEVELS.plate_bottom + 0.5}
 MIN_CORNER_RADIUS = 5.1  # mm; the corner curve is drawn for 5.15
@@ -58,18 +61,6 @@ FRAME_SWELL_LIMITS = {"print": 0.65, "cnc": 1.2}
 MIN_TAPE_AREA = 30.0  # mm^2 of tape under the lens
 MIN_BEARING_SHARE = 0.8  # of a foot's face must lie on the base
 MIN_SEAT_AREA = (150.0, 5.0)  # mm^2 the top rests on in all, and at least on each of the four sides
-
-# How each part lies on the print bed: a rotation that brings its bed face to the lowest Z.
-PRINT_POSES = {
-    "base": Rot(0, 0, 0),
-    "top": Rot(0, -90, 0),  # standing on its left side wall
-    "diffuser_left": Rot(0, -90, 0),  # outer face down
-    "knob_left": Rot(180, 0, 0),  # top face down, so it takes the finish of the bed and every cavity opens upward
-    "foot_strip_back": Rot(0, 0, 0),
-    "centre_pad": Rot(0, 0, 0),
-    "tilt_bar": Rot(CASE.tilt_angle, 0, 0),  # sloped underside down
-}
-
 
 def interference(variant: str) -> dict:
     parts = case_parts(variant)
@@ -138,7 +129,11 @@ def _knob_seat_margins() -> list[tuple[str, float, float]]:
     well_floor_pressed = LEVELS.knob_bottom - LEVELS.knob_well_floor - press
     over_bushing_pressed = LEVELS.knob_bushing_roof - LEVELS.bushing_top - press
     interference = CASE.knob_rib_interference
+    flat_start = BOARD.stack.encoder_shaft_top - CASE.shaft_flat_length
     return [
+        # The bore turns from round to a D above the start of the shaft's flat, and the ribs press on the D.
+        ("knob_bore_d_above_shaft_flat", BORE_D_START - flat_start, 0.5),
+        ("knob_ribs_on_d_section", BORE_END - CASE.knob_crush_rib[1] - BORE_D_START, 0.0),
         ("knob_to_well_floor_short_shaft", well_floor_pressed - short, 0.0),
         ("knob_pocket_to_bushing_when_pressed", over_bushing_pressed, 0.3),
         ("knob_pocket_to_bushing_short_shaft", over_bushing_pressed - short, 0.3),
@@ -179,19 +174,18 @@ def _tilt_bar_margins() -> list[tuple[str, float, float]]:
     ]
 
 
-def _screw_engagement(variant: str) -> float:
+def _screw_engagement(variant: str, hole: tuple[float, float]) -> float:
     """Length of screw inside the top: what is left of it above the PCB."""
-    under_head = LEVELS.pcb_bottom - screw_seat(variant)
+    under_head = LEVELS.pcb_bottom - screw_seat(variant, hole)
     return screw_length(variant) - under_head - BOARD.board.thickness
 
 
 def _screw_margins() -> list[tuple[str, float, float]]:
     """Print: an M2 x 10 cuts its thread in a printed pilot hole. CNC: an M2 x 8 in a tapped blind
-    hole, where the full thread ends before the hole does and the drill point comes on top."""
-    engagement, cnc_engagement = _screw_engagement(PRINT), _screw_engagement(CNC)
+    hole, where the full thread ends before the hole does."""
+    engagement = min(_screw_engagement(PRINT, hole) for hole in mounting_holes())
     head_diameter, head_height = CASE.screw_head
     printed_pilot = CASE.pilot_diameter - CASE.print_hole_shrink
-    drill_end = CASE.cnc_tap_drill[1] + drill_point_height()
     return [
         ("screw_engagement", engagement, CASE.min_screw_engagement),
         ("screw_tip_to_hole_end", CASE.pilot_depth - engagement, 0.6),
@@ -200,13 +194,33 @@ def _screw_margins() -> list[tuple[str, float, float]]:
         ("screw_head_in_counterbore", (CASE.counterbore_diameter - head_diameter) / 2, 0.2),
         ("print_pilot_after_shrink", printed_pilot, MIN_PRINTED_PILOT),
         ("print_pilot_thread_bite", (M2_THREAD - printed_pilot) / 2, (M2_THREAD - MAX_PRINTED_PILOT) / 2),
-        ("cnc_screw_engagement", cnc_engagement, CASE.cnc_min_screw_engagement),
-        ("cnc_full_thread_past_screw_tip", CASE.cnc_full_thread - cnc_engagement, 0.5),
-        ("cnc_skin_over_drill_point", LEVELS.plate_top - drill_end, CASE.min_wall),
+        *_cnc_thread_margins(),
+    ]
+
+
+def _cnc_thread_margins() -> list[tuple[str, float, float]]:
+    """Per row of tapped holes: how far the M2 x 8 reaches into the thread, the thread left past its
+    tip, the head in its counterbore, and the skin under the dish floor over the two centre holes."""
+    rows = []
+    for row, tapped in CNC_TAPPED_HOLES.items():
+        engagement = min(_screw_engagement(CNC, hole) for hole in screw_rows()[row])
+        # The two centre holes stand under the dish floor; the four corners have room for 1.5 D.
+        wanted = CASE.cnc_min_screw_engagement if row == CENTRE_ROW else CASE.cnc_full_engagement
+        rows += [
+            (f"cnc_screw_engagement_{row}", engagement, wanted),
+            (f"cnc_full_thread_{row}", tapped.full_thread, wanted + 0.5),
+            (f"cnc_full_thread_past_screw_tip_{row}", tapped.full_thread - engagement, 0.5),
+            (f"cnc_screw_head_below_underside_{row}", tapped.counterbore - CASE.screw_head[1], 0.2),
+        ]
+    centre = CNC_TAPPED_HOLES[CENTRE_ROW]
+    centre_hole = screw_rows()[CENTRE_ROW][0]
+    return rows + [
+        ("cnc_skin_over_centre_tap_drill", LEVELS.plate_top - centre.depth - drill_point_height(centre_hole),
+         CASE.min_wall),
         # At the drawing's depth limit the skin under the dish floor is thinner than the wall rule; the
         # limit only bounds a drill that runs 0.1 deep, so it is held to 0.7 here.
-        ("cnc_skin_over_deepest_drill_point", LEVELS.plate_top - CASE.cnc_tap_drill_limit - drill_point_height(), 0.7),
-        ("cnc_screw_head_below_underside", CASE.cnc_counterbore_depth - head_height, 0.2),
+        ("cnc_skin_over_deepest_centre_tap_drill",
+         LEVELS.plate_top - centre.limit - drill_point_height(centre_hole), 0.7),
     ]
 
 
@@ -256,6 +270,9 @@ def _lens_margins() -> list[tuple[str, float, float]]:
         ("lens_recess_bridge_margin", CASE.max_bridge - (print_front - print_back), 0.0),
         ("print_lens_fit_after_bridge_sag", CASE.print_lens_fit + CASE.print_lens_end_room - CASE.print_bridge_sag, 0.0),
         ("lens_to_glass_under_press", air_gap - _lens_sag(), 0.2),
+        # The milled recess is +0.05 / 0 on its size, so at most half of that per side: never more than the
+        # per-side fit, so the lens never rattles.
+        ("cnc_lens_recess_tolerance_inside_fit", CASE.lens_fit - LENS_RECESS_PLUS / 2, 0.0),
         ("header_pins_under_lens", LEVELS.lens_bottom - pin_tops, 0.5),
         ("lens_mask_window_inside_glass",
          min(glass_length - display.mask_window_length, glass_width - display.window_width) / 2, 0.5),
@@ -320,8 +337,8 @@ def _underside_margins() -> list[tuple[str, float, float]]:
     head_height = CASE.screw_head[1]
     skin_top = LEVELS.foot_recess_roof + CASE.screw_skin
     return [
-        ("screw_head_under_strip_recess", screw_seat(PRINT) - head_height - LEVELS.foot_recess_roof, 0.2),
-        ("cnc_screw_head_under_strip_recess", screw_seat(CNC) - head_height - LEVELS.foot_recess_roof, 0.2),
+        ("screw_head_under_strip_recess", _lowest_seat(PRINT) - head_height - LEVELS.foot_recess_roof, 0.2),
+        ("cnc_screw_head_under_strip_recess", _lowest_seat(CNC) - head_height - LEVELS.foot_recess_roof, 0.2),
         ("strip_covers_counterbore", (CASE.foot_strip[0] - CASE.counterbore_diameter) / 2, 1.0),
         ("floor_under_strip_recess", CASE.floor - CASE.foot_recess_depth, CASE.min_wall),
         ("screw_skin_inside_floor", LEVELS.floor_top - skin_top, 0.5),
@@ -333,6 +350,10 @@ def _underside_margins() -> list[tuple[str, float, float]]:
         ("signature_inside_free_field", signature.margin_in_field(), signature.MARGIN),
         ("signature_line_laser_markable", signature.LINE_WIDTH, signature.MIN_LASER_LINE),
     ]
+
+
+def _lowest_seat(variant: str) -> float:
+    return min(screw_seat(variant, hole) for hole in mounting_holes())
 
 
 def _flat_round_strip_recesses(variant: str) -> float:
@@ -420,6 +441,88 @@ def measurements() -> list[dict]:
     for name in ("base", "top"):
         rows += measure.machinability(name, milled[name])
     rows += _tool_reach()
+    rows += _knob_on_its_shaft(printed)
+    rows += _tap_drill_walls(milled["top"])
+    rows += _ground_bond(milled["top"])
+    rows += _coupon_rows(printed)
+    return rows
+
+
+def _knob_on_its_shaft(printed: dict[str, Part]) -> list[dict]:
+    """The knob without its crush ribs, on the encoder's shaft as the Alps drawing gives it (round
+    below the flat): it must sit where it is drawn, the end of its bore on the end of the shaft. A bore
+    that is a D all the way down stops on the round part of the shaft, high above its seat."""
+    bare = printed["knob_left"] - _placed_ribs(0)
+    shaft = _shaft(encoder_centres()[0])
+    return [
+        measure.row("knob_rides_above_its_seat", measure.seat_lift(bare, shaft, KNOB_LIFT_REACH), 0.0, kind="max"),
+        measure.row("knob_bore_end_to_shaft_end", bare.distance_to(shaft), 0.0, kind="max"),
+    ]
+
+
+def _shaft(centre: tuple[float, float]) -> Part:
+    """The encoder's shaft alone, above its bushing."""
+    return encoder(centre) & centred_box(centre, (20, 20), (LEVELS.bushing_top, LEVELS.knob_top + 1))
+
+
+def _tap_drill_walls(milled_top: Part) -> list[dict]:
+    """Thinnest material round each row of tapped holes in the milled top, measured on the solid: as
+    drawn, and with the drill at the drawing's depth limit."""
+    rows = []
+    for name, tapped in CNC_TAPPED_HOLES.items():
+        holes = screw_rows()[name]
+        drawn = min(measure.wall_round_blind_hole(milled_top, tap_drill(hole), 0.0) for hole in holes)
+        deepest = min(measure.wall_round_blind_hole(milled_top, tap_drill(hole, tapped.limit), 0.0) for hole in holes)
+        rows += [
+            measure.row(f"cnc_wall_round_tap_drill_{name}", drawn, CASE.min_wall),
+            measure.row(f"cnc_wall_round_deepest_tap_drill_{name}", deepest, 0.7),
+        ]
+    return rows
+
+
+def _ground_bond(milled_top: Part) -> list[dict]:
+    """The milled case is bonded to GND at one hole: the top's boss face there, masked from anodise,
+    must rest on the PCB's top face in the nominal stack and lie inside the bare GND ring."""
+    hole = ground_bond_hole()
+    boss = dict(top_boss_diameters())[hole]
+    at_hole = Pos(hole[0], -hole[1])
+    masked = at_hole * Circle(boss / 2) - at_hole * Circle(CASE.cnc_tap_drill / 2)
+    pad = at_hole * Circle(BOARD.mounting.ground_bond_pad_diameter / 2)
+    resting = measure.section_above(milled_top, 0.0) & masked
+    near = centred_box(hole, (2 * boss, 2 * boss), (LEVELS.pcb_bottom, 1.0))
+    return [
+        measure.row("ground_boss_face_resting_share", resting.area / masked.area, 0.99, unit="of 1"),
+        measure.row("ground_boss_face_outside_pad", _area(resting - pad), 0.01, kind="max", unit="mm^2"),
+        measure.row("ground_boss_gap_to_pcb", (milled_top & near).distance_to(pcb() & near), 0.0, kind="max"),
+    ]
+
+
+def _area(sketch) -> float:
+    return sum(face.area for face in sketch.faces())
+
+
+def _coupon_rows(printed: dict[str, Part]) -> list[dict]:
+    """Each print coupon is one sound solid, the same as its parent inside its box, and prints as its
+    layers allow; the pilot-hole coupon has its three hole sizes."""
+    rows = []
+    for coupon in coupons.coupons():
+        whole = coupons.assembled(coupon, printed)
+        exported = coupons.on_the_bed(coupon, whole)
+        difference = coupons.difference_from_parent(coupon, printed, exported, whole)
+        layered = printsim.simulate(to_mesh(exported).triangles)
+        rows += [
+            measure.row(f"coupon_{coupon.name}_is_sound", measure.soundness_faults(exported), 0, kind="max",
+                        unit="faults"),
+            measure.row(f"coupon_{coupon.name}_differs_from_parent", difference, CLASH_VOLUME, kind="max",
+                        unit="mm^3"),
+            measure.row(f"coupon_{coupon.name}_longest_bridge", layered.longest_bridge, CASE.max_bridge, kind="max"),
+            measure.row(f"coupon_{coupon.name}_deepest_cantilever", layered.deepest_cantilever, CASE.max_cantilever,
+                        kind="max"),
+        ]
+        if coupon.name == "pilot_holes":
+            found = coupons.pilot_hole_sizes(exported)
+            matched = sum(any(abs(size - wanted) < 1e-3 for size in found) for wanted in coupons.PILOT_SIZES)
+            rows.append(measure.row("coupon_pilot_hole_sizes_found", matched, len(coupons.PILOT_SIZES), unit="holes"))
     return rows
 
 
@@ -477,7 +580,8 @@ def _tool_reach() -> list[dict]:
     usb_floor = LEVELS.usb_centre - CASE.usb_plug[1] / 2 - CASE.usb_margin
     depths = {
         "top": max(LEVELS.deck_bottom, BOARD.stack.deck_top - LEVELS.lens_rib_bottom),
-        "base": max(-usb_floor, -LEVELS.floor_top, screw_seat(CNC) - LEVELS.floor_bottom),
+        "base": max(-usb_floor, -LEVELS.floor_top, max(screw_seat(CNC, hole) for hole in mounting_holes())
+                    - LEVELS.floor_bottom),
     }
     return [
         measure.row(f"cnc_{name}_deepest_pocket_over_tool", depth / tool, MAX_TOOL_DEPTH_RATIO, kind="max", unit="of 1")

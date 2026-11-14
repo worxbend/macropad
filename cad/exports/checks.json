@@ -185,6 +185,18 @@
       "found": 44.285,
       "expected": "less than 45.000001",
       "ok": true
+    },
+    {
+      "name": "d_bore_on_round_shaft_rides_high",
+      "found": 1.594,
+      "expected": "more than 1.0",
+      "ok": true
+    },
+    {
+      "name": "round_then_d_bore_seats",
+      "found": 0.0,
+      "expected": "equal to 0.0",
+      "ok": true
     }
   ],
   "interference": [
@@ -273,39 +285,105 @@
       "ok": true
     },
     {
-      "name": "cnc_screw_engagement",
-      "value_mm": 1.9,
-      "minimum_mm": 1.6,
+      "name": "cnc_screw_engagement_back",
+      "value_mm": 3.0,
+      "minimum_mm": 3.0,
       "ok": true
     },
     {
-      "name": "cnc_full_thread_past_screw_tip",
-      "value_mm": 0.6,
+      "name": "cnc_full_thread_back",
+      "value_mm": 3.5,
+      "minimum_mm": 3.5,
+      "ok": true
+    },
+    {
+      "name": "cnc_full_thread_past_screw_tip_back",
+      "value_mm": 0.5,
       "minimum_mm": 0.5,
       "ok": true
     },
     {
-      "name": "cnc_skin_over_drill_point",
-      "value_mm": 0.819,
+      "name": "cnc_screw_head_below_underside_back",
+      "value_mm": 2.0,
+      "minimum_mm": 0.2,
+      "ok": true
+    },
+    {
+      "name": "cnc_screw_engagement_centre",
+      "value_mm": 2.5,
+      "minimum_mm": 2.5,
+      "ok": true
+    },
+    {
+      "name": "cnc_full_thread_centre",
+      "value_mm": 3.0,
+      "minimum_mm": 3.0,
+      "ok": true
+    },
+    {
+      "name": "cnc_full_thread_past_screw_tip_centre",
+      "value_mm": 0.5,
+      "minimum_mm": 0.5,
+      "ok": true
+    },
+    {
+      "name": "cnc_screw_head_below_underside_centre",
+      "value_mm": 1.5,
+      "minimum_mm": 0.2,
+      "ok": true
+    },
+    {
+      "name": "cnc_screw_engagement_front",
+      "value_mm": 3.0,
+      "minimum_mm": 3.0,
+      "ok": true
+    },
+    {
+      "name": "cnc_full_thread_front",
+      "value_mm": 3.5,
+      "minimum_mm": 3.5,
+      "ok": true
+    },
+    {
+      "name": "cnc_full_thread_past_screw_tip_front",
+      "value_mm": 0.5,
+      "minimum_mm": 0.5,
+      "ok": true
+    },
+    {
+      "name": "cnc_screw_head_below_underside_front",
+      "value_mm": 2.0,
+      "minimum_mm": 0.2,
+      "ok": true
+    },
+    {
+      "name": "cnc_skin_over_centre_tap_drill",
+      "value_mm": 0.8,
       "minimum_mm": 0.8,
       "ok": true
     },
     {
-      "name": "cnc_skin_over_deepest_drill_point",
-      "value_mm": 0.719,
+      "name": "cnc_skin_over_deepest_centre_tap_drill",
+      "value_mm": 0.7,
       "minimum_mm": 0.7,
-      "ok": true
-    },
-    {
-      "name": "cnc_screw_head_below_underside",
-      "value_mm": 0.9,
-      "minimum_mm": 0.2,
       "ok": true
     },
     {
       "name": "knob_to_well_floor_when_pressed",
       "value_mm": 0.6,
       "minimum_mm": 0.3,
+      "ok": true
+    },
+    {
+      "name": "knob_bore_d_above_shaft_flat",
+      "value_mm": 1.0,
+      "minimum_mm": 0.5,
+      "ok": true
+    },
+    {
+      "name": "knob_ribs_on_d_section",
+      "value_mm": 4.0,
+      "minimum_mm": 0.0,
       "ok": true
     },
     {
@@ -573,6 +651,12 @@
       "ok": true
     },
     {
+      "name": "cnc_lens_recess_tolerance_inside_fit",
+      "value_mm": 0.075,
+      "minimum_mm": 0.0,
+      "ok": true
+    },
+    {
       "name": "header_pins_under_lens",
       "value_mm": 2.38,
       "minimum_mm": 0.5,
@@ -646,7 +730,7 @@
     },
     {
       "name": "cnc_screw_head_under_strip_recess",
-      "value_mm": 0.5,
+      "value_mm": 1.1,
       "minimum_mm": 0.2,
       "ok": true
     },
@@ -1486,7 +1570,7 @@
     },
     {
       "name": "cnc_top_undercut_area",
-      "value": 1.531,
+      "value": 1.671,
       "limit": 5.0,
       "kind": "max",
       "unit": "mm^2",
@@ -1522,6 +1606,390 @@
       "limit": 3.0,
       "kind": "max",
       "unit": "of 1",
+      "ok": true
+    },
+    {
+      "name": "knob_rides_above_its_seat",
+      "value": 0.0,
+      "limit": 0.0,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "knob_bore_end_to_shaft_end",
+      "value": 0.0,
+      "limit": 0.0,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "cnc_wall_round_tap_drill_back",
+      "value": 1.7,
+      "limit": 0.8,
+      "kind": "min",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "cnc_wall_round_deepest_tap_drill_back",
+      "value": 1.7,
+      "limit": 0.7,
+      "kind": "min",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "cnc_wall_round_tap_drill_centre",
+      "value": 0.8,
+      "limit": 0.8,
+      "kind": "min",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "cnc_wall_round_deepest_tap_drill_centre",
+      "value": 0.7,
+      "limit": 0.7,
+      "kind": "min",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "cnc_wall_round_tap_drill_front",
+      "value": 1.199,
+      "limit": 0.8,
+      "kind": "min",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "cnc_wall_round_deepest_tap_drill_front",
+      "value": 1.128,
+      "limit": 0.7,
+      "kind": "min",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "ground_boss_face_resting_share",
+      "value": 1.0,
+      "limit": 0.99,
+      "kind": "min",
+      "unit": "of 1",
+      "ok": true
+    },
+    {
+      "name": "ground_boss_face_outside_pad",
+      "value": 0.0,
+      "limit": 0.01,
+      "kind": "max",
+      "unit": "mm^2",
+      "ok": true
+    },
+    {
+      "name": "ground_boss_gap_to_pcb",
+      "value": 0.0,
+      "limit": 0.0,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_pilot_holes_is_sound",
+      "value": 0.0,
+      "limit": 0,
+      "kind": "max",
+      "unit": "faults",
+      "ok": true
+    },
+    {
+      "name": "coupon_pilot_holes_differs_from_parent",
+      "value": 0.0,
+      "limit": 0.05,
+      "kind": "max",
+      "unit": "mm^3",
+      "ok": true
+    },
+    {
+      "name": "coupon_pilot_holes_longest_bridge",
+      "value": 0.5,
+      "limit": 15.0,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_pilot_holes_deepest_cantilever",
+      "value": 0.1,
+      "limit": 1.5,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_pilot_hole_sizes_found",
+      "value": 3.0,
+      "limit": 3,
+      "kind": "min",
+      "unit": "holes",
+      "ok": true
+    },
+    {
+      "name": "coupon_mx_cutout_is_sound",
+      "value": 0.0,
+      "limit": 0,
+      "kind": "max",
+      "unit": "faults",
+      "ok": true
+    },
+    {
+      "name": "coupon_mx_cutout_differs_from_parent",
+      "value": 0.0,
+      "limit": 0.05,
+      "kind": "max",
+      "unit": "mm^3",
+      "ok": true
+    },
+    {
+      "name": "coupon_mx_cutout_longest_bridge",
+      "value": 13.4,
+      "limit": 15.0,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_mx_cutout_deepest_cantilever",
+      "value": 0.0,
+      "limit": 1.5,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_lap_ridge_is_sound",
+      "value": 0.0,
+      "limit": 0,
+      "kind": "max",
+      "unit": "faults",
+      "ok": true
+    },
+    {
+      "name": "coupon_lap_ridge_differs_from_parent",
+      "value": 0.0,
+      "limit": 0.05,
+      "kind": "max",
+      "unit": "mm^3",
+      "ok": true
+    },
+    {
+      "name": "coupon_lap_ridge_longest_bridge",
+      "value": 6.8,
+      "limit": 15.0,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_lap_ridge_deepest_cantilever",
+      "value": 0.0,
+      "limit": 1.5,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_lap_groove_is_sound",
+      "value": 0.0,
+      "limit": 0,
+      "kind": "max",
+      "unit": "faults",
+      "ok": true
+    },
+    {
+      "name": "coupon_lap_groove_differs_from_parent",
+      "value": 0.0,
+      "limit": 0.05,
+      "kind": "max",
+      "unit": "mm^3",
+      "ok": true
+    },
+    {
+      "name": "coupon_lap_groove_longest_bridge",
+      "value": 0.0,
+      "limit": 15.0,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_lap_groove_deepest_cantilever",
+      "value": 0.0,
+      "limit": 1.5,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_light_channel_is_sound",
+      "value": 0.0,
+      "limit": 0,
+      "kind": "max",
+      "unit": "faults",
+      "ok": true
+    },
+    {
+      "name": "coupon_light_channel_differs_from_parent",
+      "value": 0.0,
+      "limit": 0.05,
+      "kind": "max",
+      "unit": "mm^3",
+      "ok": true
+    },
+    {
+      "name": "coupon_light_channel_longest_bridge",
+      "value": 0.0,
+      "limit": 15.0,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_light_channel_deepest_cantilever",
+      "value": 0.0,
+      "limit": 1.5,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_knob_bore_is_sound",
+      "value": 0.0,
+      "limit": 0,
+      "kind": "max",
+      "unit": "faults",
+      "ok": true
+    },
+    {
+      "name": "coupon_knob_bore_differs_from_parent",
+      "value": 0.0,
+      "limit": 0.05,
+      "kind": "max",
+      "unit": "mm^3",
+      "ok": true
+    },
+    {
+      "name": "coupon_knob_bore_longest_bridge",
+      "value": 0.0,
+      "limit": 15.0,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_knob_bore_deepest_cantilever",
+      "value": 0.0,
+      "limit": 1.5,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_usb_base_is_sound",
+      "value": 0.0,
+      "limit": 0,
+      "kind": "max",
+      "unit": "faults",
+      "ok": true
+    },
+    {
+      "name": "coupon_usb_base_differs_from_parent",
+      "value": 0.0,
+      "limit": 0.05,
+      "kind": "max",
+      "unit": "mm^3",
+      "ok": true
+    },
+    {
+      "name": "coupon_usb_base_longest_bridge",
+      "value": 6.8,
+      "limit": 15.0,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_usb_base_deepest_cantilever",
+      "value": 0.0,
+      "limit": 1.5,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_usb_top_is_sound",
+      "value": 0.0,
+      "limit": 0,
+      "kind": "max",
+      "unit": "faults",
+      "ok": true
+    },
+    {
+      "name": "coupon_usb_top_differs_from_parent",
+      "value": 0.0,
+      "limit": 0.05,
+      "kind": "max",
+      "unit": "mm^3",
+      "ok": true
+    },
+    {
+      "name": "coupon_usb_top_longest_bridge",
+      "value": 0.0,
+      "limit": 15.0,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_usb_top_deepest_cantilever",
+      "value": 0.0,
+      "limit": 1.5,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_lens_recess_end_is_sound",
+      "value": 0.0,
+      "limit": 0,
+      "kind": "max",
+      "unit": "faults",
+      "ok": true
+    },
+    {
+      "name": "coupon_lens_recess_end_differs_from_parent",
+      "value": 0.0,
+      "limit": 0.05,
+      "kind": "max",
+      "unit": "mm^3",
+      "ok": true
+    },
+    {
+      "name": "coupon_lens_recess_end_longest_bridge",
+      "value": 14.3,
+      "limit": 15.0,
+      "kind": "max",
+      "unit": "mm",
+      "ok": true
+    },
+    {
+      "name": "coupon_lens_recess_end_deepest_cantilever",
+      "value": 0.1,
+      "limit": 1.5,
+      "kind": "max",
+      "unit": "mm",
       "ok": true
     }
   ],

@@ -19,12 +19,14 @@ reports the host would get. 20 frames per second; the idle wait is cut.*
 3. [Display](#display)
 4. [Lighting](#lighting)
 5. [Build and flash](#build-and-flash)
-6. [Change the keymap](#change-the-keymap)
-7. [How it is built](#how-it-is-built)
-8. [Timing and protocols](#timing-and-protocols)
-9. [Checks](#checks)
-10. [What the review found](#what-the-review-found)
-11. [Untested](#untested)
+6. [Hardware test mode](#hardware-test-mode)
+7. [Debug probe](#debug-probe)
+8. [Change the keymap](#change-the-keymap)
+9. [How it is built](#how-it-is-built)
+10. [Timing and protocols](#timing-and-protocols)
+11. [Checks](#checks)
+12. [What the review found](#what-the-review-found)
+13. [Untested](#untested)
 
 ## What it does
 
@@ -40,6 +42,10 @@ reports the host would get. 20 frames per second; the idle wait is cut.*
 - Caps lock on the host turns the two back corner LEDs white.
 - Safety nets: LED current capped at 200 mA, LEDs off while the host sleeps, a watchdog that
   restarts a hung pad, and a UF2 converter that refuses an image the chip could not boot.
+- The splash screen names why the chip started (power-on, reset pin, debugger, watchdog), so a
+  watchdog reboot loop is visible without a probe.
+- A hardware test mode for a new board: hold K0 while plugging in.
+- An optional `probe` build logs over a debug probe.
 
 ## Controls
 
@@ -54,6 +60,7 @@ reports the host would get. 20 frames per second; the idle wait is cut.*
 | Hold the left knob + a top-row key | Jump to layer 1, 2, 3 or 4. Nothing is sent to the host. |
 | Hold the left knob + turn the right knob | LED brightness, 8 steps down to off. Not stored: full again after power-on. |
 | Hold both knobs for 1 s | Restart as a USB drive for a new firmware file. Let go earlier to cancel. |
+| Hold K0 (top left) while plugging in | [Hardware test mode](#hardware-test-mode). Unplug to leave. |
 
 ## Display
 
@@ -63,13 +70,29 @@ Every picture is rendered by `core/src/ui/` through the simulator. `make ui-imag
 
 | Screen | When | Shows |
 | --- | --- | --- |
-| Splash | First 1.6 s | Title wiped in from the left, firmware version, progress bar. |
+| Splash | First 1.6 s | Title wiped in from the left, firmware version, reset cause from the first frame, progress bar. |
 | Main | Normally | Layer tab and one pip per layer, CAP/NUM badges, typing-rate graph, knob functions, key legends. A held key is filled; a tapped key keeps an outline for 0.3 s. |
 | Layer banner | 0.8 s after a layer change | A dark band opens from the middle with the new layer's name. |
 | Knob overlay | 0.9 s after a knob click | The knob's function, net clicks of this run, and a dial that moves one tick per click. |
 | System | Left knob held 0.25 s | Layer list, brightness bar, reminders for the two-knob hold. |
 | Idle | 30 s without input, or host asleep | Layer name and uptime drifting slowly around the panel, stars flying outward behind them. |
 | Flash | Both knobs held | Hold progress, then what to copy where. The panel keeps this picture in the bootloader. |
+| Hardware test | K0 held at plug-in | Raw contacts and the lit LED. See [Hardware test mode](#hardware-test-mode). |
+
+The splash's reset line:
+
+| Text | Cause | Read from |
+| --- | --- | --- |
+| `RESET: POWER-ON` | Plugged in, or a brown-out | POWMAN CHIP_RESET HAD_POR, HAD_BOR |
+| `RESET: RESET PIN` | The RUN pin was pulled low | HAD_RUN_LOW |
+| `RESET: DEBUGGER` | A debug probe reset the chip | HAD_DP_RESET_REQ, HAD_RESCUE, HAD_HZD_SYS_RESET_REQ |
+| `RESET: WATCHDOG` | The scan loop stopped for 500 ms: a hang or a panic | WATCHDOG REASON.TIMER |
+| `RESET: RESTART` | Something triggered the watchdog on purpose | WATCHDOG REASON.FORCE |
+| `RESET: UNKNOWN` | None of these flags set | |
+
+`WATCHDOG` on every start means a reboot loop. What a restart after a flash shows (`RESTART` is
+likely, from the boot ROM's reboot) and the order when two flags are set are guesses until a board
+shows them. The logic is `core/src/reset.rs`; the register read is `fw/src/reset.rs`.
 
 The knob overlay shows clicks, not a volume level: the pad cannot ask the host what its volume is.
 
@@ -115,6 +138,52 @@ copy `dist/macropad.uf2` onto it and it restarts with the new firmware.
    while you plug in the cable.
 2. **Later:** hold both knobs down for one second.
 
+With the pad in that drive mode, Raspberry Pi's `picotool load -v -x dist/macropad.uf2` writes,
+reads back to verify, and starts the firmware. Installing picotool, and a one-time cross-check of
+this converter against `picotool uf2 convert`: [flashing.md](../docs/flashing.md#check-a-flash-with-picotool).
+
+## Hardware test mode
+
+For a freshly built board. Hold key K0 (top left), plug in the cable, and let go once the test
+screen shows. `core/src/hardware_test.rs` decides: K0 must read closed in each of the first 5
+one-millisecond samples after start. No picture of this screen yet: the simulator does not film it.
+
+- **Keys.** A 3 x 4 grid as the keys sit on the pad. A filled box is a closed contact. `KEYS`
+  below it is the same bitmap in hexadecimal, bit 0 for K0.
+- **Knobs.** A, B and SW of each knob, as the pins read them, without debouncing. Turn a knob
+  slowly: A changes once per click and stays put at rest. B may rest either way.
+- **LEDs.** One LED at a time, red, then green, then blue, half a second each, at channel value
+  32 of 255 (about 11 mA by the cap's estimate). The top right corner names the LED and colour
+  that should be lit, `LED1 RED` first. LED1 is the chain's first LED, at the back of the right
+  side. Another colour means the colour order is wrong; another LED means the chain order is.
+
+The pad sends nothing to the host and does not start USB. The two-knob flash hold does not work
+here. Unplug to leave.
+
+## Debug probe
+
+`make probe` builds the firmware with the `probe` cargo feature: defmt log lines over RTT, and
+`panic-probe`, which prints a panic there instead of halting quietly. Versions follow embassy's
+`examples/rp235x` for embassy-rp 0.10: defmt 1.0, defmt-rtt 1.0, panic-probe 1.0. The feature
+adds `-Tdefmt.x` to the link (`fw/build.rs`). The default build, the UF2 and `make firmware`
+leave it off.
+
+```sh
+cd fw
+cargo run --release --features probe   # flashes over SWD and prints the log
+```
+
+The runner is `probe-rs run --chip RP235x`, set in `fw/.cargo/config.toml`, as in embassy's
+examples. `DEFMT_LOG` there is `info`. Install probe-rs and wire the probe:
+[flashing.md](../docs/flashing.md#debug-probe-optional).
+
+It logs: the firmware version at start, the reset cause, hardware test mode if entered, USB
+bus reset, enable, address, configuration and suspend, the first display frame and the first LED
+frame. `fw/src/log.rs` holds the `info!` macro; without the feature it compiles to nothing.
+
+`make probe` writes the same ELF path as the default build. `make uf2` rebuilds without the
+feature first, so a probe build never ends up in `dist/macropad.uf2`.
+
 ## Change the keymap
 
 Edit the layers in [`core/src/keymap.rs`](core/src/keymap.rs), then run `make`.
@@ -125,7 +194,7 @@ Tests fail when a label is too long, a macro does not fit, or a media code is ou
 
 | Crate | Runs on | Contents |
 | --- | --- | --- |
-| `core` | PC and pad | Everything that decides something: debounce, knob decoder, keymap engine, activity tracking, lighting, display UI, LCD wire format. `no_std`, no dependencies. |
+| `core` | PC and pad | Everything that decides something: debounce, knob decoder, keymap engine, activity tracking, lighting, display UI, LCD wire format, reset cause, hardware test mode. `no_std`, no dependencies. |
 | `fw` | pad | Pins, USB, SPI, LED output, watchdog, the 1 kHz scan loop. No decisions. |
 | `sim` | PC | Drives `core` with scripted input and renders the pad, its display, its LEDs and its USB reports to PNG. See [Simulator](#simulator). |
 | `uf2` | PC | ELF to UF2 with the RP2350 family id, plus the bootability check. |
@@ -135,7 +204,7 @@ flowchart LR
     pins[GPIO: 12 keys, 2 knobs] --> scan[inputs.rs: debounce, quadrature]
     scan -->|Inputs, every 1 ms| pad[core::pad::Pad]
     pad -->|Reports| usb[usb.rs: keyboard + consumer HID]
-    pad -->|View| view[(state.rs: latest View)]
+    pad -->|View| view[(state.rs: latest Shown)]
     usbhost[USB host: lock LEDs, suspend] --> hoststate[(state.rs: Host)]
     view --> display[display.rs, every 33 ms]
     view --> leds[leds.rs, every 20 ms]
@@ -176,7 +245,8 @@ type and the key and LED positions used by the ripple. `make lint` runs
 | --- | --- | --- |
 | Scan period | 1 ms | Matches the 1 ms USB poll. |
 | Debounce | 5 equal samples (5 ms) | Press and release alike. |
-| Knob decoding | 2 edges per click | The EC11E18244AU has 36 detents and 18 pulses per turn. Knob contacts are not debounced; a bounce back and forth cancels itself. |
+| Knob decoding | 1 click per edge of contact A | The EC11E18244AU has 36 detents and 18 pulses per turn, and Alps' output-wave figure says the rest position "cannot be identified in phase B": A is settled at rest, B may sit on its edge. A is debounced like a key (5 ms; Alps: chattering 3 ms max, bounce 2 ms max). B gives the direction, read once when A first leaves its rest level; later bounces of the same edge do not read it again. A click arrives 5 ms after A's last bounce. A needs 5 ms at each level, so up to 200 clicks per second (5.5 turns) can be followed. |
+| Knob pull-ups | 3.3 kΩ on the board, internal on too | 1 mA through a closed contact at 3.3 V, Alps' minimum operating current. The internal pull-ups change nothing next to them and keep a board without the resistors working. |
 | Queued tap | 8 ms down, 8 ms up | Knob clicks, macro strokes and the tap of a tap-hold key. Spans several USB polls so the host sees both edges. |
 | Tap-hold | 200 ms | Shorter is a tap, longer a hold. Another key or a knob click decides "hold" at once. A guess; `TAP_HOLD_MS` in `core/src/engine.rs`. |
 | Tap queue | 16 taps | A knob spun faster than the host can follow loses clicks instead of lagging. A macro is dropped whole if it does not fit. |
@@ -222,12 +292,12 @@ write a UF2 otherwise.
 
 | Check | What it proves |
 | --- | --- |
-| `cargo test`: 164 tests in `core` | Debounce, knob decoding, engine (held keys, chords, tap-hold, taps, gestures), activity, lighting and its current cap, every screen and overlay, LCD wire format, keymap sanity. |
+| `cargo test`: 192 tests in `core` | Debounce, knob decoding (both methods), reset cause, hardware test mode and its screen, engine (held keys, chords, tap-hold, taps, gestures), activity, lighting and its current cap, every screen and overlay, LCD wire format, keymap sanity. |
 | 38 tests in `sim` | The firmware's LCD frames decode to the same picture in the panel model. The demo visits every screen, is deterministic and shows the tap-hold key and the caps lock LEDs. The pad drawing, host readout and LED timeline. |
 | 18 tests in `uf2` | UF2 block layout, flash bounds, vector table and image definition checks. |
-| `tools/check_pins.py` | 22 GPIOs, the knob detent type, the key grid, 8 LED positions and the positions the simulator draws match `board.toml`. |
+| `tools/check_pins.py` | 22 GPIOs, the knob detent type, the key grid, 8 LED positions and the positions the simulator draws match `board.toml`. The debounce window is longer than the encoder's chatter. |
 | `tools/check_hid.py` | Parses the two HID report descriptors as a host would. Report sizes, the modifier byte, the 6-key array, the lock LEDs and the highest key and media codes match what the firmware sends. |
-| `cargo fmt --check`, `cargo clippy -D warnings` | Host crates and the `thumbv8m.main-none-eabihf` binary. |
+| `cargo fmt --check`, `cargo clippy -D warnings` | Host crates and the `thumbv8m.main-none-eabihf` binary, with and without the `probe` feature. |
 | `make uf2` | The firmware links and the image passes the bootability check. |
 
 ## What the review found
@@ -252,6 +322,12 @@ A second pass found two more, both in how held keys share a report:
 
 All four regression tests fail with the fix switched off.
 
+A third pass, against Alps' output-wave figure for the EC11E18244AU:
+
+| Finding | Fix |
+| --- | --- |
+| `Detents::PerHalfCycle` reported a click only when both contacts were back at a rest level. The figure says B may rest on its own edge, so clicks could get lost or arrive late. | `Detents::PerEdgeOfA`: one click per debounced edge of A, direction from B. Set in `board.rs`; the board check ties it to the part. A regression test shows the old method losing the click. |
+
 Reviewed and left as they were: the HID report descriptors (now also parsed by
 `tools/check_hid.py`), the tap queue timing, the Sharp LCD frame format (now also decoded by the
 simulator's panel model), the SK6812 bit timing (table above) and the clock setup.
@@ -266,6 +342,11 @@ These are assumptions until a board is built:
   raise `FRAME_PERIOD` in `fw/src/display.rs`.
 - **Knob direction.** Assumes contact A leads on a clockwise turn. Wrong way: swap `a` and `b` in
   `KnobScanner::rotation` in `fw/src/inputs.rs`.
+- **The knob decoder on a real EC11E18244AU.** It follows Alps' figure and its chatter figures.
+  Hardware test mode shows the raw A and B to compare.
+- **The reset cause.** Register names are from rp-pac; which flags a real start sets is unknown.
+- **Hardware test mode** and the **probe build.** Both build; neither has run. No probe has been
+  attached to a board.
 - **LED colour order** (assumed green-red-blue, the SK6812 default) and **LED order** along the
   chain. The ripple and the comet depend on the chain order in `core/src/geometry.rs`.
 - **LED current.** The cap assumes at most 20 mA per colour channel.

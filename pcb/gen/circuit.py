@@ -48,6 +48,8 @@ LCSC = {
     "15pF": "C1548",
     "1k": "C11702",
     "10k": "C25744",
+    # UNI-ROYAL 0402WGF3301TCE, 3.3 k 1 % 0402: JLCPCB part page C25890, checked 2026-11-14.
+    "3.3k": "C25890",
     "5.1k": "C25905",
     "27R": "C25100",
     "33R": "C25105",
@@ -78,6 +80,7 @@ MPN = {
     "15pF": ("FH (Guangdong Fenghua)", "0402CG150J500NT"),
     "1k": ("UNI-ROYAL", "0402WGF1001TCE"),
     "10k": ("UNI-ROYAL", "0402WGF1002TCE"),
+    "3.3k": ("UNI-ROYAL", "0402WGF3301TCE"),
     "5.1k": ("UNI-ROYAL", "0402WGF5101TCE"),
     "27R": ("UNI-ROYAL", "0402WGF270JTCE"),
     "33R": ("UNI-ROYAL", "0402WGF330JTCE"),
@@ -89,7 +92,7 @@ FOOTPRINT = {
     "C0402W": "macropad:C_0402_1005Metric_Wide",
     "C0603": "Capacitor_SMD:C_0603_1608Metric",
     "R0402": "Resistor_SMD:R_0402_1005Metric",
-    "QFN60": "Package_DFN_QFN:QFN-60-1EP_7x7mm_P0.4mm_EP3.4x3.4mm",
+    "QFN60": "macropad:QFN-60-1EP_7x7mm_P0.4mm_EP3.4x3.4mm_ViaWindows",
     "SOT23-5": "Package_TO_SOT_SMD:SOT-23-5",
     "SOT23-6": "Package_TO_SOT_SMD:SOT-23-6",
     "XTAL3225": "Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
@@ -102,12 +105,21 @@ FOOTPRINT = {
     "TESTPAD": "TestPoint:TestPoint_Pad_D1.0mm",
     "FIDUCIAL": "Fiducial:Fiducial_1mm_Mask2mm",
     "HOLE_M2": "macropad:Hole_M2",
+    "HOLE_M2_GND": "macropad:Hole_M2_Ground",
     "LED_SIDE": "macropad:SK6812-side-a",
     "MX_HOTSWAP": "macropad:MX_Hotswap",
 }
 
+# Project footprints that are a stock footprint with only the paste changed: project -> stock. The copper must
+# stay the stock footprint's (layout.check_derived_footprints), so the stock footprint the KiCad symbol names
+# is still the one in use (schematic.check_part_against_symbol).
+DERIVED_FOOTPRINTS = {
+    # The exposed pad's paste as windows with the four ground vias between them (layout.EP_PASTE_WINDOWS).
+    FOOTPRINT["QFN60"]: "Package_DFN_QFN:QFN-60-1EP_7x7mm_P0.4mm_EP3.4x3.4mm",
+}
+
 HAND_SOLDERED = {"EC11", "SOCKET5"}
-NOT_A_PART = {"TESTPAD", "HOLE_M2", "FIDUCIAL"}
+NOT_A_PART = {"TESTPAD", "HOLE_M2", "HOLE_M2_GND", "FIDUCIAL"}
 
 
 @dataclass(frozen=True)
@@ -120,6 +132,7 @@ class Part:
     rotation: float = 0.0
     side: str = BOTTOM
     nets: dict[str, str] = field(default_factory=dict)
+    dnp: bool = False  # do not populate: footprint and pads stay, the part is left off
 
     @property
     def footprint(self) -> str:
@@ -136,7 +149,9 @@ class Part:
 
     @property
     def machine_assembled(self) -> bool:
-        return self.footprint_key not in HAND_SOLDERED | NOT_A_PART
+        """Placed by the assembly house. Hand-soldered parts, footprints that are not parts, and do-not-populate
+        parts are not."""
+        return self.footprint_key not in HAND_SOLDERED | NOT_A_PART and not self.dnp
 
 
 # --- MCU geometry -----------------------------------------------------------------------------
@@ -294,10 +309,10 @@ def _core_regulator() -> list[Part]:
         Part("C12", "4.7uF", "C0402W", lx_x + CAPACITOR_SHIFT, pin_row_y - COUT_DISTANCE, 0, nets={"1": V1, "2": GND}),
         # Pad 1 is the +1V1 end and carries the polarity dot, as in Raspberry Pi's reference board.
         Part("L1", "3.3uH", "L2016", lx_x + INDUCTOR_SHIFT, pin_row_y - INDUCTOR_DISTANCE, 0, nets=INDUCTOR_PADS),
-        # A further 4.7 uF on the output, at the probe pad end of the output track. The datasheet's second
-        # 4.7 uF at DVDD pin 23 is that pin's decoupling capacitor (BULK_DECOUPLED_PIN). This one is extra, and
-        # nearer to COUT than datasheet 6.3.8.1 wants; see "Regulator loop" in pcb/README.md.
-        Part("C13", "4.7uF", "C0402W", 37.5, 11.0, 90, nets={"1": V1, "2": GND}),
+        # Do not populate. RP2350 datasheet 6.3.8 wants COUT at 4.7 uF +/-20 %; a second 4.7 uF here would double
+        # it. The datasheet's second 4.7 uF is at DVDD pin 23 (C5, BULK_DECOUPLED_PIN). The footprint stays, at the
+        # probe pad end of the output track, in case a measurement asks for more.
+        Part("C13", "4.7uF", "C0402W", 37.5, 11.0, 90, nets={"1": V1, "2": GND}, dnp=True),
         Part("C14", "4.7uF", "C0402W", 37.0, 13.7, 0, nets={"1": "VREG_AVDD", "2": GND}),
         Part("R1", "33R", "R0402", 35.0, 13.7, 0, nets={"1": "VREG_AVDD", "2": V3}),
         # Probe pad on the regulator output. Routed with the output capacitor.
@@ -379,6 +394,32 @@ def _keys() -> list[Part]:
     ]
 
 
+# Pull-up on each encoder contact: resistor -> net. Alps EC11 sheets give the encoder contacts a minimum rating
+# of 1 mA at 5 V DC (not checked here against the EC11E18244AU's own sheet, which could not be fetched). The
+# RP2350's internal pull-ups give about 0.05 mA; 3.3 k gives 1 mA at 3.3 V. ENC_x_SW keeps the internal pull-up.
+ENCODER_PULL_UPS = {"R10": "ENC_L_A", "R11": "ENC_L_B", "R12": "ENC_R_A", "R13": "ENC_R_B"}
+# Pull-up centre, offset (x, y) from the encoder pin it serves, and rotation. Each sits on the bottom face on
+# the side of its pin that faces the 3.3 V island, its pin-side pad (1) toward the pin.
+_PULL_UP_OFFSET = {"left": (2.4, 180.0), "right": (-2.4, 0.0)}
+
+
+def encoder_pin_xy(side: str, pin: str) -> tuple[float, float]:
+    """Top-view position of encoder pin A, C or B. The footprint origin is pad A; the shaft is 7.5 mm right and
+    2.5 mm below it, and the pins are 2.5 mm apart."""
+    encoder = BOARD_SPEC["encoders"][side]
+    return encoder["x"] - 7.5, encoder["y"] - 2.5 + 2.5 * "ACB".index(pin)
+
+
+def _encoder_pull_ups() -> list[Part]:
+    parts = []
+    for ref, net in ENCODER_PULL_UPS.items():
+        side = "left" if net.startswith("ENC_L") else "right"
+        pin_x, pin_y = encoder_pin_xy(side, net[-1])
+        dx, rotation = _PULL_UP_OFFSET[side]
+        parts.append(Part(ref, "3.3k", "R0402", pin_x + dx, pin_y, rotation, nets={"1": net, "2": V3}))
+    return parts
+
+
 def _encoders() -> list[Part]:
     # The footprint origin is pad A; the shaft is 7.5 mm right and 2.5 mm below it.
     shaft_dx, shaft_dy = 7.5, 2.5
@@ -434,10 +475,16 @@ def _leds() -> list[Part]:
 
 
 def _mounting_holes() -> list[Part]:
-    return [
-        Part(f"H{i}", "M2", "HOLE_M2", x, y, side=TOP)
-        for i, (x, y) in enumerate(BOARD_SPEC["mounting"]["holes"], start=1)
-    ]
+    """M2 holes. The one at mounting.ground_bond_hole has a bare GND ring: the aluminium case is bonded there."""
+    mounting = BOARD_SPEC["mounting"]
+    holes = []
+    for i, (x, y) in enumerate(mounting["holes"], start=1):
+        if [x, y] == mounting["ground_bond_hole"]:
+            holes.append(Part(f"H{i}", "M2 GND", "HOLE_M2_GND", x, y, side=TOP, nets={"1": GND}))
+        else:
+            holes.append(Part(f"H{i}", "M2", "HOLE_M2", x, y, side=TOP))
+    assert sum(hole.footprint_key == "HOLE_M2_GND" for hole in holes) == 1, "mounting.ground_bond_hole is not a hole"
+    return holes
 
 
 # Three optical marks for the pick-and-place camera, on the assembly face, in three corners so the
@@ -453,7 +500,7 @@ def _fiducials() -> list[Part]:
 def all_parts() -> list[Part]:
     parts = (
         [_mcu()] + _decoupling_caps() + _core_regulator() + _clock_and_reset() + _usb_and_power()
-        + _keys() + _encoders() + _display() + _leds() + _mounting_holes() + _fiducials()
+        + _keys() + _encoders() + _encoder_pull_ups() + _display() + _leds() + _mounting_holes() + _fiducials()
     )
     refs = [part.ref for part in parts]
     assert len(refs) == len(set(refs)), "duplicate reference designator"

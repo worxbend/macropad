@@ -21,9 +21,10 @@ SHORT_EDGE = 0.01  # mm
 
 @dataclass(frozen=True)
 class Exported:
-    """One exported file set: the STEP, the part it came from, and its STL when it has one."""
+    """One exported file set: the STEP, the part it came from, and its STL when it has one. A print
+    coupon has an STL only."""
 
-    step: Path
+    step: Path | None
     part: Shape
     solids: int = 1
     stl: Path | None = None
@@ -34,8 +35,9 @@ def verify(files: list[Exported]) -> int:
     """Print one line per file and every fault found; return the number of faults."""
     faults = 0
     for exported in files:
-        found = step_faults(exported) + (stl_faults(exported) if exported.stl else [])
-        name = f"{exported.step.parent.name}/{exported.step.name}"
+        found = (step_faults(exported) if exported.step else []) + (stl_faults(exported) if exported.stl else [])
+        written = exported.step or exported.stl
+        name = f"{written.parent.name}/{written.name}"
         print(f"re-read {name}: {'ok' if not found else 'FAIL ' + '; '.join(found)}")
         faults += len(found)
     return faults
@@ -80,6 +82,8 @@ def sliver_faults(shape: Shape) -> list[str]:
 def stl_faults(exported: Exported) -> list[str]:
     mesh = trimesh.load_mesh(exported.stl)
     faults = [] if mesh.is_watertight else [f"{exported.stl.name} is not watertight"]
+    if mesh.body_count != exported.solids:
+        faults.append(f"{exported.stl.name} holds {mesh.body_count} bodies, expected {exported.solids}")
     return faults + _volume_fault(exported.stl.name, mesh.volume, _solid_volume(exported.part))
 
 

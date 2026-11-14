@@ -59,23 +59,40 @@ The KiCad file is `pcb/kicad/macropad.kicad_sch`.
   in Raspberry Pi's reference pattern (input and output capacitors side by side at the pins, the
   inductor beyond them, no copper under the inductor on the other layers).
   About 7.5 µF sits on the 5 V rail; USB 2.0 allows 10 µF at plug-in.
+  C13, a second 4.7 µF footprint on the 1.1 V output track, is **not fitted**: datasheet 6.3.8 wants
+  4.7 µF ±20 % there, and C13 would double it. Its pads stay, marked DNP.
 - **Clock.** 12 MHz crystal with a 1 kΩ series resistor on XOUT and 15 pF load capacitors.
   The crystal is Raspberry Pi's reference part, the ABM8-272-T3; see [parts](parts.md).
 - **Flashing.** BOOT pulls QSPI_SS low through 1 kΩ, which starts the ROM USB bootloader.
   RESET pulls RUN low. Both buttons are on the bottom face and reached through holes in the case floor.
 - **Keys and knobs.** Each switch connects one GPIO to ground. The firmware turns on the internal
   pull-ups. No matrix, no diodes, no ghosting.
+- **Knob pull-ups.** R10-R13, 3.3 kΩ 0402, pull the four encoder contacts A and B to 3.3 V, 2.4 mm
+  from each encoder pin on the bottom face. A closed contact then carries 1 mA, the minimum Alps
+  gives for its EC11 contacts; the chip's internal pull-ups alone give about 0.05 mA. The EC11E18244AU's
+  own sheet was not read for this figure. The internal pull-ups stay on in parallel; they do no harm.
+  The push switches keep the internal pull-up only.
 - **Knobs.** Alps EC11E18244AU: 36 detents and 18 pulses per turn, so one click is half a quadrature
-  cycle. The firmware decodes two clicks per cycle. The detent count is read from the Alps product
-  page, not from a part on a desk.
+  cycle. The firmware counts one click per debounced edge of contact A and reads the direction from
+  contact B (`Detents::PerEdgeOfA`). The detent count is read from the Alps product page, not from a
+  part on a desk.
 - **Display.** SPI0 (SCK GPIO22, MOSI GPIO23), chip select GPIO24, active high. Header order
-  from the back edge to the front: MOSI, SCK, 3V3, GND, CS. `MEASURE`: check it against your module.
+  from the back edge to the front: MOSI, SCK, 3V3, GND, CS. It matches the pinout on
+  nicekeyboards.com (MOSI, SCK, VCC, GND, CS). Still `MEASURE` until a module is checked.
 - **LEDs.** GPIO9, through a 74LVC1T45 to 5 V logic and a 330 Ω series resistor (R9), then eight
   SK6812 SIDE-A in a chain: right side
   back to front, then left side front to back. The firmware caps total LED current at about 200 mA
-  and turns the LEDs off when the host sleeps.
+  and turns the LEDs off when the host sleeps. Dark, the eight still draw about 4.8 mA, over the
+  2.5 mA a suspended USB device may draw. Accepted for the prototype; the fix is a load switch on
+  the LED supply, a board change.
+- **Case ground.** H1, the back-left mounting hole at (3.2, 3.2), is plated, 2.2 mm, with a bare
+  5.4 mm GND ring on both faces (`mounting.ground_bond_hole` and `ground_bond_pad_diameter` in
+  `board.toml`). The milled top's 5.0 mm corner boss rests on the top ring, its face masked from
+  anodise, and the S1 screw joins base, top and GND. The other five holes are unplated. A printed
+  case insulates and is not grounded. Nobody has measured the bond.
 
-The full netlist is `pcb/netlist.txt`. Track length and via count per net are in `pcb/routing.txt`.
+The full netlist is `pcb/netlist.txt` (`python3 pcb/gen/circuit.py > pcb/netlist.txt` writes it).
+Track length and via count per net are in `pcb/routing.txt`.
 
 ## Pin map
 
@@ -107,7 +124,9 @@ Six round 1 mm pads on the bottom face, each named in silkscreen. Positions in b
 | TP5 | 3V3 | 24.5, 23.0 | Beside the BOOT button |
 | TP6 | 1V1 | 36.0, 11.0 | Beside the inductor, on the regulator output track |
 
-The case floor has no probe holes. Use the pads before the board goes into the case.
+The case floor has no probe holes. Use the pads before the board goes into the case. TP1 to TP3
+take a debug probe ([flashing.md](flashing.md#debug-probe-optional)); TP4 to TP6 are the rail checks
+in [assembly.md](assembly.md).
 The pad positions were picked by a free-space search on the copper and are not checked against the
 case model; the pads are flat copper, so nothing can collide.
 
@@ -115,16 +134,19 @@ case model; the pads are flat copper, so nothing can collide.
 
 | Layer | Use |
 |---|---|
-| F.Cu | Signals, ground pour |
-| In1.Cu | Ground plane |
-| In2.Cu | 5 V plane, with a 3.3 V island under the MCU and the display header |
-| B.Cu | Parts, signals, ground pour |
+| F.Cu | Signals, ground pour, the bare case ground ring at H1 |
+| In1.Cu | 5 V plane, with a 3.3 V island under the MCU, the display header and the USB pair (a tongue reaches the left encoder's pull-ups), and a 1.1 V island under the chip |
+| In2.Cu | Ground plane, next to the parts on the bottom face |
+| B.Cu | Parts, most signals (1067 of 1308 mm of track), ground pour |
+
+The ground plane sits on In2, next to B.Cu, because every part and most of the track are on the
+bottom face. Each bottom signal then has its return path one layer away.
 
 Design rules: 0.15 mm track and gap, 0.6 mm via with a 0.3 mm drill, 0.3 mm copper to board edge.
 Pictures of each layer: [top](images/pcb/copper-top.svg), [ground](images/pcb/copper-ground.svg),
 [power](images/pcb/copper-power.svg), [bottom](images/pcb/copper-bottom.svg).
 
-Routing: 802 tracks, 161 vias, 1299.1 mm of track, 0 unrouted pads. The router is a small grid
+Routing: 827 tracks, 164 vias, 1307.7 mm of track, 0 unrouted pads. The router is a small grid
 router in `pcb/gen/router.py`; the routing plan is `pcb/gen/route.py`. No third-party autorouter is used.
 
 ## Mechanical stack
@@ -156,11 +178,12 @@ Nothing below has been printed or milled. The model passes its own checks, and t
   rim steps in under the top, so a 1.6 mm shadow gap runs all round the case where the two shells meet.
   Round the USB opening the base runs up flush, so the opening sits in a plain pad. A 1.7 mm chamfer
   under the dark base makes it recede.
-- **Two shells.** The base holds the PCB on six bosses. The top is the switch plate, the deck and the
+- **Two shells.** The base holds the PCB on six bosses. A milled case is bonded to GND at S1, over
+  the board's H1 ring. The top is the switch plate, the deck and the
   skirt in one piece. Six M2 screws go in from below and are hidden under the feet: M2 x 10 cutting
   their own thread in a printed top (never M2 x 12: it comes through the skin under the dish floor),
-  M2 x 8 in tapped holes in a milled one. Posts under the hot-swap sockets carry the board while the
-  switches are pressed in.
+  M2 x 8 in tapped holes in a milled one (3.0 mm of thread at the corners, 2.5 mm at the centre).
+  Posts under the hot-swap sockets carry the board while the switches are pressed in.
 - **PCB thickness.** The board is ordered 1.6 mm thick; board houses allow about 10 %. On a 1.76 mm
   board the top rides 0.16 mm higher, the gap reads 1.66 mm and the lap joint still overlaps 0.44 mm.
   On a thin board foam rings on the base bosses (a guess) still press the PCB up against the top.

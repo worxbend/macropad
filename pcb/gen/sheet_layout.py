@@ -129,7 +129,7 @@ _DECOUPLING = Block(
 )
 
 _CORE_REGULATOR = Block(
-    "1.1 V core supply: the switching regulator inside U1", 6, 134, 72, 50,
+    "1.1 V core supply: the switching regulator inside U1", 6, 134, 72, 52,
     places=(Place("L1", 16, 12, 270), Place("C12", 24, 15), Place("C13", 30, 15), Place("TP6", 52, 12),
             Place("R1", 16, 32, 270), Place("C14", 24, 35), Place("C11", 50, 35)),
     wires=(
@@ -140,7 +140,8 @@ _CORE_REGULATOR = Block(
     rails=(Rail(V1, (36, 12)), Rail(V3, (8, 32))),
     flags=(Flag((44, 12)), Flag((36, 32))),
     notes=(Note("C11: at VREG_VIN (pin 49)", 44, 24),
-           Note("L1: dot on pad 1, the +1V1 end. Not verified on a part.", 2, 48)),
+           Note("C13: do not populate. COUT (C12) is the one 4.7 uF.", 2, 46),
+           Note("L1: dot on pad 1, the +1V1 end. Not verified on a part.", 2, 50)),
 )
 
 _CLOCK = Block(
@@ -172,11 +173,19 @@ _KEYS = Block(
                  for i in range(len(circuit.BOARD_SPEC["keys"]["gpio"]))),
 )
 
+# The four pull-ups in a row under the encoders: x of each resistor, and of its +3V3 symbol a little to the right,
+# clear of the value text.
+_PULL_UP_X = {ref: 16 + 22 * n for n, ref in enumerate(circuit.ENCODER_PULL_UPS)}
+_PULL_UP_Y = 29
 _ENCODERS = Block(
-    "Rotary encoders with push switch", 158, 60, 92, 30,
-    places=(Place("ENC1", 26, 14), Place("ENC2", 72, 14)),
-    wires=(Wire(GND, ("ENC1.C", (8, 14))), Wire(GND, ("ENC2.C", (54, 14)))),
-    rails=(Rail(GND, (8, 14)), Rail(GND, (54, 14))),
+    "Rotary encoders with push switch, 3.3 k pull-ups on A and B", 158, 60, 92, 38,
+    places=(Place("ENC1", 26, 14), Place("ENC2", 72, 14))
+    + tuple(Place(ref, x, _PULL_UP_Y, 90) for ref, x in _PULL_UP_X.items()),
+    wires=(Wire(GND, ("ENC1.C", (8, 14))), Wire(GND, ("ENC2.C", (54, 14))))
+    + tuple(Wire(V3, (f"{ref}.2", (x + 6, _PULL_UP_Y))) for ref, x in _PULL_UP_X.items()),
+    rails=(Rail(GND, (8, 14)), Rail(GND, (54, 14)))
+    + tuple(Rail(V3, (x + 6, _PULL_UP_Y)) for x in _PULL_UP_X.values()),
+    notes=(Note("Pull-ups: 1 mA through each contact, the minimum Alps gives. SW keeps U1's own pull-up.", 2, 36),),
 )
 
 _DISPLAY = Block(
@@ -228,7 +237,7 @@ def _leds() -> Block:
 
 _MECHANICAL_REFS = [f"H{n}" for n in range(1, 7)] + [f"FID{n}" for n in range(1, 4)]
 _MECHANICAL = Block(
-    "Mounting holes (M2) and fiducials", 82, 181, 100, 18,
+    "Mounting holes (M2), case ground at H1, fiducials", 82, 181, 100, 22,
     places=tuple(Place(ref, 8 + 10 * n, 12) for n, ref in enumerate(_MECHANICAL_REFS)),
 )
 

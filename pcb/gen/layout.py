@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import math
+import re
 from pathlib import Path
 
 import pcbnew
@@ -32,9 +34,14 @@ VIA_DIAMETER = 0.6
 VIA_DRILL = 0.3
 EDGE_CLEARANCE = 0.3
 SILK_EDGE_CLEARANCE = 0.2
+# Copper layer of each plane. Ground sits next to the bottom face, which carries every machine-placed part and
+# most of the tracks; the 5 V plane with its 3.3 V and 1.1 V islands sits next to the top face.
+GROUND_LAYER = pcbnew.In2_Cu
+POWER_LAYER = pcbnew.In1_Cu
 # The 3.3 V island on the power layer: under the MCU and the display header, with a tongue up to
-# the USB connector so the USB pair runs over one unbroken plane.
-V3_ISLAND = [(23.0, 8.5, 61.0, 26.5), (37.0, 0.0, 47.5, 9.0)]
+# the USB connector, and one out to the left encoder's pull-ups (circuit.ENCODER_PULL_UPS). The right
+# encoder's pull-ups sit at the island's right edge.
+V3_ISLAND = [(23.0, 8.5, 61.0, 26.5), (37.0, 0.0, 47.5, 9.0), (8.0, 7.4, 23.5, 14.6)]
 # The 1.1 V core island, cut out of the 3.3 V island: a square under the chip, with a lobe out to
 # the supply via of each DVDD pin that has its capacitor straight in front of it (pins 6 and 23), and a
 # notch inside the pad ring where the 3.3 V via of VREG_VIN (pin 49) reaches the 3.3 V island.
@@ -42,6 +49,33 @@ V1_ISLAND = [(38.6, 15.8, 45.4, 20.9), (38.6, 14.1, 39.8, 15.8), (41.0, 14.1, 45
              (45.0, 15.9, 47.1, 17.5), (41.2, 20.5, 42.8, 22.6)]
 ROUTING_RULES = Rules(track_width=TRACK_WIDTH, clearance=CLEARANCE, via_diameter=VIA_DIAMETER,
                       via_drill=VIA_DRILL, edge_clearance=EDGE_CLEARANCE)
+# The board-wide limits kicad-cli's DRC checks against, as they are written into macropad.kicad_pro.
+# KiCad 9 keeps the design rules in the project file, not in the board file.
+DRC_RULES = {
+    "min_track_width": 0.127,
+    "min_clearance": 0.127,
+    "min_via_diameter": 0.45,
+    "min_through_hole_diameter": 0.3,
+    "min_copper_edge_clearance": EDGE_CLEARANCE,
+    "min_hole_clearance": 0.2,
+    "min_hole_to_hole": 0.25,
+}
+DEFAULT_NET_CLASS = {"track_width": TRACK_WIDTH, "clearance": CLEARANCE, "via_diameter": VIA_DIAMETER,
+                     "via_drill": VIA_DRILL}
+# Solder paste on the MCU's exposed pad: windows (x, y, width, height) in footprint coordinates, with the four
+# ground vias (route._EXPOSED_PAD_VIA_OFFSETS) between them. A centre square, four arms between the vias and
+# four small corner squares. Each window keeps EP_PASTE_VIA_GAP from every via's copper ring, so paste does not
+# wick into the holes. About 50 % of the 3.4 mm pad.
+EP_PASTE_WINDOWS = ((0.0, 0.0, 1.1, 1.1),
+                    (1.175, 0.0, 0.95, 1.1), (-1.175, 0.0, 0.95, 1.1),
+                    (0.0, 1.175, 1.1, 0.95), (0.0, -1.175, 1.1, 0.95),
+                    (1.485, 1.485, 0.33, 0.33), (-1.485, 1.485, 0.33, 0.33), (1.485, -1.485, 0.33, 0.33),
+                    (-1.485, -1.485, 0.33, 0.33))
+EP_SIZE = 3.4
+EP_PASTE_COVERAGE = (0.5, 0.7)
+EP_PASTE_VIA_GAP = 0.15
+# No paste aperture anywhere comes closer than this to a via's drilled hole.
+PASTE_TO_VIA_DRILL = 0.15
 
 
 def routing_setup(head_start: tuple[str, ...]) -> route.Setup:
@@ -85,6 +119,8 @@ def _board_net(board: pcbnew.BOARD, board_name: str) -> pcbnew.NETINFO_ITEM:
 
 def _place(board: pcbnew.BOARD, part: Part, open_pin_nets: dict[str, str]) -> pcbnew.FOOTPRINT:
     footprint = _load_footprint(part.footprint)
+    if part.footprint_key == "HOLE_M2_GND":
+        _size_ground_bond(footprint)
     models.attach(part.footprint_key, footprint)
     board.Add(footprint)  # pcbnew crashes when it flips a footprint that has no board
     footprint.SetReference(part.ref)
@@ -108,8 +144,17 @@ def _place(board: pcbnew.BOARD, part: Part, open_pin_nets: dict[str, str]) -> pc
     silk.fit_footprint_silk(footprint)
     if not part.machine_assembled:
         footprint.SetExcludedFromPosFiles(True)
+    footprint.SetDNP(part.dnp)
     _connect(board, footprint, part, open_pin_nets)
     return footprint
+
+
+def _size_ground_bond(footprint: pcbnew.FOOTPRINT) -> None:
+    """The case ground ring and its hole, from board.toml. The library copy must agree, or DRC reports it."""
+    mounting = BOARD_SPEC["mounting"]
+    (pad,) = footprint.Pads()
+    pad.SetSize(pcbnew.VECTOR2I(mm(mounting["ground_bond_pad_diameter"]), mm(mounting["ground_bond_pad_diameter"])))
+    pad.SetDrillSize(pcbnew.VECTOR2I(mm(mounting["hole_diameter"]), mm(mounting["hole_diameter"])))
 
 
 def _remove_silkscreen_off_the_board(footprint: pcbnew.FOOTPRINT) -> None:
@@ -254,10 +299,10 @@ def _whole_board() -> list[tuple]:
 
 
 def add_inner_planes(board: pcbnew.BOARD) -> None:
-    _zone(board, GND, pcbnew.In1_Cu, _whole_board())
-    _zone(board, V5, pcbnew.In2_Cu, _whole_board())
-    _zone(board, V3, pcbnew.In2_Cu, V3_ISLAND, priority=1)
-    _zone(board, V1, pcbnew.In2_Cu, V1_ISLAND, priority=2)
+    _zone(board, GND, GROUND_LAYER, _whole_board())
+    _zone(board, V5, POWER_LAYER, _whole_board())
+    _zone(board, V3, POWER_LAYER, V3_ISLAND, priority=1)
+    _zone(board, V1, POWER_LAYER, V1_ISLAND, priority=2)
 
 
 def add_outer_ground_pours(board: pcbnew.BOARD) -> None:
@@ -266,18 +311,89 @@ def add_outer_ground_pours(board: pcbnew.BOARD) -> None:
 
 
 def _rules(board: pcbnew.BOARD) -> None:
+    """The same rules on the board in memory, for the DRC runs on boards saved without the project file."""
     settings = board.GetDesignSettings()
-    settings.m_TrackMinWidth = mm(0.127)
-    settings.m_MinClearance = mm(0.127)
-    settings.m_ViasMinSize = mm(0.45)
-    settings.m_MinThroughDrill = mm(0.3)
-    settings.m_CopperEdgeClearance = mm(EDGE_CLEARANCE)
-    settings.m_HoleClearance = mm(0.2)
+    settings.m_TrackMinWidth = mm(DRC_RULES["min_track_width"])
+    settings.m_MinClearance = mm(DRC_RULES["min_clearance"])
+    settings.m_ViasMinSize = mm(DRC_RULES["min_via_diameter"])
+    settings.m_MinThroughDrill = mm(DRC_RULES["min_through_hole_diameter"])
+    settings.m_CopperEdgeClearance = mm(DRC_RULES["min_copper_edge_clearance"])
+    settings.m_HoleClearance = mm(DRC_RULES["min_hole_clearance"])
+    settings.m_HoleToHoleMin = mm(DRC_RULES["min_hole_to_hole"])
+    settings.m_TentViasFront = True  # the vias in the MCU's exposed pad stay covered on the top face
+    settings.m_TentViasBack = True
     default_class = settings.m_NetSettings.GetDefaultNetclass()
     default_class.SetTrackWidth(mm(TRACK_WIDTH))
     default_class.SetClearance(mm(CLEARANCE))
     default_class.SetViaDiameter(mm(VIA_DIAMETER))
     default_class.SetViaDrill(mm(VIA_DRILL))
+
+
+def write_project_rules(project_path: Path, rules: dict[str, float] = DRC_RULES) -> None:
+    """Writes the design rules into the KiCad project file, where kicad-cli's DRC reads them. Saving the board
+    from Python does not write this file."""
+    project = json.loads(project_path.read_text())
+    project["board"]["design_settings"]["rules"].update(rules)
+    (default_class,) = [c for c in project["net_settings"]["classes"] if c["name"] == "Default"]
+    default_class.update(DEFAULT_NET_CLASS)
+    project_path.write_text(json.dumps(project, indent=2, sort_keys=True) + "\n")
+
+
+# --- the MCU footprint with windowed exposed-pad paste -----------------------------------------
+
+def _paste_pad(x: float, y: float, width: float, height: float) -> str:
+    return (f'\t(pad "" smd rect\n\t\t(at {x:g} {y:g})\n\t\t(size {width:g} {height:g})\n'
+            f'\t\t(layers "F.Paste")\n\t)\n')
+
+
+def check_paste_windows() -> None:
+    """The exposed-pad windows: inside the pad, EP_PASTE_VIA_GAP clear of every via's copper ring, about half
+    the pad."""
+    half = EP_SIZE / 2
+    via_reach = VIA_DIAMETER / 2 + EP_PASTE_VIA_GAP
+    for x, y, width, height in EP_PASTE_WINDOWS:
+        window = (x - width / 2, y - height / 2, x + width / 2, y + height / 2)
+        assert -half <= window[0] and window[2] <= half and -half <= window[1] and window[3] <= half, \
+            f"paste window at ({x}, {y}) leaves the exposed pad"
+        for dx, dy in route.EXPOSED_PAD_VIA_OFFSETS:
+            assert not route.circle_meets_rect(dx, dy, via_reach, window), \
+                f"paste window at ({x}, {y}) is within {EP_PASTE_VIA_GAP} mm of the via at ({dx}, {dy})"
+    coverage = sum(width * height for _, _, width, height in EP_PASTE_WINDOWS) / EP_SIZE ** 2
+    low, high = EP_PASTE_COVERAGE
+    assert low <= coverage <= high, f"exposed-pad paste covers {coverage:.0%}, wanted {low:.0%} to {high:.0%}"
+
+
+def write_derived_footprints() -> None:
+    """The project copy of the MCU footprint: KiCad's stock QFN-60 with its nine exposed-pad paste squares
+    replaced by EP_PASTE_WINDOWS. Everything else is the stock file's text."""
+    check_paste_windows()
+    project_name = circuit.FOOTPRINT["QFN60"]
+    library, stock_name = circuit.DERIVED_FOOTPRINTS[project_name].split(":")
+    text = (STOCK_FOOTPRINTS / f"{library}.pretty" / f"{stock_name}.kicad_mod").read_text()
+    paste_pad = re.compile(r'\t\(pad "" smd roundrect\n(?:\t\t[^\n]*\n)*?\t\)\n')
+    assert len(paste_pad.findall(text)) == 9, "the stock QFN-60 no longer has nine exposed-pad paste squares"
+    first = paste_pad.search(text).start()
+    text = paste_pad.sub("", text)
+    text = text[:first] + "".join(_paste_pad(*window) for window in EP_PASTE_WINDOWS) + text[first:]
+    footprint_name = project_name.split(":")[1]
+    text = text.replace(f'(footprint "{stock_name}"', f'(footprint "{footprint_name}"', 1)
+    text = text.replace(f'(property "Value" "{stock_name}"', f'(property "Value" "{footprint_name}"', 1)
+    text = text.replace('(generator "kicad-footprint-generator")',
+                        '(generator "macropad")\n\t(generator_version "pcb/gen/layout.py")', 1)
+    (PROJECT_FOOTPRINTS / "macropad.pretty" / f"{footprint_name}.kicad_mod").write_text(text)
+
+
+def _copper_pads(footprint: pcbnew.FOOTPRINT) -> list[tuple]:
+    return sorted((pad.GetNumber(), pad.GetPosition().x, pad.GetPosition().y, pad.GetSize(pcbnew.F_Cu).x,
+                   pad.GetSize(pcbnew.F_Cu).y, pad.GetShape(pcbnew.F_Cu), pad.GetLayerSet().FmtHex())
+                  for pad in footprint.Pads() if pad.IsOnCopperLayer())
+
+
+def check_derived_footprints() -> None:
+    """Each project copy of a stock footprint has exactly the stock copper pads: only the paste differs."""
+    for project_name, stock_name in circuit.DERIVED_FOOTPRINTS.items():
+        project, stock = _load_footprint(project_name), _load_footprint(stock_name)
+        assert _copper_pads(project) == _copper_pads(stock), f"{project_name}: copper differs from {stock_name}"
 
 
 # --- placement self-checks: flipping and rotating are easy to get backwards -------------------
@@ -325,10 +441,82 @@ def check_placement(placed: dict[str, pcbnew.FOOTPRINT]) -> None:
     assert math.dist(xin_pad, mcu_xin) < 8.0 and math.dist(drive_pad, mcu_xin) < 8.0, "the crystal is far from XIN"
 
     _check_inductor_dot(placed["L1"])
+    _check_pull_ups(placed)
 
     for ref, footprint in placed.items():
         if ref.startswith("FID"):
             assert footprint.IsFlipped(), f"{ref} is not on the assembly face"
+
+
+def _check_pull_ups(placed: dict[str, pcbnew.FOOTPRINT]) -> None:
+    """Each encoder pull-up sits on the bottom face within 3 mm of its encoder pin, its signal pad toward the pin."""
+    for ref, net in circuit.ENCODER_PULL_UPS.items():
+        side = "left" if net.startswith("ENC_L") else "right"
+        pin_xy = circuit.encoder_pin_xy(side, net[-1])
+        encoder = placed["ENC1" if side == "left" else "ENC2"]
+        assert _close(_pads(encoder, net[-1])[0], pin_xy), f"encoder pin {net[-1]} is not where circuit.py says"
+        signal, supply = _pads(placed[ref], "1")[0], _pads(placed[ref], "2")[0]
+        assert placed[ref].IsFlipped(), f"{ref} is not on the bottom face"
+        assert math.dist(signal, pin_xy) < math.dist(supply, pin_xy) < 3.0, f"{ref} is reversed or far from {net}"
+
+
+def check_ground_bond(board: pcbnew.BOARD) -> None:
+    """The case ground ring: on GND, with board.toml's ring and hole size, at board.toml's spot, and no copper of
+    another net within the clearance. Run after placement for pads, and again after routing for tracks and vias."""
+    mounting = BOARD_SPEC["mounting"]
+    ring_footprint = circuit.FOOTPRINT["HOLE_M2_GND"].split(":")[1]
+    rings = [footprint for footprint in board.GetFootprints()
+             if str(footprint.GetFPID().GetLibItemName()) == ring_footprint]
+    assert len(rings) == 1, f"{len(rings)} ground-bond holes on the board"
+    (ring,) = rings[0].Pads()
+    centre = pad_xy(ring)
+    radius = mounting["ground_bond_pad_diameter"] / 2
+    assert ring.GetNetname() == GND, f"the ground-bond ring is on {ring.GetNetname() or 'no net'}"
+    assert _close(centre, tuple(mounting["ground_bond_hole"])), f"the ground-bond ring is at {centre}"
+    ring_size = ring.GetSize(pcbnew.F_Cu)
+    assert ring.GetShape(pcbnew.F_Cu) == pcbnew.PAD_SHAPE_CIRCLE and all(
+        abs(pcbnew.ToMM(size) - 2 * radius) < 1e-3 for size in (ring_size.x, ring_size.y)), \
+        "the ground-bond ring does not have board.toml's diameter"
+    assert abs(pcbnew.ToMM(ring.GetDrillSize().x) - mounting["hole_diameter"]) < 1e-3, "the ground-bond hole is resized"
+    assert ring.IsOnLayer(pcbnew.F_Cu) and ring.IsOnLayer(pcbnew.F_Mask), \
+        "the ground-bond ring is not bare on the top face"
+    reach = radius + CLEARANCE
+    for footprint in board.GetFootprints():
+        for pad in footprint.Pads():
+            if pad.GetNetname() != GND and pad.IsOnCopperLayer():
+                assert not route.circle_meets_rect(*centre, reach, route.box_mm(pad.GetBoundingBox())), \
+                    f"{footprint.GetReference()} pad {pad.GetNumber()} is within {CLEARANCE} mm of the ground-bond ring"
+    for item in board.GetTracks():
+        if item.GetNetname() == GND:
+            continue
+        half_width = pcbnew.ToMM(item.GetWidth(pcbnew.F_Cu) if item.GetClass() == "PCB_VIA" else item.GetWidth()) / 2
+        start, end = (pcbnew.ToMM(item.GetStart().x), pcbnew.ToMM(item.GetStart().y)), \
+            (pcbnew.ToMM(item.GetEnd().x), pcbnew.ToMM(item.GetEnd().y))
+        assert route.point_segment_distance(centre, start, end) >= reach + half_width, \
+            f"{item.GetNetname()} copper at {start} is within {CLEARANCE} mm of the ground-bond ring"
+
+
+def check_paste_clear_of_vias(board: pcbnew.BOARD) -> None:
+    """Board-wide: no solder-paste aperture comes within PASTE_TO_VIA_DRILL of a via's hole, and every via is
+    covered by solder mask on the top face."""
+    vias = [track for track in board.GetTracks() if track.GetClass() == "PCB_VIA"]
+    for via in vias:
+        assert via.IsTented(pcbnew.F_Mask), f"via at {pad_xy(via)} is not tented on the top face"
+    for footprint in board.GetFootprints():
+        for pad in footprint.Pads():
+            for layer in (pcbnew.F_Paste, pcbnew.B_Paste):
+                if not pad.IsOnLayer(layer):
+                    continue
+                margin = pad.GetSolderPasteMargin(layer)
+                left, top, right, bottom = route.box_mm(pad.GetBoundingBox())
+                aperture = (left - pcbnew.ToMM(margin.x), top - pcbnew.ToMM(margin.y),
+                            right + pcbnew.ToMM(margin.x), bottom + pcbnew.ToMM(margin.y))
+                for via in vias:
+                    reach = pcbnew.ToMM(via.GetDrillValue()) / 2 + PASTE_TO_VIA_DRILL
+                    assert not route.circle_meets_rect(*pad_xy(via), reach, aperture), (
+                        f"{footprint.GetReference()}: paste aperture at {pad_xy(pad)} is within "
+                        f"{PASTE_TO_VIA_DRILL} mm "
+                        f"of the via hole at {pad_xy(via)}")
 
 
 def _dots(footprint: pcbnew.FOOTPRINT, layer: int) -> list[tuple[float, float]]:
@@ -375,6 +563,7 @@ def build_board(board_path: Path, open_pin_nets: dict[str, str]) -> pcbnew.BOARD
     _outline(board)
     placed = {part.ref: _place(board, part, open_pin_nets) for part in parts}
     check_placement(placed)
+    check_ground_bond(board)
     silk.add_labels(board)
     silk.check_minimums(board)
     add_inner_planes(board)

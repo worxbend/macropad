@@ -15,6 +15,7 @@ BOARD_TOML = Path(__file__).resolve().parents[2] / "board.toml"
 PRINT = "print"
 CNC = "cnc"
 VARIANTS = (PRINT, CNC)
+BACK_ROW, CENTRE_ROW, FRONT_ROW = "back", "centre", "front"  # the three rows of screws
 # The milled parts as a machine shop knows them: the STEP product name and the drawing's title block.
 REVISION = "A"
 CNC_PART_NUMBERS = {"base": "MP-CASE-BASE-CNC", "top": "MP-CASE-TOP-CNC"}
@@ -102,21 +103,22 @@ class Case:
     cnc_screw_length: float = 8.0
     counterbore_diameter: float = 4.4
     counterbore_depth: float = 2.6  # from the underside; the head ends up above the foot recess
-    cnc_counterbore_depth: float = 2.9
     # Print only: one layer that closes each screw hole at the roof of its foot recess. A hole in that
     # roof would be a hole in a bridge. The builder cuts the six skins out.
     screw_skin: float = 0.2
     pilot_diameter: float = 1.8  # print; guess: a hole printed lying down comes out about 0.15 smaller
     print_hole_shrink: float = 0.15  # guess
     pilot_depth: float = 4.2
-    cnc_tap_drill: tuple[float, float] = (1.6, 3.7)  # diameter, depth at full diameter; the drill point comes on top
+    # CNC: M2x0.4-6H tapped holes; depth, thread and counterbore per hole are in `CNC_TAPPED_HOLES`.
+    cnc_tap_drill: float = 1.6
     cnc_drill_point_angle: float = 118.0
-    cnc_tap_drill_limit: float = 3.8  # the drawing's 'do not exceed' depth at full diameter
-    # M2x0.4-6H, 2.5 min full thread: PCBWay's tapped-hole guide asks for 3 pitches (1.2) of drill past the
-    # thread, and 2.5 + 1.2 = 3.7.
-    cnc_full_thread: float = 2.5
+    # PCBWay's tapped-hole guide asks for 3 pitches (1.2) of drill past the full thread.
+    cnc_thread_runout: float = 1.2
     min_screw_engagement: float = 3.0  # self-tapped in plastic
-    cnc_min_screw_engagement: float = 1.6  # the height of an M2 nut
+    # 1.25 D, in 6061: what the 0.8 mm skin under the dish floor leaves for the two centre holes. The four
+    # corner holes reach 1.5 D (`cnc_full_engagement`).
+    cnc_min_screw_engagement: float = 2.5
+    cnc_full_engagement: float = 3.0  # 1.5 D
     screw_head: tuple[float, float] = (3.8, 2.0)  # ISO 4762 M2 cap head: diameter, height
     screw_thread_core: float = 1.5  # thread root diameter, drawn inside the hole of the top
 
@@ -144,6 +146,12 @@ class Case:
     print_bushing_clearance: float = 0.7
     shaft_diameter: float = 6.0
     shaft_flat: float = 4.5  # MEASURE: D-shaft thickness across the flat
+    # MEASURE: the flat runs only this far down from the shaft end (Alps drawing No. 2); below it the
+    # shaft is round. The knob's bore is round there too.
+    shaft_flat_length: float = 10.0
+    # Guess: the knob's D starts this far above the start of the shaft's flat, so a flat a little short
+    # still lets the knob seat on the shaft end. 1.0 keeps the step on the knob's 0.2 mm layer grid.
+    knob_flat_margin: float = 1.0
 
     knob_diameter: float = 14.4  # the smallest that still covers the bushing hole by 3 mm under its grooves
     # Knob underside above the floor of its well, not pressed. The knob seats on the end of the shaft,
@@ -417,10 +425,48 @@ def screw_length(variant: str) -> float:
     return CASE.cnc_screw_length if variant == CNC else CASE.screw_length
 
 
-def screw_seat(variant: str) -> float:
-    """Z of the counterbore's roof, which the screw head seats on."""
-    depth = CASE.cnc_counterbore_depth if variant == CNC else CASE.counterbore_depth
+def screw_seat(variant: str, hole: tuple[float, float]) -> float:
+    """Z of the counterbore's roof under `hole`, which the screw head seats on."""
+    depth = cnc_tapped_hole(hole).counterbore if variant == CNC else CASE.counterbore_depth
     return LEVELS.floor_bottom + depth
+
+
+@dataclass(frozen=True)
+class TappedHole:
+    """One row of M2x0.4-6H holes in the milled top, and the counterbores under them in the base.
+    Depths are at full diameter, from the joint face (Z 0)."""
+
+    depth: float
+    limit: float  # the drawing's 'do not exceed'
+    flat_bottom: bool  # milled flat: no drill point, so the thread can run deeper under a thin skin
+    counterbore: float  # in the base, from the underside; sets how far the M2 x 8 reaches into the thread
+
+    @property
+    def full_thread(self) -> float:
+        return self.depth - CASE.cnc_thread_runout
+
+
+# Back corners: under the 8.5 mm deck. Front corners: under the 45 degree dish wall, 6.4 mm of material
+# over the drill's edge. Centre: under the dish floor at Z 5.0, where a flat bottom at 4.2 leaves the
+# 0.8 mm skin and 3.0 mm of full thread. Every M2 x 8 then ends 0.5 mm before its full thread does.
+CNC_TAPPED_HOLES = {
+    BACK_ROW: TappedHole(depth=4.7, limit=4.8, flat_bottom=False, counterbore=4.0),
+    CENTRE_ROW: TappedHole(depth=4.2, limit=4.3, flat_bottom=True, counterbore=3.5),
+    FRONT_ROW: TappedHole(depth=4.7, limit=4.8, flat_bottom=False, counterbore=4.0),
+}
+
+
+def cnc_tapped_hole(hole: tuple[float, float]) -> TappedHole:
+    return CNC_TAPPED_HOLES[screw_row(hole)]
+
+
+def screw_row(hole: tuple[float, float]) -> str:
+    return next(row for row, holes in screw_rows().items() if tuple(hole) in holes)
+
+
+def ground_bond_hole() -> tuple[float, float]:
+    """The one hole where the milled case is bonded to GND: its top boss seats on a bare ring on the PCB."""
+    return tuple(BOARD.mounting.ground_bond_hole)
 
 
 def usb_opening_size() -> tuple[float, float]:
@@ -483,9 +529,6 @@ def rib_lines() -> list[float]:
     """Board Y of each plate rib: halfway between two key rows."""
     keys = BOARD.keys
     return [keys.first_y + (row + 0.5) * keys.pitch for row in range(keys.rows - 1)]
-
-
-BACK_ROW, CENTRE_ROW, FRONT_ROW = "back", "centre", "front"
 
 
 def screw_rows() -> dict[str, list[tuple[float, float]]]:

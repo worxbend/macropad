@@ -114,8 +114,12 @@ datasheets, not vendor models.
   to its well floor and 0.9 mm over the bushing; on a shaft 0.3 mm short (a guess) it keeps 0.3 and
   0.6 mm. 36 straight 90° V grooves, 0.35 mm deep, in one band that ends square like a turned
   ring, between two plain 1.6 mm bands; flat top; a radial pointer line 0.9 mm wide and 0.4 mm deep,
-  from 2 to 6 mm off the axis, on the side of the D-shaft's flat. Three ribs in the bore reach 0.12 mm
-  into the shaft (a guess for PETG or PLA), so a bore printed to size still grips. The knob is not
+  from 2 to 6 mm off the axis, on the side of the D-shaft's flat. The shaft's flat runs only 10 mm down
+  from its end (`shaft_flat_length`, `MEASURE`); below it the shaft is round. So the bore is round up to
+  1.0 mm above the start of the flat (a guess at the margin) and a D only above that: a D all the way
+  down stopped the knob on the round part, 1.6 mm above its seat (checked). Three ribs in the D part of
+  the bore reach 0.12 mm into the shaft (a guess for PETG or PLA), so a bore printed to size still
+  grips. The knob is not
   lower: the shaft fixes its top, and a higher bottom would show the bushing. A builder who wants a
   lower knob shortens both shafts by the same amount and lowers `encoder_shaft_top` to match. The knobs are
   printed in both builds: they are not designed for turning in aluminium.
@@ -184,10 +188,14 @@ and recesses from datum A. Each sheet has a title block (part number `MP-CASE-BA
 `MP-CASE-TOP-CNC`, revision A, quantity, material, finish), one finish (bead blast, then clear Type II
 anodise, Class 1: the natural silver of the renders), ISO 2768-m as the general tolerance, tolerances on
 the critical fits (switch cut-outs 14.00 +0.05/0 after anodise, plate 1.50 ±0.05, S1-S6 positions ±0.05,
-lap ridge and groove ±0.03, lens recess depth 1.25 ±0.05, USB opening ±0.1), the thread callout
-`M2x0.4-6H, 2.5 min full thread, drill ⌀1.6 x 3.7, do not exceed 3.8` and a 3:1 detail of the USB
-opening with the cutter its rounds need. The base sheet carries the laser-mark note. Nothing has been
-made from these sheets; the anodise build-up is a guess.
+lap ridge and groove ±0.03, lens recess 39.20 +0.05/0 x 14.80 +0.05/0 and 1.25 ±0.05 deep, so the
+0.1 mm fit per side stays 0.1 to 0.125 where ISO 2768-m would allow ±0.3, USB opening ±0.1), flatness
+0.05 on each lens ledge and 0.1 on the top's joint face (both chosen, not from a standard), the light
+channels with their 1.00 ±0.1 skin, a thread callout per row of holes (see CNC below) and a 3:1 detail
+of the USB opening with the cutter its rounds need. Both sheets say that the STEP file is the master
+for all geometry they do not dimension, where the anodise rack may touch (inner cavity faces only) and
+what to mask for the case ground. The base sheet carries the laser-mark note. Nothing has been made
+from these sheets; the anodise build-up is a rule of thumb, not a measurement.
 
 | | |
 | --- | --- |
@@ -225,8 +233,10 @@ is printed.
 
 Hardware:
 
-- Print variant: 6 x M2 x 10 socket-head cap screw (ISO 4762, 3.8 mm head). CNC variant: 6 x M2 x 8.
-  **Never M2 x 12 in the printed top**: its tip would come through the 0.8 mm skin under the dish floor.
+- Print variant: 6 x M2 x 10 socket-head cap screw (ISO 4762, 3.8 mm head). CNC variant: 6 x M2 x 8,
+  the same length in all six holes. **Never M2 x 12 in the printed top**: its tip would come through
+  the 0.8 mm skin under the dish floor. Never longer than M2 x 8 in the milled top: it would reach the
+  end of the thread.
 - Double-sided tape for the lens: two pieces of about 1.3 x 14.6 mm, 30 mm² in all. Measure the glass,
   then pick 0.13 mm or 0.2 mm tape so the lens ends just under the top face (the thickness is a guess).
 - An open-cell foam pad 10 x 10 mm and 2.5 mm thick, squeezed to 1.5 mm under the parts at the free
@@ -266,21 +276,23 @@ uv pip install --python .venv/bin/python -e .
 
 `check` writes `exports/checks.json` and runs five groups.
 
-0. **Self-test.** Before the case is judged, the measuring checks are run on 31 small solids: a sheet
+0. **Self-test.** Before the case is judged, the measuring checks are run on 33 small solids: a sheet
    thinner than the minimum wall, a pocket with sharp corners, a pocket with too small a radius, a slot
    narrower than the tool, a groove in a side wall, a bridge that is too long, a shelf, a wall leaning 60°,
    an outline with arc corners, two loose boxes, a foot recess with an open screw hole in its roof, a
    1 mm ledge 58 mm long between two posts, a letter stroke 0.3 mm wide, a foot over a hole, a step
-   between two 0.2 mm layers, a rod lying on the bed with no chair under it, and sound versions of
-   each. A check that misses its fault, or flags a
+   between two 0.2 mm layers, a rod lying on the bed with no chair under it, a knob whose bore is a D all
+   the way down on a shaft that is round below its flat, and sound versions of each. A check that misses
+   its fault, or flags a
    sound shape, fails the run.
 1. **Interference.** Every part against every bought component and every other part, for both variants:
    659 pairs each. Any shared volume over 0.05 mm³ fails. Keycaps are blocks that cover the whole key travel.
    The tilt bar against the back foot strip is skipped, because the bar takes that strip's recess. Each
    knob is a press fit on its shaft: only the volume of its crush ribs may overlap the shaft.
-2. **Named clearances.** 84 gaps computed from the dimensions: USB plug to its opening, keycap to the
+2. **Named clearances.** 96 gaps computed from the dimensions: USB plug to its opening, keycap to the
    dish rim, lens to the glass and how far a 5 N press bends it, screw engagement and thread for both
-   screws, the tap drill's point under the dish floor, switch cut-outs and the lens recess after a
+   screws and the thread for each row of tapped holes, the skin under the dish floor over the centre
+   tap drills, the knob bore's D above the start of the shaft's flat, switch cut-outs and the lens recess after a
    printed bridge sags, the gap and the lap joint on a PCB 10 % too thick, the PCB still clamped on a
    board 10 % too thin, the knob pressed on a shaft 0.3 mm short, the crush rib interference (0.08 to
    0.2 mm), the bushing in its hole after a printed hole shrinks, the posts under the sockets, the foam
@@ -334,6 +346,15 @@ uv pip install --python .venv/bin/python -e .
      tight or a slot too narrow. Chamfers and holes smaller than the tool are left out (chamfer mill, drill).
      This check made the lap joint what it is: a ridge all the way round needed a 1 mm groove behind every
      rib end and corner boss, which a 3 mm tool cannot cut.
+   - Knob on its shaft: the knob without its ribs, on the shaft as the Alps drawing gives it, must not
+     need lifting to clear the shaft, and the end of its bore must touch the end of the shaft.
+   - CNC tapped holes: the thinnest material round each row of tap drills, measured on the milled top,
+     as drawn (0.8 mm or more) and at the drawing's depth limit (0.7 mm or more).
+   - Case ground: the milled top's boss face at the ground hole rests on the PCB over all of its masked
+     disc, none of that disc lies outside the bare GND ring, and boss and PCB touch in the nominal stack.
+   - Print coupons: each is one sound solid, differs from its parent inside its box by under 0.05 mm³
+     once turned back from the bed, and passes the layer check (bridge under 15 mm, cantilever under
+     1.5 mm). The pilot-hole coupon has its 1.7, 1.8 and 1.9 mm holes.
    - CNC variant: no vertical internal edge without a radius (probe points around every vertical edge),
      smallest concave wall radius at least 1.5 mm, and no face hidden from a tool coming straight down
      or straight up (two height maps). Full round holes are left out of the radius check: they are drilled.
@@ -455,6 +476,24 @@ The screws cut their own thread in the 1.8 mm holes of the top. A hole printed l
 run a 1.7 mm drill 4.2 mm deep through the six holes first. Do not overtighten. Use M2 x 10 only:
 an M2 x 12 screw comes through the 0.8 mm skin under the dish floor.
 
+### Print coupons
+
+Print these before the whole case: an hour of printing instead of a day, and each one tests one fit.
+They are in `exports/print/coupons/`, as STL files that already lie the way they print. Each is cut
+with a box from the printed part itself, so inside the box it is the same geometry (checked), and it
+lies in that part's own print orientation. Print them with the case's settings and material, with a
+brim on the tall thin ones (`lap_groove`, `usb_top`). None has been printed yet.
+
+| File | Cut from | What to test | Pass | Fail: change |
+| --- | --- | --- | --- | --- |
+| `pilot_holes.stl` | top, the back-left corner boss three times, standing on its side wall like the top. Holes 1.7, 1.8 and 1.9 mm, along the layers. A 2 mm tie on the bed joins the three; it is not in the top | Drive an M2 x 10 into each hole to 4 mm, take it out, drive it in again | The screw starts by hand, cuts its thread and holds on the second time; the boss shows no crack along a layer | Splits: the hole is too small, take the next size. Spins: too large. Set `pilot_diameter` to the best size |
+| `mx_cutout.stl` | top, the first key of the middle row with the left frame, the dish wall and the 1.5 mm plate | Clip an MX switch in, press and pull it | It clips in with a click, sits flat and does not rock; it comes out only with a switch puller | Loose or tight: measure the cut-out across both ways, compare with 14.0 (14.2 along X), adjust `print_bridge_sag` |
+| `lap_ridge.stl`, `lap_groove.stl` | base and top, 30 mm of the front wall | Put the groove on the ridge | It goes on by hand, both outer faces stay in line within 0.1 mm, it does not rock | Will not go on: `lap_fit` too small; rocks: too large |
+| `light_channel.stl` | base, 10 mm across the left light channel; a block stands where the PCB edge is (not in the base) | Drop a printed light bar in, lip first, toward the block | It drops in without force, rests on the slot floor, its top shows 1.25 mm back from the outer face in the gap, and it stays when the coupon is turned over and shaken | Sticks: `diffuser_fit`; falls out: `diffuser_to_pcb` |
+| `knob_bore.stl` | knob, a 10 mm square round the bore, from its foot to 1 mm over the end of the bore | Push it onto an EC11E18244AU shaft until it stops | It stops on the shaft end, with its foot 8.9 mm (±0.2) above the encoder's mounting face (the PCB top), 15.6 mm under the end of the bore; it grips and does not turn on the flat | Stops high: measure the flat's length (`shaft_flat_length`); loose: `knob_rib_interference` |
+| `usb_base.stl`, `usb_top.stl` | base and top, 20 mm round the USB opening | Hold the two together on their joint faces and plug in the cable you will use | The plug goes in and out without touching the edges | Touches: measure the overmould, set `usb_plug` |
+| `lens_recess_end.stl` | top, the high-X end of the lens recess across its whole width, with its ledge (a box over one corner would turn that end's bridge into a ledge) | Lay a corner of the lens on the ledge with the tape | The lens lies under flush (a straight edge across the top face does not touch it) with an even reveal of 0.1 to 0.2 mm | Proud: thinner tape or a thinner sheet; reveal uneven: `print_bridge_sag` |
+
 ## CNC
 
 `exports/cnc/base.step` and `exports/cnc/top.step` are for 3-axis milling, two setups each.
@@ -493,17 +532,30 @@ an M2 x 12 screw comes through the 0.8 mm skin under the dish floor.
 - Material and finish (nothing has been milled): 6061-T6. Bead blast all over (120 to 150 grit glass
   bead), then anodise to MIL-A-8625 Type II, Class 1 (clear, not dyed), 8 to 12 µm: the natural silver
   of the renders. Space grey stays a render colourway only. Mask the six tapped M2 holes, or chase them
-  with an M2 6H tap after anodising. Anodise grows each face by about 0.004 to 0.006 mm (a guess: half
-  the coating); the toleranced fits on the sheets hold after anodise. Break unmarked edges 0.05 mm. The
+  with an M2 6H tap after anodising. MIL-A-8625 Type II allows 1.8 to 25 µm of coating (Aluminum
+  Anodizers Council reference guide; the spec text itself was not read). The sheets ask for 8 to 12 µm.
+  About half of a coating builds up and half goes into the metal, so each face grows about 0.004 to
+  0.006 mm, 0.008 to 0.012 mm on a size (the half is the usual rule, a guess until a part is measured).
+  The toleranced fits on the sheets hold after anodise. Break unmarked edges 0.05 mm. The
   0.3 mm chamfers are cosmetic: measure them after blasting. The same block is on both CNC sheets.
-- Screws: M2 x 8 in tapped blind holes, called out as `M2x0.4-6H, 2.5 min full thread, drill ⌀1.6 x
-  3.7, do not exceed 3.8`. 2.5 mm of thread plus three pitches (1.2 mm) is the 3.7 mm hole, as PCBWay's
-  tapped-hole guide asks. The 118° point ends at 4.18 mm, 0.82 mm under the dish floor; at the 3.8 mm
-  limit it leaves 0.72 mm (checked against 0.7). The screw takes 1.9 mm of thread (an M2 nut is 1.6 mm
-  tall) and ends 0.6 mm before the full thread does.
+- Screws: M2 x 8 in all six tapped blind holes (`CNC_TAPPED_HOLES` in `spec.py`). Each hole is its full
+  thread plus three pitches (1.2 mm), as PCBWay's tapped-hole guide asks, and each screw ends 0.5 mm
+  before its full thread does.
+
+  | Holes | Under | Callout | Counterbore in the base | Screw in the thread |
+  | --- | --- | --- | --- | --- |
+  | S1, S2 (back corners) | the 8.5 mm deck | `M2x0.4-6H, 3.5 min full thread, drill ⌀1.6 x 4.7, point to 5.18, do not exceed 4.8` | 4.0 deep | 3.0 mm, 1.5 D |
+  | S5, S6 (front corners) | the 45° dish wall | as S1 | 4.0 deep | 3.0 mm, 1.5 D |
+  | S3, S4 (centre) | the dish floor, Z 5.0 | `M2x0.4-6H, 3.0 min full thread, drill ⌀1.6 x 4.2, flat bottom, do not exceed 4.3` | 3.5 deep | 2.5 mm, 1.25 D |
+
+  The centre holes cannot reach 1.5 D: under the dish floor a flat bottom at 4.2 mm leaves exactly the
+  0.8 mm skin (at the 4.3 mm limit, 0.7 mm; checked against 0.7), and 4.2 mm holds 3.0 mm of full
+  thread. A pointed drill there would give 0.48 mm less. The thinnest material round the corner tap
+  drills is 1.7 mm (back) and 1.2 mm (front), measured on the solid.
 - Every exported STEP and STL is read back after `export` (`macropad_case/roundtrip.py`): one valid,
   closed solid per part file and 81 in `assembly.step`, no free edges, volume within 0.1 % of the part
-  in memory and of its STL, which must be watertight, and the STEP product named. The milled parts
+  in memory and of its STL, which must be watertight and one body, and the STEP product named. The
+  nine print coupons are STL only: each is read back as one watertight body with the coupon's volume. The milled parts
   must also have no face under 0.05 mm² and no edge under 0.01 mm. The product names are
   `MP-CASE-BASE-CNC rev A` and `MP-CASE-TOP-CNC rev A`.
 - Why the check exists: OCCT's STEP writer leaves out, without a warning, every face that touches an
@@ -511,6 +563,14 @@ an M2 x 12 screw comes through the 0.8 mm skin under the dish floor.
   as two open shells without the rim the top seats on. `solids.offset_sketch` now rebuilds those faces
   on B-spline copies of their edges (within 0.00003 mm), so no offset curve reaches a solid.
 - The plate is 1.5 mm thick, which MX switches need to clip in.
+- Case ground. The milled case is bonded to GND at S1, the hole the board names in
+  `mounting.ground_bond_hole`: the top's 5.0 mm corner boss there rests on a bare GND ring of 5.4 mm on
+  the PCB's top face. Both sheets say to mask from anodise the boss face round S1 (top) and the
+  counterbore seat of S1 (base), with the tapped thread masked or chased as in all six holes. The S1
+  screw then joins base, top and GND. Checked: the boss face rests on the PCB over its whole masked
+  disc, none of it lies outside the ring, and boss and PCB touch in the nominal stack. Anodise is an
+  insulator, so the other five holes do not bond. The printed case is plastic and insulating: it needs
+  no mask and is not grounded.
 
 The light bars, the knobs, the foot strips and the tilt bar stay printed, in both builds. The knobs are
 not designed for turning: a metal knob needs a round bore, a grub screw and grooves a cutter can run out
@@ -564,6 +624,8 @@ picture colours, in `macropad_case/render.py`.
 | Encoder threaded bushing length | 7.0 mm; the PCB's block model in `pcb/gen/models.py` draws 5.0 mm. The case takes the larger | `bushing_length` |
 | Encoder shaft length tolerance (a guess) | 0.3 mm short | `shaft_length_tolerance` |
 | Encoder D-shaft, across the flat | 4.5 mm | `shaft_flat` |
+| Encoder D-shaft, length of the flat from the shaft end (Alps drawing No. 2) | 10 mm | `shaft_flat_length` |
+| Knob bore: round part past the start of the shaft's flat (a guess) | 1.0 mm | `knob_flat_margin` |
 | Encoder terminal positions | from the KiCad EC11E footprint | `components.ENCODER_PINS` |
 | Side LED body (Opsco datasheet) | 4.0 x 1.6 x 2.0 mm | `led_body` |
 | Keycap: skirt above the plate when pressed, top above the plate | 2.0 mm, 14.5 mm | `keycap_*` |
@@ -581,7 +643,7 @@ picture colours, in `macropad_case/render.py`.
 | Sheet thickness tolerance (a guess) | +0.1 mm | `checks.LENS_SHEET_TOLERANCE` |
 | Sag of a printed bridge (a guess) | 0.2 mm | `print_bridge_sag` |
 | Printed hole lying down comes out small by (a guess) | 0.15 mm | `print_hole_shrink` |
-| Full thread a bottoming tap leaves in a 3.7 mm hole (a guess) | 3.0 mm | `cnc_full_thread` |
+| Full thread left in a tapped hole: its depth less three pitches (PCBWay's guide) | 1.2 mm | `cnc_thread_runout` |
 | Display header pins once trimmed | 1.5 mm above the module board | `header_pin_height` |
 | Foam pad under the display (a guess) | 10 x 10 mm, 2.5 mm free, squeezed to 1.5 mm | `display_foam` |
 | Foam rings on the base bosses (a guess) | 0.8 mm free, 0.4 mm of room on a 1.6 mm board | `boss_ring` |
@@ -591,7 +653,7 @@ picture colours, in `macropad_case/render.py`.
 | Knob grooves (a guess for a 0.4 mm nozzle) | 36 grooves, 0.35 mm deep, 0.56 mm land | `knob_grooves`, `knob_groove_depth` |
 | Crush ribs in the knob bore (a guess) | three, 1.0 mm wide, 5 mm long, 0.12 mm into the shaft | `knob_crush_rib`, `knob_rib_interference` |
 | Engraved slot lost to the first layer (a guess) | about 0.2 mm | `checks.MIN_BED_ENGRAVING` |
-| Anodise growth per face (a guess) | 0.01 to 0.02 mm | CNC notes above |
+| Anodise growth per face (half of 8 to 12 µm, a rule of thumb) | 0.004 to 0.006 mm | CNC notes above |
 | Light bar material (a guess) | natural translucent PETG | parts table above |
 | Light through the slit (a guess, nothing was simulated) | enough to read as a line | `gap_height`, `light_channel_reach` |
 | Glow colour and brightness in `light_line.png` (a guess) | warm white | `render.GLOWING_DIFFUSER` |
@@ -631,6 +693,7 @@ a part, then replace it with a note of what was measured and how.
 | `encoder_body` | 12.4 x 13.4 mm | EC11E body, X and Y | Caliper | `cad/macropad_case/spec.py` | Clash check (encoder against the top) |
 | `bushing_length` | 7.0 mm | EC11E threaded bushing above the body | Caliper | `cad/macropad_case/spec.py` | `knob_pocket_to_bushing_*`, clash check |
 | `shaft_flat` | 4.5 mm | EC11E D-shaft across the flat | Caliper or micrometer | `cad/macropad_case/spec.py` | Knob bore and `knob_rib_interference` |
+| `shaft_flat_length` | 10.0 mm | EC11E18244AU: shaft end to the step where the flat starts | Caliper depth rod | `cad/macropad_case/spec.py` | Knob bore, `knob_bore_d_above_shaft_flat` (0.5), `knob_rides_above_its_seat`, clash check |
 | `display_thickness` | 1.9 mm | nice!view: module board bottom to glass top | Caliper | `cad/macropad_case/spec.py` | `header_pins_under_lens`, clash check |
 | `display_underside` | 1.0 mm | nice!view: tallest part or folded flex under the module board | Caliper depth rod | `cad/macropad_case/spec.py` | Clash check (display against the PCB and the foam pad) |
 | `display_glass` | 30 x 13.6 mm | nice!view: LCD glass length and width | Caliper | `cad/macropad_case/spec.py` | `lens_mask_window_inside_glass`, pictures |

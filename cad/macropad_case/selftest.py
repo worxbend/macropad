@@ -8,8 +8,10 @@ import numpy as np
 from build123d import Axis, Box, Cylinder, Part, Plane, Polygon, Pos, extrude, fillet
 
 from . import measure, printsim
-from .solids import case_outline, overlap_volume, slab
-from .spec import CASE, CNC, PRINT
+from .components import encoder
+from .small_parts import BORE_END, knob_bore
+from .solids import box, case_outline, cylinder, overlap_volume, slab
+from .spec import CASE, CNC, LEVELS, PRINT
 
 BLOCK = (30.0, 30.0, 10.0)
 POCKET = (10.0, 10.0, 6.0)  # open at the top of the block
@@ -83,6 +85,8 @@ def run() -> list[dict]:
         ("faces_on_layers_pass", measure.misaligned_faces(_stepped_block(1.6)), "equal to", 0),
         ("bare_curve_off_the_bed_found", _rod_overhang(chaired=False), "more than", 45.0),
         ("chaired_curve_off_the_bed_passes", _rod_overhang(chaired=True), "less than", 45.0 + 1e-6),
+        ("d_bore_on_round_shaft_rides_high", _knob_lift(d_start=LEVELS.knob_bushing_roof), "more than", 1.0),
+        ("round_then_d_bore_seats", _knob_lift(), "equal to", 0.0),
     ]
     return [_verdict(*case) for case in cases]
 
@@ -159,3 +163,11 @@ def _rod_overhang(chaired: bool) -> float:
 def _verdict(name: str, found: float, relation: str, limit: float) -> dict:
     ok = {"more than": found > limit, "less than": found < limit, "equal to": found == limit}[relation]
     return {"name": name, "found": round(float(found), 3), "expected": f"{relation} {limit}", "ok": bool(ok)}
+
+
+def _knob_lift(**bore) -> float:
+    """How far a plain knob stands above its seat on the encoder's shaft: with the bore drawn now, and
+    with the earlier bore that was a D all the way down, which stops on the round part of the shaft."""
+    shaft = encoder((0, 0)) & box((-10, 10), (-10, 10), (LEVELS.bushing_top, LEVELS.knob_top))
+    knob = cylinder((0, 0), CASE.knob_diameter, (LEVELS.knob_bushing_roof, BORE_END + 1)) - knob_bore(**bore)
+    return measure.seat_lift(knob, shaft, 3.0)

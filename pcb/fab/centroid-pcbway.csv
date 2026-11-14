@@ -1,0 +1,76 @@
+Designator,Footprint,Mid X,Mid Y,Layer,Rotation,Comment
+C1,C_0402_1005Metric,47.450mm,68.200mm,Bottom,0,100nF
+C10,C_0402_1005Metric,43.700mm,70.450mm,Bottom,90,100nF
+C11,C_0402_1005Metric_Wide,39.800mm,69.600mm,Bottom,180,4.7uF
+C12,C_0402_1005Metric_Wide,39.800mm,70.550mm,Bottom,180,4.7uF
+C14,C_0402_1005Metric_Wide,37.000mm,68.800mm,Bottom,180,4.7uF
+C15,C_0402_1005Metric,44.700mm,55.800mm,Bottom,90,15pF
+C16,C_0402_1005Metric,42.050mm,53.600mm,Bottom,0,15pF
+C17,C_0603_1608Metric,29.000mm,76.900mm,Bottom,180,2.2uF
+C18,C_0603_1608Metric,31.000mm,70.100mm,Bottom,180,10uF
+C19,C_0402_1005Metric,27.600mm,67.900mm,Bottom,270,1uF
+C2,C_0402_1005Metric,47.450mm,65.800mm,Bottom,0,100nF
+C20,C_0402_1005Metric,52.400mm,74.100mm,Bottom,270,100nF
+C21,C_0402_1005Metric,58.000mm,74.100mm,Bottom,270,100nF
+C22,C_0603_1608Metric,79.600mm,59.100mm,Bottom,180,2.2uF
+C23,C_0603_1608Metric,4.400mm,59.100mm,Bottom,180,2.2uF
+C24,C_0402_1005Metric,79.800mm,52.500mm,Bottom,270,100nF
+C25,C_0402_1005Metric,79.800mm,39.000mm,Bottom,270,100nF
+C26,C_0402_1005Metric,79.800mm,25.500mm,Bottom,270,100nF
+C27,C_0402_1005Metric,79.800mm,12.000mm,Bottom,270,100nF
+C28,C_0402_1005Metric,4.200mm,12.000mm,Bottom,270,100nF
+C29,C_0402_1005Metric,4.200mm,25.500mm,Bottom,270,100nF
+C3,C_0402_1005Metric,47.450mm,63.400mm,Bottom,0,100nF
+C30,C_0402_1005Metric,4.200mm,39.000mm,Bottom,270,100nF
+C31,C_0402_1005Metric,4.200mm,52.500mm,Bottom,270,100nF
+C32,C_0402_1005Metric,34.650mm,67.800mm,Bottom,180,100nF
+C33,C_0402_1005Metric,45.200mm,69.600mm,Bottom,0,100nF
+C4,C_0402_1005Metric,44.100mm,59.550mm,Bottom,270,100nF
+C5,C_0402_1005Metric,42.000mm,59.550mm,Bottom,270,4.7uF
+C6,C_0402_1005Metric,37.800mm,59.550mm,Bottom,270,100nF
+C7,C_0402_1005Metric,36.550mm,64.800mm,Bottom,180,100nF
+C8,C_0402_1005Metric,36.550mm,65.800mm,Bottom,180,100nF
+C9,C_0402_1005Metric,36.550mm,67.800mm,Bottom,180,100nF
+F1,Fuse_1206_3216Metric,33.000mm,79.100mm,Bottom,270,nSMD050
+J1,USB_C_Receptacle_HRO_TYPE-C-31-M-12,42.000mm,79.350mm,Bottom,0,USB-C
+L1,L_Abracon_AOTA-B201610,39.900mm,72.100mm,Bottom,180,3.3uH
+LED1,SK6812-side-a,83.200mm,52.500mm,Bottom,270,SK6812SIDE-A
+LED2,SK6812-side-a,83.200mm,39.000mm,Bottom,270,SK6812SIDE-A
+LED3,SK6812-side-a,83.200mm,25.500mm,Bottom,270,SK6812SIDE-A
+LED4,SK6812-side-a,83.200mm,12.000mm,Bottom,270,SK6812SIDE-A
+LED5,SK6812-side-a,0.800mm,12.000mm,Bottom,90,SK6812SIDE-A
+LED6,SK6812-side-a,0.800mm,25.500mm,Bottom,90,SK6812SIDE-A
+LED7,SK6812-side-a,0.800mm,39.000mm,Bottom,90,SK6812SIDE-A
+LED8,SK6812-side-a,0.800mm,52.500mm,Bottom,90,SK6812SIDE-A
+R1,R_0402_1005Metric,35.000mm,68.800mm,Bottom,180,33R
+R10,R_0402_1005Metric,8.325mm,74.000mm,Bottom,0,3.3k
+R11,R_0402_1005Metric,8.325mm,69.000mm,Bottom,0,3.3k
+R12,R_0402_1005Metric,60.675mm,74.000mm,Bottom,180,3.3k
+R13,R_0402_1005Metric,60.675mm,69.000mm,Bottom,180,3.3k
+R2,R_0402_1005Metric,40.100mm,53.600mm,Bottom,180,1k
+R3,R_0402_1005Metric,47.600mm,59.900mm,Bottom,270,10k
+R4,R_0402_1005Metric,35.600mm,60.200mm,Bottom,270,1k
+R5,R_0402_1005Metric,36.000mm,75.900mm,Bottom,270,5.1k
+R6,R_0402_1005Metric,48.000mm,75.900mm,Bottom,270,5.1k
+R7,R_0402_1005Metric,41.500mm,71.700mm,Bottom,270,27R
+R8,R_0402_1005Metric,42.450mm,71.700mm,Bottom,270,27R
+R9,R_0402_1005Metric,54.100mm,71.300mm,Bottom,270,330R
+SW1,MX_Hotswap,12.825mm,54.250mm,Bottom,180,MX hot-swap
+SW10,MX_Hotswap,31.875mm,16.150mm,Bottom,180,MX hot-swap
+SW11,MX_Hotswap,50.925mm,16.150mm,Bottom,180,MX hot-swap
+SW12,MX_Hotswap,69.975mm,16.150mm,Bottom,180,MX hot-swap
+SW13,SW_Push_1P1T_XKB_TS-1187A,30.500mm,61.200mm,Bottom,180,TS-1187A
+SW14,SW_Push_1P1T_XKB_TS-1187A,53.500mm,61.200mm,Bottom,180,TS-1187A
+SW2,MX_Hotswap,31.875mm,54.250mm,Bottom,180,MX hot-swap
+SW3,MX_Hotswap,50.925mm,54.250mm,Bottom,180,MX hot-swap
+SW4,MX_Hotswap,69.975mm,54.250mm,Bottom,180,MX hot-swap
+SW5,MX_Hotswap,12.825mm,35.200mm,Bottom,180,MX hot-swap
+SW6,MX_Hotswap,31.875mm,35.200mm,Bottom,180,MX hot-swap
+SW7,MX_Hotswap,50.925mm,35.200mm,Bottom,180,MX hot-swap
+SW8,MX_Hotswap,69.975mm,35.200mm,Bottom,180,MX hot-swap
+SW9,MX_Hotswap,12.825mm,16.150mm,Bottom,180,MX hot-swap
+U1,QFN-60-1EP_7x7mm_P0.4mm_EP3.4x3.4mm_ViaWindows,42.000mm,65.000mm,Bottom,180,RP2354A
+U2,SOT-23-5,31.000mm,73.100mm,Bottom,270,AP2112K-3.3
+U3,SOT-23-6,46.800mm,72.100mm,Bottom,180,USBLC6-2SC6
+U4,SOT-23-6,55.200mm,74.100mm,Bottom,180,74LVC1T45
+Y1,Crystal_SMD_3225-4Pin_3.2x2.5mm,41.900mm,56.300mm,Bottom,180,12MHz

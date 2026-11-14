@@ -53,6 +53,8 @@ OUTER_FACE_DEPTH = 0.6  # mm; a face this close to the outline, and facing out, 
 FACING_OUT = 0.5  # cosine between a face's normal and the outline's outward normal, in plan
 SUPPORT_REACH = 0.5  # mm; a chair, or the bed, this close under an overhanging face carries it
 INSERT_STEP = 0.5  # mm between the heights a part is tried at while it is lowered into place
+SEAT_RESOLUTION = 0.01  # mm; how closely the height a part stops at is found
+HOLE_WALL_REACH = 5.0  # mm round a blind hole within which its thinnest wall is looked for
 
 
 def row(name: str, value: float, limit: float, kind: str = "min", unit: str = "mm") -> dict:
@@ -480,3 +482,37 @@ def boss_walls(base: Part, top: Part) -> list[dict]:
         # The corner bosses print with their hole along the layers, where a thread-cutting screw splits them.
         row("top_corner_boss_wall", boss_wall(top, CASE.pilot_diameter, in_the_top, corner_holes()), 1.5),
     ]
+
+
+def seat_lift(part: Part, obstacle: Part, reach: float) -> float:
+    """How far `part` must be lifted straight up from where it is drawn before it no longer overlaps
+    `obstacle`: zero for a part that seats where it is drawn, `reach` or more for one that never clears."""
+    def clashes(lift: float) -> bool:
+        return overlap_volume(Pos(0, 0, lift) * part, obstacle) > RETENTION_VOLUME
+
+    if not clashes(0.0):
+        return 0.0
+    if clashes(reach):
+        return reach
+    low, high = 0.0, reach
+    while high - low > SEAT_RESOLUTION:
+        middle = (low + high) / 2
+        low, high = (middle, high) if clashes(middle) else (low, middle)
+    return high
+
+
+def wall_round_blind_hole(part: Part, hole: Part, mouth_z: float) -> float:
+    """Thinnest material between a blind hole opened from below and any other air of the part, more
+    than 1 mm above the hole's mouth: the skin over its end, or the boss round its side. `hole` is
+    the shape that was cut; it may be drawn deeper than the hole in `part`, to judge a deeper drill."""
+    centre = hole.bounding_box().center()
+    reach = HOLE_WALL_REACH
+    near = box((centre.X - reach, centre.X + reach), (-centre.Y - reach, -centre.Y + reach), (mouth_z + 1, FAR))
+    air = near - ((part & near) + hole)
+    return float(hole.distance_to(air))
+
+
+def section_above(part: Part, z: float) -> Sketch:
+    """The part cut just above height `z`, moved down to Z 0: where it rests on a plane at `z`, when
+    nothing of it reaches below `z` there."""
+    return Pos(0, 0, -z - SEAT_PROBE) * section(part, section_by=Plane.XY.offset(z + SEAT_PROBE))

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Fail when the firmware disagrees with board.toml.
 
-board.toml is the source of truth for the PCB. Three things in the firmware repeat it:
+board.toml is the source of truth for the PCB. These parts of the firmware repeat it:
 
 - firmware/fw/src/board.rs names the GPIOs,
 - firmware/fw/src/board.rs says how the encoder part clicks,
+- firmware/core/src/debounce.rs and firmware/fw/src/main.rs set the debounce window the knobs need,
 - firmware/core/src/geometry.rs holds the key and LED positions the light effects use,
 - firmware/sim/src/board.rs holds the outline, knob and display positions the simulator draws.
 """
@@ -19,11 +20,17 @@ BOARD_TOML = REPO / "board.toml"
 BOARD_RS = REPO / "firmware" / "fw" / "src" / "board.rs"
 GEOMETRY_RS = REPO / "firmware" / "core" / "src" / "geometry.rs"
 SIM_BOARD_RS = REPO / "firmware" / "sim" / "src" / "board.rs"
+DEBOUNCE_RS = REPO / "firmware" / "core" / "src" / "debounce.rs"
+MAIN_RS = REPO / "firmware" / "fw" / "src" / "main.rs"
 
 UM_PER_MM = 1000
-# Clicks per electrical cycle of each encoder part the firmware knows, as `quadrature::Detents`.
-# EC11E18244AU: 36 detents, 18 pulses per turn (Alps Alpine product page).
-ENCODER_DETENTS = {"EC11E18244AU": "PerHalfCycle"}
+# How each encoder part the firmware knows clicks, as `quadrature::Detents`.
+# EC11E18244AU: 36 detents, 18 pulses per turn (Alps Alpine product page). Its output-wave figure
+# says "The stable detent position cannot be identified in phase B": one click per edge of A.
+ENCODER_DETENTS = {"EC11E18244AU": "PerEdgeOfA"}
+# Longest contact chatter of each encoder part, in ms. EC11E18244AU: "Chattering: 3ms max.
+# Bounce: 2ms max." (Alps Alpine product page). The debounce window must outlast it.
+ENCODER_CHATTER_MS = {"EC11E18244AU": 3}
 
 GPIO = r"PIN_(\d+)"
 
@@ -137,6 +144,23 @@ def detent_problems(board: dict, board_rs: str) -> list[str]:
     return []
 
 
+def debounce_problems(board: dict, debounce_rs: str, main_rs: str) -> list[str]:
+    """The debounce window (samples times the scan period) must be longer than the part's chatter."""
+    part = board["encoders"]["part"]
+    if part not in ENCODER_CHATTER_MS:
+        return [f"encoder part {part} is not in ENCODER_CHATTER_MS: look up its chattering time, then add it"]
+    samples = re.search(r"pub const DEBOUNCE_SAMPLES: u8 = (\d+);", debounce_rs)
+    if samples is None:
+        raise ValueError("no `pub const DEBOUNCE_SAMPLES` in debounce.rs")
+    period = re.search(r"const SCAN_PERIOD: Duration = Duration::from_millis\((\d+)\);", main_rs)
+    if period is None:
+        raise ValueError("no `const SCAN_PERIOD` in main.rs")
+    window_ms = int(samples.group(1)) * int(period.group(1))
+    if window_ms <= ENCODER_CHATTER_MS[part]:
+        return [f"debounce window {window_ms} ms is not longer than {part}'s {ENCODER_CHATTER_MS[part]} ms chatter"]
+    return []
+
+
 def mismatches(expected: dict[str, list[int]], actual: dict[str, list[int]]) -> list[str]:
     return [
         f"{field}: board.toml says {expected[field]}, the firmware uses {actual[field]}"
@@ -152,6 +176,7 @@ def main() -> int:
         board_rs = BOARD_RS.read_text()
         problems = mismatches(expected, firmware_pins(board_rs))
         problems += detent_problems(board, board_rs)
+        problems += debounce_problems(board, DEBOUNCE_RS.read_text(), MAIN_RS.read_text())
         problems += mismatches(expected_geometry(board), firmware_geometry(GEOMETRY_RS.read_text()))
         problems += mismatches(expected_picture(board), simulator_picture(SIM_BOARD_RS.read_text()))
     except (ValueError, IndexError) as error:
@@ -161,7 +186,7 @@ def main() -> int:
         print(f"check_pins: {problem}", file=sys.stderr)
     if not problems:
         print(f"check_pins: {sum(map(len, expected.values()))} GPIOs match board.toml")
-        print("check_pins: knob detents, key grid and 8 LED positions match board.toml")
+        print("check_pins: knob detents, knob debounce window, key grid and 8 LED positions match board.toml")
         print("check_pins: the simulator's outline, knob and display positions match board.toml")
     return 1 if problems else 0
 

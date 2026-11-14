@@ -389,7 +389,7 @@
           <dl class="facts-list">
             <div><dt>Chip</dt><dd>RP2354A, RP2350 with 2&nbsp;MB flash inside</dd></div>
             <div><dt>Board</dt><dd>84&nbsp;×&nbsp;82.5&nbsp;mm, 4 layers, 1.6&nbsp;mm</dd></div>
-            <div><dt>Routing</dt><dd>802 tracks, 161 vias, 0 design-rule violations</dd></div>
+            <div><dt>Routing</dt><dd>827 tracks, 164 vias, 0 design-rule violations</dd></div>
             <div><dt>Machine-placed parts</dt><dd>All on the bottom face</dd></div>
           </dl>
         </div>
@@ -735,17 +735,17 @@ tap_hold("TAB/SH", Stroke::plain(key::TAB), Stroke::modifiers(modifier::SHIFT)),
         <h2 id="specs-title">Tech specs</h2>
         <dl class="spec-list">
           <div><dt>Keys</dt><dd>12 MX-style, Kailh-compatible hot-swap sockets, one GPIO per key, no matrix, no diodes</dd></div>
-          <div><dt>Knobs</dt><dd>2 Alps EC11 encoders with push switch, 36 detents a turn</dd></div>
+          <div><dt>Knobs</dt><dd>2 Alps EC11 encoders with push switch, 36 detents a turn, 3.3&nbsp;kΩ pull-ups on the contacts</dd></div>
           <div><dt>Display</dt><dd>nice!view, Sharp memory LCD, 160&nbsp;×&nbsp;68, monochrome, always on</dd></div>
           <div><dt>Light</dt><dd>8 SK6812 SIDE-A side-emitting RGB LEDs, four a side, behind two light bars in the seam</dd></div>
           <div><dt>Chip</dt><dd>RP2354A (RP2350 with 2&nbsp;MB flash in the package)</dd></div>
-          <div><dt>Board</dt><dd>84&nbsp;×&nbsp;82.5&nbsp;mm, 4 layers, 1.6&nbsp;mm. Machine-placed parts on the bottom face</dd></div>
+          <div><dt>Board</dt><dd>84&nbsp;×&nbsp;82.5&nbsp;mm, 4 layers, 1.6&nbsp;mm. Ground plane next to the parts. Machine-placed parts on the bottom face</dd></div>
           <div><dt>Port</dt><dd>One USB-C for power, data and flashing. ESD protection and a 500&nbsp;mA resettable fuse</dd></div>
-          <div><dt>Case</dt><dd>90.0&nbsp;×&nbsp;90.0&nbsp;×&nbsp;17.5&nbsp;mm, 35.5&nbsp;mm to the top of the knobs. Printed or CNC-milled aluminium. Six hidden M2 screws. Optional 6° tilt bar</dd></div>
+          <div><dt>Case</dt><dd>90.0&nbsp;×&nbsp;90.0&nbsp;×&nbsp;17.5&nbsp;mm, 35.5&nbsp;mm to the top of the knobs. Printed or CNC-milled aluminium. Six hidden M2 screws; the milled case is bonded to ground at one. Optional 6° tilt bar</dd></div>
           <div><dt>Firmware</dt><dd>Rust on embassy. 4 layers, macros, tap-hold keys, per-layer knob functions, animated display, reactive lighting</dd></div>
           <div><dt>Computer</dt><dd>USB keyboard with media keys, 6-key rollover. No driver, no software</dd></div>
           <div><dt>Updates</dt><dd>Drag and drop a UF2 file. Hold both knobs to start</dd></div>
-          <div><dt>Debug</dt><dd>SWD and power test pads. BOOT and RESET through the case floor</dd></div>
+          <div><dt>Debug</dt><dd>SWD and power test pads, a probe build with logging, a hardware test mode. BOOT and RESET through the case floor</dd></div>
           <div><dt>Status</dt><dd>Design files only. Not built</dd></div>
         </dl>
       </div>
@@ -760,14 +760,14 @@ tap_hold("TAB/SH", Stroke::plain(key::TAB), Stroke::modifiers(modifier::SHIFT)),
         </div>
         <div>
           <table class="status-table">
-            <caption>Checked on 2026-11-13</caption>
+            <caption>Checked on 2026-11-14</caption>
             <thead><tr><th scope="col">Part</th><th scope="col">State</th><th scope="col">Checked by</th></tr></thead>
             <tbody>
-              <tr><th scope="row">Circuit</th><td>Done: 52 nets, 72 machine-placed parts</td><td>Netlist self-check and 34 unit tests</td></tr>
+              <tr><th scope="row">Circuit</th><td>Done: 52 nets, 75 machine-placed parts</td><td>Netlist self-check and 37 unit tests</td></tr>
               <tr><th scope="row">Schematic</th><td>Done: ERC 0 errors, 0 warnings</td><td>KiCad 9</td></tr>
-              <tr><th scope="row">PCB</th><td>Fully routed: 802 tracks, 161 vias, DRC 0 violations</td><td>KiCad design-rule check</td></tr>
-              <tr><th scope="row">Case</th><td>659 part pairs per variant, 0 clashes</td><td>The case's own checks</td></tr>
-              <tr><th scope="row">Firmware</th><td>Builds; 220 tests pass</td><td>cargo test, board and HID checks</td></tr>
+              <tr><th scope="row">PCB</th><td>Fully routed: 827 tracks, 164 vias, DRC 0 violations</td><td>KiCad design-rule check</td></tr>
+              <tr><th scope="row">Case</th><td>659 part pairs per variant, 0 clashes; 9 print coupons</td><td>The case's own checks</td></tr>
+              <tr><th scope="row">Firmware</th><td>Builds; 248 tests pass</td><td>cargo test, board and HID checks</td></tr>
               <tr class="not-yet"><th scope="row">Real hardware</th><td>None: no board ordered, no case printed or milled, no firmware flashed</td><td>Nothing yet</td></tr>
             </tbody>
           </table>
@@ -775,8 +775,9 @@ tap_hold("TAB/SH", Stroke::plain(key::TAB), Stroke::modifiers(modifier::SHIFT)),
           <ul class="open-points">
             <li>The crystal is the reference part, but its oscillator is not measured. If USB does not start, look there first.</li>
             <li>The inductor's polarity dot and every part's rotation must be checked in the board house's placement preview.</li>
-            <li>The pin orders of the display header and the side LEDs are still to be measured.</li>
-            <li>Every fit in the case is a guess until one print is measured.</li>
+            <li>The display header and side LED pin orders match their makers' drawings; nobody has fitted either yet.</li>
+            <li>With the LEDs dark the pad still draws more than USB allows a suspended device. Accepted for the prototype.</li>
+            <li>Every fit in the case is a guess until the parts are measured and the coupons are printed.</li>
             <li>How bright and even the light line is has not been simulated or tried.</li>
           </ul>
           <p><a href="https://github.com/worxbend/macropad#before-you-order">Read "Before you order" in full</a></p>
@@ -791,10 +792,10 @@ tap_hold("TAB/SH", Stroke::plain(key::TAB), Stroke::modifiers(modifier::SHIFT)),
         <p class="lede">Nobody has done this yet. The guides are written from the design files, so expect to find mistakes, and please report them.</p>
       </div>
       <ol class="column steps">
-        <li><h3>Read the open points</h3><p>Decide whether you accept them.</p><p><a href="https://github.com/worxbend/macropad#before-you-order">Before you order</a></p></li>
-        <li><h3>Order the board</h3><p>Upload the Gerbers, BOM and placement list to JLCPCB, then buy the parts they do not place.</p><p><a href="https://github.com/worxbend/macropad/blob/main/docs/ordering.md">Ordering guide</a> <a href="https://github.com/worxbend/macropad/tree/main/pcb/fab">Order files</a></p></li>
-        <li><h3>Make the case</h3><p>Print the STL files, or send the STEP files and the two shop sheets to a CNC shop, with the signature drawing for the laser.</p><p><a href="https://github.com/worxbend/macropad/blob/main/cad/README.md">Case notes</a></p></li>
-        <li><h3>Assemble</h3><p>Solder the two encoders and the display header, test the bare board, fit the switches, and close the case with six screws from below.</p><p><a href="https://github.com/worxbend/macropad/blob/main/docs/assembly.md">Assembly guide</a></p></li>
+        <li><h3>Read the open points</h3><p>Decide whether you accept them, then follow the prototype plan: buy and measure the parts first.</p><p><a href="https://github.com/worxbend/macropad#before-you-order">Before you order</a> <a href="https://github.com/worxbend/macropad/blob/main/docs/prototype.md">Prototype plan</a></p></li>
+        <li><h3>Order the board</h3><p>Upload the Gerbers, BOM and centroid file to PCBWay with the order notes, then buy the parts they do not place.</p><p><a href="https://github.com/worxbend/macropad/blob/main/docs/ordering.md">Ordering guide</a> <a href="https://github.com/worxbend/macropad/tree/main/pcb/fab">Order files</a></p></li>
+        <li><h3>Make the case</h3><p>Print the coupons, then the STL files. Once the print fits, send the STEP files and the two shop sheets to a CNC shop, with the signature drawing for the laser.</p><p><a href="https://github.com/worxbend/macropad/blob/main/cad/README.md">Case notes</a></p></li>
+        <li><h3>Assemble</h3><p>Check the rails from a current-limited supply, flash, run the test mode, then solder the encoders and the display header, and close the case with six screws from below.</p><p><a href="https://github.com/worxbend/macropad/blob/main/docs/assembly.md">Assembly guide</a></p></li>
         <li><h3>Flash</h3><p>Hold BOOT, plug in, and copy <code>macropad.uf2</code> to the RP2350 drive.</p><p><a href="https://github.com/worxbend/macropad/blob/main/docs/flashing.md">Flashing guide</a></p></li>
       </ol>
       <div class="column drawings">

@@ -10,6 +10,19 @@ pub struct Debouncer {
 }
 
 impl Debouncer {
+    /// A debouncer that already holds `level`, for a contact whose rest level is read at start.
+    pub const fn settled(level: bool) -> Self {
+        Self {
+            stable: level,
+            differing_samples: 0,
+        }
+    }
+
+    /// The debounced level, without feeding a sample.
+    pub const fn level(&self) -> bool {
+        self.stable
+    }
+
     /// Feeds one raw sample and returns the debounced level.
     pub fn sample(&mut self, raw: bool) -> bool {
         if raw == self.stable {
@@ -51,6 +64,15 @@ mod tests {
         feed(&mut debouncer, true, DEBOUNCE_SAMPLES - 1);
         debouncer.sample(false);
         assert!(!feed(&mut debouncer, true, DEBOUNCE_SAMPLES - 1));
+    }
+
+    #[test]
+    fn a_settled_debouncer_starts_at_its_level_and_still_needs_the_full_window() {
+        let mut debouncer = Debouncer::settled(true);
+        assert!(debouncer.level());
+        assert!(feed(&mut debouncer, false, DEBOUNCE_SAMPLES - 1));
+        assert!(!debouncer.sample(false));
+        assert!(!debouncer.level());
     }
 
     #[test]

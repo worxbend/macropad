@@ -19,14 +19,14 @@ pcb-check: ## Design-rule check against the schematic; fails on any error or unc
 	mkdir -p $(BUILD)
 	$(KICAD) kicad-cli pcb drc --severity-error --schematic-parity --exit-code-violations --format report -o $(BUILD)/drc.rpt $(BOARD)
 
-pcb-fab: ## Gerbers, drill files, JLCPCB and PCBWay BOMs, placement list -> pcb/fab/, then a check that they agree
+pcb-fab: ## Gerbers, drill files, JLCPCB and PCBWay BOMs and placement files, board hash -> pcb/fab/, then a check that they agree
 	mkdir -p $(FAB)/gerbers
 	$(KICAD) kicad-cli pcb export gerbers --layers $(GERBER_LAYERS) --subtract-soldermask -o $(FAB)/gerbers/ $(BOARD)
 	$(KICAD) kicad-cli pcb export drill --format excellon --excellon-units mm --excellon-separate-th -o $(FAB)/gerbers/ $(BOARD)
 	cd $(FAB) && zip -q -r -FS macropad-gerbers.zip gerbers
 	$(KICAD) python3 pcb/gen/build.py fab
 
-pcb-test: ## Netlist self-check, router and schematic-writer unit tests (no Docker)
+pcb-test: ## Netlist self-check, router, schematic-writer and order-file tests (no Docker)
 	python3 pcb/gen/circuit.py > /dev/null
 	python3 -m unittest discover -s pcb/gen -p 'test_*.py'
 

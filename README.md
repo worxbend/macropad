@@ -34,16 +34,16 @@ recording of a device. The display in the render shows the simulator's own pictu
 
 ## Status
 
-Checked on 2026-11-13 by running the commands in the last column on this repository.
+Checked on 2026-11-14 by running the commands in the last column on this repository.
 
 | Part | State | How it was checked |
 |---|---|---|
-| Circuit | Done. 52 nets, 72 machine-placed parts. | `make pcb-test`: netlist self-check, 34 unit tests pass |
+| Circuit | Done. 52 nets, 75 machine-placed parts, 1 left unpopulated (C13). | `make pcb-test`: netlist self-check, 37 unit tests pass |
 | Schematic | Done. Generated KiCad 9 sheet. ERC: 0 errors, 0 warnings. | `make pcb-place` (report in `pcb/.build/erc.rpt`) |
-| PCB layout | **Fully routed.** 802 tracks, 161 vias, 0 unrouted pads. DRC: 0 violations, 0 unconnected, 0 differences from the schematic. | `make pcb-check` |
-| Order files | Written: 11 Gerbers, 2 drill files, BOM, placement list. They agree with the board and with each other. | `make pcb-fab` |
+| PCB layout | **Fully routed.** 827 tracks, 164 vias, 0 unrouted pads. DRC: 0 violations, 0 unconnected, 0 differences from the schematic. | `make pcb-check` |
+| Order files | Written: 11 Gerbers, 2 drill files, a BOM and a placement file each for PCBWay and JLCPCB. They agree with the board and with each other. | `make pcb-fab`, `make pcb-test` |
 | Case | Done. 659 part pairs per variant, 0 clashes. Every named clearance and measurement inside its limit. Printed and milled variant. | `make test` |
-| Firmware | Builds. 220 tests pass. UF2 in `firmware/dist/`. | `make test`, `make firmware` |
+| Firmware | Builds. 248 tests pass. UF2 in `firmware/dist/`. | `make test`, `make firmware` |
 | Real hardware | **None.** No board, no print, no flash. | - |
 
 One accepted DRC warning remains: the USB-C footprint differs from its library copy, because its
@@ -59,13 +59,13 @@ A clean DRC does not make a working board. The list of things a person still has
 |---|---|
 | MCU | RP2354A: the Pico 2 chip (RP2350) with 2 MB flash inside the package |
 | Keys | 12 x MX, HanElectricity hot-swap sockets (Kailh CPG151101S11 compatible), one GPIO per key (no matrix, no diodes) |
-| Knobs | 2 x Alps EC11E18244AU with push switch, 36 clicks per turn |
+| Knobs | 2 x Alps EC11E18244AU with push switch, 36 clicks per turn. 3.3 kΩ pull-ups on the A and B contacts give each contact 1 mA |
 | Display | nice!view (Sharp memory LCD, 160 x 68, monochrome, readable in sunlight), soldered on a 5-pin male header |
 | Light | 8 x SK6812 SIDE-A side-emitting RGB LEDs on the PCB edges, behind two light bars that show as a line in the gap round the case |
 | USB | One USB-C port for power, data and flashing. ESD diodes, 500 mA resettable fuse |
 | Debug | Six test pads on the bottom face: SWCLK, SWDIO, GND, 5V, 3V3, 1V1. BOOT and RESET buttons reached through the case floor |
-| PCB | 84 x 82.5 mm, 4 layers, 1.6 mm. Every machine-placed part is on the bottom face |
-| Case | Base and top with a lap joint and a shadow gap between them, flush lens over the display, 2 light bars, 2 knobs, 2 foot strips and a centre pad that hide the screws, optional 6° tilt bar. 3D-print or CNC variant |
+| PCB | 84 x 82.5 mm, 4 layers, 1.6 mm. Every machine-placed part is on the bottom face, next to the ground plane on In2 |
+| Case | Base and top with a lap joint and a shadow gap between them, flush lens over the display, 2 light bars, 2 knobs, 2 foot strips and a centre pad that hide the screws, optional 6° tilt bar. 3D-print or CNC variant. The aluminium case is bonded to GND at one screw (H1) |
 | Size | 90.0 x 90.0 x 17.5 mm, 35.5 mm from the underside to the top of the knobs. The foot strips add 1.2 mm |
 | Firmware | Rust ([embassy](https://embassy.dev)). 4 layers, macros, tap-hold keys, per-layer knob functions, animated display, reactive lighting |
 | Host | Shows up as a USB keyboard plus media keys. No driver, no host software |
@@ -143,8 +143,8 @@ Screens, controls and timing: [firmware/README.md](firmware/README.md).
 
 The sheets are in `cad/exports/drawings/` as SVG and PDF. Dimension texts are computed from the model.
 The two CNC sheets carry part numbers, revision A, one finish (bead blast and clear anodise), ISO
-2768-m with the critical fits toleranced, the M2 thread callout, a USB opening detail and, on the base,
-the laser-mark note. `make cad` reads every exported STEP and STL back: one closed solid per part, no
+2768-m with the critical fits toleranced, the M2 thread callouts, the anodise masks for the case
+ground at S1, a USB opening detail and, on the base, the laser-mark note. `make cad` reads every exported STEP and STL back: one closed solid per part, no
 free edges, volumes within 0.1 %.
 
 ## Build one
@@ -152,13 +152,20 @@ free edges, volumes within 0.1 %.
 Nobody has done this yet. The guides are written from the design files. Expect to find mistakes,
 and please report them.
 
+The plan for the first prototype, step by step with a pass test for each, is
+[docs/prototype.md](docs/prototype.md): measure the parts, order the board, print coupons and a case,
+bring the board up, and only then pay for a milled case.
+
 1. **Read [Before you order](#before-you-order).** Decide whether you accept the open points.
-2. **Order the board.** [docs/ordering.md](docs/ordering.md): JLCPCB step by step, with the files
-   in `pcb/fab/`. Buy the parts JLCPCB does not place: [docs/parts.md](docs/parts.md).
-3. **Make the case.** Print or mill the files in `cad/exports/`. Orientation, settings and CNC notes
-   are in [cad/README.md](cad/README.md#printing).
-4. **Assemble.** [docs/assembly.md](docs/assembly.md): solder the two encoders and the display
-   header, test the bare board, then close the case with six screws.
+2. **Order the board.** [docs/ordering.md](docs/ordering.md): PCBWay step by step, 5 bare boards
+   with 2 assembled on the bottom face, with the files in `pcb/fab/`. JLCPCB is the alternative on
+   the same page. Buy the parts the board house does not place: [docs/parts.md](docs/parts.md).
+3. **Make the case.** Print the coupons first, then the case. Mill it only after a printed case
+   closes on measured parts. Orientation, settings and CNC notes are in
+   [cad/README.md](cad/README.md#printing).
+4. **Assemble.** [docs/assembly.md](docs/assembly.md): bring up the bare board from a current-limited
+   supply, run the hardware test, solder the two encoders and the display, then close the case with
+   six screws.
 5. **Flash.** [docs/flashing.md](docs/flashing.md): hold BOOT, plug in, copy
    `firmware/dist/macropad.uf2` to the `RP2350` drive. The same page lists what to check first when
    something does not work.
@@ -199,7 +206,7 @@ Run `make help` for this list.
 
 | Command | Does | Needs | Time |
 |---|---|---|---|
-| `make test` | Everything that can be checked without Docker or hardware | Rust, `cad/.venv` | about 2 minutes |
+| `make test` | Everything that can be checked without Docker or hardware | Rust, `cad/.venv` | about 3 minutes |
 | `make firmware` | Tests, lints, board and HID checks, `firmware/dist/macropad.uf2` | Rust | under 1 minute |
 | `make ui-images` | Redraws `docs/images/ui/` and the demo GIF from the simulator | Rust, ImageMagick | about 1 minute |
 | `make cad` | Case self-test, checks, STEP/STL exports, renders, drawings | `cad/.venv` | about 3 minutes |
@@ -227,23 +234,25 @@ Change `pcb/gen/circuit.py` or `pcb/gen/route.py` instead.
 
 No check here replaces a prototype. They catch the mistakes a computer can catch.
 
-| Area | Check | Result on 2026-11-13 |
+| Area | Check | Result on 2026-11-14 |
 |---|---|---|
 | PCB | Netlist self-check in `circuit.py` | 52 nets, passes |
-| PCB | Router and schematic-writer unit tests | 34 pass |
+| PCB | Router, schematic-writer and order-file unit tests (15, 19, 3) | 37 pass |
 | PCB | `circuit.py` pins against KiCad's own RP2354A, regulator, ESD and level-shifter symbols | match |
 | PCB | Schematic ERC, every severity | 0 errors, 0 warnings |
 | PCB | DRC with board-against-schematic compare | 0 violations, 0 unconnected, 0 parity issues |
 | PCB | Length limits on the USB pair, crystal and regulator nets; no via on the sensitive ones | pass (D+ 14.93 mm, D- 14.08 mm) |
-| PCB | Order files agree: Gerbers newer than the board, one drill hit per via, BOM = placement list = circuit | 72 parts, pass |
-| Case | Self-test: the measuring checks must catch 31 known-bad and sound shapes | 31 of 31 |
+| PCB | Order files agree: Gerbers newer than the board, one drill hit per via, both BOMs = both placement files = circuit, C13 in none of them | 75 parts, 1 do-not-populate, pass |
+| PCB | Committed order files belong to the committed board: board hash, `unrouted pads 0` | pass |
+| PCB | Case ground ring at H1 on GND and bare; encoder pull-ups beside their pins; no solder paste within 0.15 mm of a via hole; the design rules reach KiCad's DRC | pass |
+| Case | Self-test: the measuring checks must catch 33 known-bad and sound shapes | 33 of 33 |
 | Case | Interference, every part against every other, both variants | 659 pairs each, 0 clashes |
 | Case | Every part one sound solid; wall thickness, screw bosses, light bar retention and insertion, lap joint, lens seat and stiffness, key and knob travel, knob seat on its shaft, square outline, corner curvature, frame swell, foot bearing, shell seat, text strokes, USB symmetry | all inside limits |
 | Case | CNC: 3 mm tool reaches every pocket within 3 diameters, no sharp internal corner, no undercut beyond the USB opening's rounds | pass |
-| Case | Exports read back: 11 STEP files, each part file one closed valid solid and the assembly 81, 0 free edges, volume within 0.1 % of the model and of its STL; no sliver faces in the CNC parts | 11 of 11 |
+| Case | Exports read back: 11 STEP files, each part file one closed valid solid and the assembly 81, 0 free edges, volume within 0.1 % of the model and of its STL; no sliver faces in the CNC parts; 9 print coupons, each one watertight body | 11 of 11 STEP, 9 of 9 coupons |
 | Case | Print: layer-by-layer bridge and overhang check for every printed part, faces on the 0.2 mm layer grid, show faces of the top at 45° or less, engraving on the bed 0.7 mm wide | pass |
-| Firmware | Unit tests: `core` 164, `sim` 38, `uf2` 18 | 220 pass |
-| Firmware | `tools/check_pins.py`: GPIOs, knob type, key grid, LED and simulator positions against `board.toml` | match |
+| Firmware | Unit tests: `core` 192, `sim` 38, `uf2` 18 | 248 pass |
+| Firmware | `tools/check_pins.py`: GPIOs, knob type, knob debounce longer than the encoder's 3 ms chatter, key grid, LED and simulator positions against `board.toml` | match |
 | Firmware | `tools/check_hid.py`: the USB report descriptors, parsed as a host would | match |
 | Firmware | UF2 converter refuses an image the chip could not boot | current image passes |
 | Docs | `make docs-check`: files and pictures named in Markdown exist | pass |
@@ -262,9 +271,10 @@ checks. The workflow has not run on GitHub yet.
 | [`firmware/`](firmware/README.md) | Rust workspace: `core` logic, `fw` binary, `sim` simulator, `uf2` converter. `dist/macropad.uf2` is the built image. [`KEYMAP.md`](firmware/KEYMAP.md) is the keymap reference. |
 | `tools/` | `check_pins.py` and `check_hid.py`: firmware against `board.toml` and against the HID rules. |
 | [`docs/hardware.md`](docs/hardware.md) | Circuit in words, pin map, layer stack, test pads, mechanical stack. |
-| [`docs/parts.md`](docs/parts.md) | Every part, its JLCPCB number, what to buy elsewhere, substitutions. |
-| [`docs/ordering.md`](docs/ordering.md) | Ordering the assembled board from JLCPCB, step by step. |
-| [`docs/assembly.md`](docs/assembly.md) | Soldering, bare-board tests, case assembly. |
+| [`docs/parts.md`](docs/parts.md) | Every part, its JLCPCB number, what to buy elsewhere, substitutions, a shopping list for the prototype. |
+| [`docs/prototype.md`](docs/prototype.md) | The staged plan for the first prototype, with a pass test per step. |
+| [`docs/ordering.md`](docs/ordering.md) | Ordering the assembled board from PCBWay, step by step; JLCPCB as the alternative. |
+| [`docs/assembly.md`](docs/assembly.md) | Bring-up of a bare board, soldering, case assembly. |
 | [`docs/flashing.md`](docs/flashing.md) | First flash, updates, troubleshooting. |
 | [`docs/keymap.md`](docs/keymap.md) | Changing what the keys, knobs and lights do. |
 | `docs/images/` | Generated pictures: `cad/`, `pcb/`, `ui/`. |
@@ -280,26 +290,37 @@ These are open. None is hidden by a green check.
   See [docs/parts.md](docs/parts.md).
 - **USB pair.** Two short tracks, 14.9 and 14.1 mm, not a tuned differential pair. No impedance was
   calculated. Normal for full-speed USB over this length; nobody measured it.
-- **Regulator inductor.** Its dot goes on the +1V1 pad, as in Raspberry Pi's datasheet and reference
-  board. The part sits on the bottom face, mirrored against that board, and Abracon's drawing labels
-  the dot "+": confirm against the Abracon drawing and in JLCPCB's preview. Not verified.
-- **Pin orders from community footprints.** The nice!view header order and the SK6812 SIDE-A pad
-  order are tagged `MEASURE`. No KiCad library symbol covers them, so nothing checks them.
-- **Placement rotations.** `pcb/fab/cpl-jlcpcb.csv` carries KiCad's angles, also for the bottom-side
-  parts. Whether JLCPCB wants those or (180 - r) is not settled. Check every part in their preview
-  before you pay; [docs/ordering.md](docs/ordering.md) has the checklist.
-- **Suspend current.** The LEDs go off when the host sleeps, but the MCU keeps running, above the
-  2.5 mA a suspended USB device may draw.
+- **Regulator inductor dot.** The two papers disagree. Raspberry Pi's datasheet and reference
+  layout put the dot on +1V1; Abracon's drawing labels the dot "+". The board follows Raspberry Pi:
+  dot on the +1V1 pad, next to the silkscreen dot. Mounting on the bottom face changes nothing here:
+  the regulator reads as Raspberry Pi's Fig. 26 seen from the bottom. Not verified on a part.
+- **Placement rotations.** `pcb/fab/centroid-pcbway.csv` and `pcb/fab/cpl-jlcpcb.csv` carry KiCad's
+  angles, also for the bottom-side parts. Whether the assembler wants those or (180 - r) is not
+  settled. Check every part in their placement photos or preview before you pay;
+  [docs/ordering.md](docs/ordering.md) has the checklist.
+- **Suspend current.** The 8 LEDs draw about 4.8 mA even when dark, over the 2.5 mA a suspended USB
+  device may draw, and the MCU keeps running too. Accepted for the prototype. The fix is a load
+  switch on the LED supply: a board change.
+- **C13 is left unpopulated.** Its 4.7 µF would double the 1.1 V regulator's output capacitor.
+  The footprint stays; its two pads get solder paste and no part.
+- **Hot-swap socket footprint.** The board uses HanElectricity's CPG151101S11-2. The footprint was
+  drawn from Kailh's CPG151101S11 dimensions. HanElectricity's drawing gives the same main sizes, but
+  nobody has checked the footprint against it pad by pad.
+
+Settled since the last revision: the nice!view header order (MOSI, SCK, VCC, GND, CS) matches the
+pinout on nicekeyboards.com, and the SK6812 SIDE-A pad order matches the OPSCO datasheet by function.
+Both stay tagged `MEASURE` until someone checks a real module and LED.
 
 **Mechanical**
 
 - **`MEASURE` dimensions.** The nice!view's pixel window, its height on a plain male header (glass 4.4 mm
   above the PCB) and its header position, and the encoder heights (shaft end 24.5 mm, from the Alps
   drawing), come from drawings and community footprints, not from a caliper. The full table is in
-  [cad/README.md](cad/README.md#assumptions-to-measure).
+  [cad/README.md](cad/README.md#assumptions-to-measure). Measure before you order the board:
+  `display.header_x` moves J2 on the PCB.
 - **Fits are guesses.** Lap joint 0.2 mm, deepest unsupported ledge 1.5 mm, sag of a printed bridge
-  0.2 mm, printed screw holes 0.15 mm small, lens 1.0 mm cover glass on 0.13 mm tape. Print one copy
-  and measure before a batch or before paying for machining.
+  0.2 mm, printed screw holes 0.15 mm small, lens 1.0 mm cover glass on 0.13 mm tape. Print the nine
+  coupons in `cad/exports/print/coupons/`, then one case, and measure before paying for machining.
 - **The light line is a guess.** The LEDs shine into a bar that shows only through a 1.4 mm slit in the
   gap. How bright and how even that is has not been simulated or tried.
 - **The top prints standing on its side wall**, 10.6 times taller than its footprint is wide. Tipping

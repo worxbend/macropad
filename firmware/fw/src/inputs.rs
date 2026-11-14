@@ -3,6 +3,7 @@
 use embassy_rp::gpio::Input;
 use macropad_core::debounce::Debouncer;
 use macropad_core::engine::Inputs;
+use macropad_core::hardware_test::{KnobContacts, RawInputs};
 use macropad_core::keymap::KEY_COUNT;
 use macropad_core::quadrature::{QuadratureDecoder, Rotation};
 
@@ -31,6 +32,14 @@ impl KnobScanner {
     fn switch_down(&mut self) -> bool {
         self.switch.sample(self.pins.switch.is_low())
     }
+
+    fn raw(&self) -> KnobContacts {
+        KnobContacts {
+            a: self.pins.a.is_low(),
+            b: self.pins.b.is_low(),
+            switch: self.pins.switch.is_low(),
+        }
+    }
 }
 
 pub struct Scanner {
@@ -57,6 +66,21 @@ impl Scanner {
             right_switch: self.right_knob.switch_down(),
             left_rotation: self.left_knob.rotation(),
             right_rotation: self.right_knob.rotation(),
+        }
+    }
+
+    /// Every contact as the pins read it now, for the hardware test mode. `true` is closed.
+    pub fn raw(&self) -> RawInputs {
+        let keys = self
+            .keys
+            .iter()
+            .enumerate()
+            .filter(|(_, pin)| pin.is_low())
+            .fold(0, |mask, (key, _)| mask | 1 << key);
+        RawInputs {
+            keys,
+            left: self.left_knob.raw(),
+            right: self.right_knob.raw(),
         }
     }
 

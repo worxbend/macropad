@@ -1,10 +1,10 @@
-tracks 802  vias 161  length 1299.1 mm  unrouted pads 0
+tracks 827  vias 164  length 1307.7 mm  unrouted pads 0
 USB pair, connector to MCU: D+ 14.93 mm, D- 14.08 mm
 VREG_FB, pin 50 to COUT: 2.29 mm
 
 net                 mm vias
 +1V1             24.28    5
-+3V3             32.79   16
++3V3             35.49   20
 +5V              21.05   25
 BOOT             10.34    0
 CC1               7.92    2
@@ -12,11 +12,11 @@ CC2               6.59    0
 DISP_CS          16.83    1
 DISP_MOSI        20.49    0
 DISP_SCK         18.39    0
-ENC_L_A          36.81    1
-ENC_L_B          36.52    2
+ENC_L_A          42.14    0
+ENC_L_B          36.56    2
 ENC_L_SW         20.34    1
-ENC_R_A          20.61    0
-ENC_R_B          18.46    0
+ENC_R_A          20.88    0
+ENC_R_B          18.75    0
 ENC_R_SW         33.24    0
 GND              71.77   67
 KEY0             37.12    0

@@ -1,9 +1,11 @@
 # Assembly
 
-From an assembled board out of the factory to a closed pad.
+From an assembled board out of the factory to a closed pad: bring-up first, then soldering, then
+the case.
 
 **Nobody has built one yet.** These steps are written from the design files. The order is chosen so
-that each step can be tested before the next one hides it. If a step does not work as described,
+that each step can be tested before the next one hides it, starting with a bare board on a
+current-limited supply. If a step does not work as described,
 stop and look at [flashing.md](flashing.md#troubleshooting).
 
 ## What you need
@@ -13,7 +15,10 @@ Parts: see [parts.md](parts.md).
 | Tool | For |
 |---|---|
 | Soldering iron and solder | 2 encoders, the display's header (both ends) |
-| Multimeter | Short-circuit and voltage checks |
+| Multimeter | Resistance and voltage checks |
+| Bench supply with a current limit | First power-on at 5 V |
+| USB-C plug breakout (VBUS and GND to terminals) | Feeding the bench supply into the USB-C port |
+| Oscilloscope (optional) | Ripple on the 1.1 V rail |
 | Metal tweezers | Testing the key sockets |
 | 1.5 mm hex key | The six M2 socket-head screws |
 | Flush cutters | Pins that stand too far out |
@@ -21,73 +26,133 @@ Parts: see [parts.md](parts.md).
 
 ## What is already on the board
 
-JLCPCB places all 72 parts on the bottom face. You solder three parts on the top face. The top
-silkscreen says so: `hand-solder on this side: ENC1, ENC2, J2`.
+The board house places all 75 parts on the bottom face. C13's footprint stays empty on purpose: it is
+not fitted. You solder three parts on the top face. The top silkscreen says so:
+`hand-solder on this side: ENC1, ENC2, J2`.
 
 <img src="images/pcb/assembled-top.png" alt="Populated board, top face" width="48%"> <img src="images/pcb/assembled-bottom.png" alt="Populated board, bottom face" width="48%">
 
 The pictures show block models of the parts, not photos.
 
-## 1. Check the bare board
+## Bring-up order
 
-Do this before you plug anything in.
+Each step needs the one before it to pass. Stop at the first failure and look at
+[flashing.md](flashing.md#troubleshooting).
 
-1. Look at the bottom face. Compare with the picture above. Look for a part that is turned,
-   missing or lifted, mainly U1 to U4, the LEDs and the USB-C port.
-2. Set the multimeter to resistance. Measure between the `GND` test pad and each of `5V`, `3V3`
+1. Look at the board.
+2. Measure resistance between the rails.
+3. First power from a current-limited 5 V supply.
+4. Measure the three rails. Scope the 1.1 V ripple if you can.
+5. Plug into a computer: the RP2350 boot drive.
+6. Flash.
+7. Hardware test mode: key sockets and LEDs.
+8. Solder the encoders, then test them in hardware test mode.
+9. Solder the display.
+10. The case.
+
+## 1. Look at the bare board
+
+1. Look at the bottom face. Compare with the picture above and with
+   [the assembly drawing](images/pcb/assembly-bottom.svg). Look for a part that is turned, missing or
+   lifted, mainly U1 to U4, L1, Y1, the LEDs and the USB-C port.
+2. Check the polarity marks: L1's dot on the pad with the silkscreen dot, Y1's pin 1 on XIN, each
+   LED's light side facing out of the edge.
+3. Look along the QFN-60's pins with a loupe for solder bridges.
+
+## 2. Measure resistance
+
+Do this before you power anything.
+
+1. Set the multimeter to resistance. Measure between the `GND` test pad and each of `5V`, `3V3`
    and `1V1`. All six test pads are named in the bottom silkscreen; their positions are in
    [hardware.md](hardware.md#test-pads).
-3. None of the three may read close to 0 Ω. A short here means: do not plug in. Look for a solder
+2. None of the three may read close to 0 Ω. A short here means: do not power it. Look for a solder
    bridge. A low but non-zero reading that climbs is a capacitor charging; that is fine.
 
-## 2. First power, first flash
+## 3. First power from a current-limited supply
 
-Do this before you solder. A fault is easier to find on a bare board.
+1. Set the bench supply to 5.0 V with a current limit of 150 mA. The limit is a guess: high enough for
+   the chip in its boot ROM with the LEDs dark, low enough to spare a part with a short.
+2. Connect it to the USB-C port through the plug breakout: VBUS to +, GND to -. No computer yet.
+3. Switch on. Watch the current. If the supply sits at its limit, switch off at once: something is
+   shorted or turned. Go back to section 1.
+4. Write down the current. It is the first real number for this board; put it in an issue.
 
-1. Plug the board into a computer. Do not hold a button.
+## 4. Measure the three rails
+
+With the bench supply still on, measure against the `GND` pad:
+
+| Pad | Expected | If not |
+|---|---|---|
+| `5V` | about 5 V | The fuse F1, the USB-C port's solder joints |
+| `3V3` | about 3.3 V | The regulator U2 and its rotation |
+| `1V1` | about 1.1 V | The inductor L1, its polarity, and the capacitors C11 and C12 |
+
+If you have a scope, look at the `1V1` pad with a short ground spring to the `GND` pad. Write down the
+ripple, peak to peak. Nobody has measured it; there is no number to compare it with yet.
+
+Switch the supply off.
+
+## 5. Plug into a computer
+
+1. Plug the board into a computer with a data cable. Do not hold a button.
 2. Expected: a USB drive named `RP2350` appears. A chip with empty flash starts its built-in USB
    bootloader by itself. If no drive appears, hold BOOT (silkscreen `BOOT`, bottom face), tap RESET,
    release BOOT.
-3. Measure against the `GND` pad: `5V` about 5 V, `3V3` about 3.3 V, `1V1` about 1.1 V.
-4. Copy `firmware/dist/macropad.uf2` to the drive. The board restarts.
-5. Expected: the eight side LEDs come on one after another, then breathe in purple.
+3. No drive with the rails right: the crystal and the USB data path, see
+   [flashing.md](flashing.md#power-and-usb).
+
+## 6. Flash
+
+1. Copy `firmware/dist/macropad.uf2` to the drive. The board restarts. Details and the picotool way:
+   [flashing.md](flashing.md#first-flash).
+2. Expected: the eight side LEDs come on one after another, then breathe in purple.
    The computer sees a new keyboard named `macropad`.
 
-No drive, wrong voltage, no LEDs: go to [flashing.md](flashing.md#troubleshooting).
+## 7. Hardware test mode: key sockets and LEDs
 
-## 3. Test the key sockets
+The test mode is in the firmware. It shows raw contacts and steps through the LEDs, and it sends
+nothing to the computer. [flashing.md](flashing.md#check-a-new-board-hardware-test-mode) describes the
+screen; until the display is fitted, use the LEDs and a multimeter.
 
-1. Open a key tester or a text editor on the computer.
-2. With the tweezers, bridge the two contacts of each hot-swap socket, one socket after another.
-3. Expected on the stock MEDIA layer: the back row sends media keys (previous, play, next, stop),
-   the other eight send F13 to F20. A text editor shows nothing for these; a key tester does.
-4. Every bridge also starts a white ripple on the side LEDs. That is the quickest sign that a socket works.
+1. Unplug. Bridge the two contacts of K0's socket (top left seen from the key side) with the tweezers
+   and plug in while you hold them. Let go after a second.
+2. **LEDs.** One LED lights at a time: red, green, blue, half a second each, then the next one. LED1
+   is the back LED on the right side; the chain runs clockwise seen from above. A wrong colour means
+   the colour order is wrong; a wrong LED means the chain order is; a dark chain from some LED on means
+   that LED or the one before it.
+3. **Sockets.** Unplug, plug in normally (no tweezers), and bridge the two contacts of each socket in
+   turn. Every bridge starts a white ripple on the side LEDs, and a key tester on the computer shows
+   the key: on the MEDIA layer the back row sends previous, play, next, stop; the other eight send
+   F13 to F20. With the display fitted later, the test mode shows the same in its key grid.
 
-## 4. Solder the encoders
+## 8. Solder the encoders
 
 Unplug the board first.
 
 1. Put ENC1 and ENC2 into the top face. Each has five pins and two mounting lugs.
-2. Press the body flat onto the board. The case assumes the body top 6.5 mm above the board.
+2. Press the body flat onto the board. The case assumes the body top 4.5 mm above the board and the shaft end 24.5 mm (Alps drawing).
 3. Solder one pin, check that the encoder still sits flat and square, then solder the rest and
    both lugs.
 4. Cut any pin that stands more than 3 mm out of the bottom face. The case floor is 5 mm below.
 5. Plug in and test: turning the left knob changes the volume, pressing it changes the layer
    (the LED colour changes). Turning the right knob changes the screen brightness on hosts that
    support it; pressing it mutes.
+6. Once the display is on, check the raw contacts in hardware test mode: turn slowly, `A` changes once
+   per click, `B` between clicks; pressing fills `SW`.
 
 A knob that works backwards is a firmware setting, not a soldering fault. See
 [flashing.md](flashing.md#troubleshooting).
 
-## 5. Solder the display header and the display
+## 9. Solder the display header and the display
 
 Unplug the board first. The display is soldered on, not plugged in: the case has room for a plain
 male header only (see [parts.md](parts.md)). The sockets that come with the nice!view are too tall;
 do not use them. Desoldering five pins is the only way to take the display off again.
 
 1. Check the pin order first. The board expects, from the back edge to the front: MOSI, SCK, 3V3,
-   GND, CS. This order is a `MEASURE` value from a community footprint. Compare it with the labels
-   on your module. A module with another order must not be fitted.
+   GND, CS. It matches the pinout on nicekeyboards.com, but stays a `MEASURE` value until a module is
+   checked. Compare it with the labels on your module. A module with another order must not be fitted.
 2. Break five pins off the 2.54 mm male header strip (C2337). Push the short ends through J2 from the
    top face, plastic body flat on the board. Solder one pin from the bottom, check that the header
    stands square, then solder the other four.
@@ -96,17 +161,19 @@ do not use them. Desoldering five pins is the only way to take the display off a
    from the header toward the right knob. Solder the five pins on top of the module.
 4. Trim the pins to 1.5 mm above the module's board. The glass is then 4.4 mm above the PCB and the
    lens lies 2.38 mm above the trimmed pins (both `MEASURE` values from the drawings).
-5. Plug in the USB cable. Expected: a splash screen with the firmware version, then the MEDIA
-   layer with its key labels.
+5. Plug in the USB cable. Expected: a splash screen with the firmware version and `RESET: POWER-ON`,
+   then the MEDIA layer with its key labels. Now run the hardware test mode once more with the screen
+   (hold K0 while plugging in) and check the key grid and both knobs.
 
 The display is held only by its header. Stick an open-cell foam pad, 10 x 10 mm and 2.5 mm thick (a
 guess), on the PCB under the display's free end, between X 48 and 58 mm. The parts under the module
 squeeze it to 1.5 mm. It is not optional: without it one degree of tilt lifts the free end 0.6 mm,
 and the module's solder joints carry every knock.
 
-## 6. Prepare the case parts
+## 10. Prepare the case parts
 
-Print or mill the parts first: [cad/README.md](../cad/README.md#printing).
+Print or mill the parts first: [cad/README.md](../cad/README.md#printing). For the first case,
+print the coupons before the shells; [prototype.md](prototype.md) has the order and the pass tests.
 
 <img src="images/cad/exploded.png" alt="Exploded view of the whole pad" width="60%">
 
@@ -125,7 +192,7 @@ Print or mill the parts first: [cad/README.md](../cad/README.md#printing).
    screen-printed on its underside. Measure its thickness: up to 1.1 mm still ends under flush with
    0.13 mm tape. A thinner sheet may take 0.2 mm tape.
 
-## 7. Close the case
+## 11. Close the case
 
 <img src="images/cad/section_light_line.png" alt="Cut through one LED, the PCB edge and the light bar" width="48%"> <img src="images/cad/shells_inside.png" alt="Both shells from inside" width="48%">
 
@@ -145,7 +212,7 @@ Print or mill the parts first: [cad/README.md](../cad/README.md#printing).
    rings press the board up against it. In a printed top the screws cut their own thread in 1.8 mm
    holes and strip easily.
 
-## 8. Switches, keycaps, knobs, feet
+## 12. Switches, keycaps, knobs, feet
 
 1. Check each switch for bent pins. Straighten them first; a bent pin folds under the switch.
 2. Press each switch through the plate into its socket. Press straight down, near the middle of the
@@ -163,7 +230,7 @@ Print or mill the parts first: [cad/README.md](../cad/README.md#printing).
 Optional tilt bar: leave the back foot strip off, glue or tape the bar's tongue into the back recess,
 and stick that strip onto the bar. Details in [cad/README.md](../cad/README.md#tilt-bar).
 
-## 9. Final test
+## 13. Final test
 
 1. Plug in. Splash screen, then the MEDIA layer. LEDs wipe on, then breathe.
 2. Press every key. Its label on the display fills while the key is down.

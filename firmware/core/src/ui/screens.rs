@@ -9,6 +9,7 @@ use crate::framebuffer::{Framebuffer, Rect, HEIGHT, WIDTH};
 use crate::keymap::LAYER_COUNT;
 use crate::led::MAX_LEVEL;
 use crate::pad::View;
+use crate::reset::ResetCause;
 
 const VERSION: &str = concat!("V", env!("CARGO_PKG_VERSION"));
 const MARGIN: usize = 2;
@@ -23,7 +24,9 @@ const PROGRESS: Rect = Rect {
 
 const SPLASH_TITLE: &str = "MACROPAD";
 const SPLASH_TITLE_Y: usize = 9;
-const SPLASH_SUBTITLE_Y: usize = 37;
+const SPLASH_SUBTITLE_Y: usize = 33;
+/// Shown from the first frame on, so a reboot loop shorter than the splash still shows it.
+const SPLASH_RESET_Y: usize = 42;
 /// The title is uncovered from left to right over this time.
 const SPLASH_REVEAL_MS: u64 = 700;
 
@@ -63,7 +66,7 @@ fn centred_big(frame: &mut Framebuffer, y: usize, text: &str, scale: usize) {
 }
 
 /// Dark tab with a light title in the top-left corner, standing on a rule, as on the main screen.
-fn draw_title_tab(frame: &mut Framebuffer, title: &str) {
+pub(super) fn draw_title_tab(frame: &mut Framebuffer, title: &str) {
     frame.text(3, 1, title);
     frame.invert(Rect {
         x: 0,
@@ -74,7 +77,7 @@ fn draw_title_tab(frame: &mut Framebuffer, title: &str) {
     frame.horizontal_line(SYSTEM_RULE_Y);
 }
 
-pub(super) fn draw_splash(frame: &mut Framebuffer, uptime_ms: u64) {
+pub(super) fn draw_splash(frame: &mut Framebuffer, uptime_ms: u64, reset_cause: ResetCause) {
     centred_big(frame, SPLASH_TITLE_Y, SPLASH_TITLE, HUGE);
     let revealed = (WIDTH as u64 * uptime_ms / SPLASH_REVEAL_MS) as usize;
     frame.clear(Rect {
@@ -89,6 +92,9 @@ pub(super) fn draw_splash(frame: &mut Framebuffer, uptime_ms: u64) {
         let _ = write!(subtitle, "FIRMWARE {VERSION}");
         centred(frame, SPLASH_SUBTITLE_Y, subtitle.as_str());
     }
+    let mut reset: Line<24> = Line::new();
+    let _ = write!(reset, "RESET: {}", reset_cause.label());
+    centred(frame, SPLASH_RESET_Y, reset.as_str());
     draw_progress(frame, PROGRESS, uptime_ms, super::SPLASH_MS);
 }
 
@@ -224,6 +230,10 @@ const _: () = assert!(
     "the splash title must end above its subtitle"
 );
 const _: () = assert!(
+    SPLASH_SUBTITLE_Y + GLYPH_HEIGHT < SPLASH_RESET_Y && SPLASH_RESET_Y + GLYPH_HEIGHT < PROGRESS.y,
+    "the reset cause must sit between the subtitle and the progress bar"
+);
+const _: () = assert!(
     SYSTEM_LIGHT_BAR_X + MAX_LEVEL as usize * SYSTEM_LIGHT_PITCH <= WIDTH,
     "the brightness bar must fit the panel"
 );
@@ -245,7 +255,7 @@ mod tests {
 
     fn splash_at(uptime_ms: u64) -> Framebuffer {
         let mut frame = Framebuffer::default();
-        draw_splash(&mut frame, uptime_ms);
+        draw_splash(&mut frame, uptime_ms, ResetCause::PowerOn);
         frame
     }
 
@@ -282,6 +292,41 @@ mod tests {
         assert!(ink_in(&half_way, title) > 0);
         assert_eq!(ink_in(&half_way, right_half), 0);
         assert!(ink_in(&splash_at(SPLASH_REVEAL_MS), right_half) > 0);
+    }
+
+    #[test]
+    fn the_splash_shows_the_reset_cause_from_the_first_frame() {
+        let reset_line = Rect {
+            x: 0,
+            y: SPLASH_RESET_Y,
+            width: WIDTH,
+            height: GLYPH_HEIGHT,
+        };
+        let draw_at_start = |cause| {
+            let mut frame = Framebuffer::default();
+            draw_splash(&mut frame, 0, cause);
+            frame
+        };
+        let power_on = draw_at_start(ResetCause::PowerOn);
+        let watchdog = draw_at_start(ResetCause::Watchdog);
+        assert!(ink_in(&power_on, reset_line) > 0);
+        assert!(power_on != watchdog);
+    }
+
+    #[test]
+    fn every_reset_cause_fits_the_splash_line() {
+        let causes = [
+            ResetCause::PowerOn,
+            ResetCause::ResetPin,
+            ResetCause::Debugger,
+            ResetCause::Watchdog,
+            ResetCause::Restart,
+            ResetCause::Unknown,
+        ];
+        for cause in causes {
+            let line = text_width("RESET: ") + text_width(cause.label());
+            assert!(line + 2 * MARGIN <= WIDTH, "{cause:?}");
+        }
     }
 
     #[test]

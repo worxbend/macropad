@@ -16,6 +16,7 @@ use embassy_usb::{Builder, Handler, UsbDevice};
 use macropad_core::engine::Reports;
 use static_cell::StaticCell;
 
+use crate::log::info;
 use crate::state::{HOST_ASLEEP, HOST_LOCKS, REPORTS};
 use crate::Irqs;
 
@@ -75,13 +76,28 @@ struct BusWatcher;
 impl Handler for BusWatcher {
     /// A suspended bus allows a device 2.5 mA, so the LEDs must go off while the host sleeps.
     fn suspended(&mut self, suspended: bool) {
+        info!("usb: suspended {=bool}", suspended);
         HOST_ASLEEP.store(suspended, Ordering::Relaxed);
     }
 
     /// After a bus reset the host is awake and will send its lock states again.
     fn reset(&mut self) {
+        info!("usb: bus reset");
         HOST_ASLEEP.store(false, Ordering::Relaxed);
         HOST_LOCKS.store(0, Ordering::Relaxed);
+    }
+
+    // The three below only log, for a probe build.
+    fn enabled(&mut self, enabled: bool) {
+        info!("usb: enabled {=bool}", enabled);
+    }
+
+    fn addressed(&mut self, address: u8) {
+        info!("usb: address {=u8}", address);
+    }
+
+    fn configured(&mut self, configured: bool) {
+        info!("usb: configured {=bool}", configured);
     }
 }
 

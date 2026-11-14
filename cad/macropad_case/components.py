@@ -119,8 +119,11 @@ def encoder(centre: tuple[float, float]) -> Part:
     body = centred_box(centre, CASE.encoder_body, (0, stack.encoder_body_top))
     bushing = cylinder(centre, stack.encoder_bushing_diameter, (stack.encoder_body_top, LEVELS.bushing_top))
     bushing = chamfer(bushing.edges().group_by(Axis.Z)[-1], 0.4)
+    # Round from the bushing up to the start of the flat, a D only over the last `shaft_flat_length`.
+    flat_start = stack.encoder_shaft_top - CASE.shaft_flat_length
+    round_shaft = cylinder(centre, CASE.shaft_diameter, (LEVELS.bushing_top, flat_start))
     d_shaft = Pos(centre[0], -centre[1]) * d_profile(CASE.shaft_diameter, CASE.shaft_flat)
-    shaft = slab(d_shaft, (LEVELS.bushing_top, stack.encoder_shaft_top))
+    shaft = round_shaft + slab(d_shaft, (flat_start, stack.encoder_shaft_top))
     tail_z = (LEVELS.pcb_bottom - SOLDER_TAIL, LEVELS.pcb_bottom)
     pins = [cylinder((centre[0] + dx, centre[1] + dy), 1.2, tail_z) for dx, dy in ENCODER_PINS]
     tabs = [centred_box((centre[0] + dx, centre[1] + dy), (3.0, 1.2), tail_z) for dx, dy in ENCODER_TABS]
@@ -226,7 +229,7 @@ def screw(centre: tuple[float, float], variant: str) -> Part:
     """M2 socket-head screw of the variant's length, head in the base counterbore. Above the PCB it is
     drawn at the thread's root diameter, because there its thread is inside the wall of the hole."""
     head_diameter, head_height = CASE.screw_head
-    seat = screw_seat(variant)
+    seat = screw_seat(variant, centre)
     head = cylinder(centre, head_diameter, (seat - head_height, seat))
     hex_socket = cylinder(centre, 1.7, (seat - head_height - 0.01, seat - head_height + 1.0))
     shank = cylinder(centre, 2.0, (seat, 0))

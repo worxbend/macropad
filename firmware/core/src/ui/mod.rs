@@ -3,11 +3,12 @@
 //! | Screen | Shown |
 //! | --- | --- |
 //! | flash | while both knobs are held, and after the bootloader was requested |
-//! | splash | for `SPLASH_MS` after power-on |
+//! | splash | for `SPLASH_MS` after start, with the reset cause |
 //! | system | while the left knob is held on its own |
 //! | idle | after `IDLE_AFTER_MS` without input, or while the host sleeps |
 //! | main | otherwise, with the layer banner or the knob overlay on top when one is due |
 
+mod hardware_test;
 mod main_screen;
 mod overlays;
 mod screens;
@@ -16,6 +17,7 @@ use core::fmt::{self, Write};
 
 use crate::activity::IDLE_AFTER_MS;
 use crate::framebuffer::{Framebuffer, Rect};
+use crate::hardware_test::TestView;
 use crate::pad::{Host, View};
 
 /// Longest label, and longest layer name, that fits its place on the screen.
@@ -62,7 +64,7 @@ pub fn draw(state: &UiState) -> Framebuffer {
     let mut frame = Framebuffer::default();
     match screen_for(state) {
         Screen::Flash => screens::draw_flash(&mut frame, &state.view),
-        Screen::Splash => screens::draw_splash(&mut frame, state.view.activity.uptime_ms),
+        Screen::Splash => screens::draw_splash(&mut frame, state.view.activity.uptime_ms, state.view.reset_cause),
         Screen::System => screens::draw_system(&mut frame, &state.view),
         Screen::Idle => {
             screens::draw_stars(&mut frame, state.view.activity.uptime_ms);
@@ -73,6 +75,13 @@ pub fn draw(state: &UiState) -> Framebuffer {
             overlays::draw(&mut frame, &state.view);
         }
     }
+    frame
+}
+
+/// The hardware test mode has this one screen; see `crate::hardware_test`.
+pub fn draw_hardware_test(view: &TestView) -> Framebuffer {
+    let mut frame = Framebuffer::default();
+    hardware_test::draw(&mut frame, view);
     frame
 }
 

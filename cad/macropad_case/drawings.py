@@ -15,9 +15,10 @@ from .components import drawn_components
 from .parts import drill_point_height, underside_artwork, usb_opening_profile
 from .small_parts import case_parts, lens_mask_outline, lens_outline
 from .solids import case_outline, discs, offset_sketch, stadium
-from .spec import BOARD, CASE, CNC, CNC_PART_NUMBERS, LEVELS, PRINT, REVISION, Span, buttons, case_bounds, dish_rim
-from .spec import encoder_centres, foot_span, grown, key_centres, knob_well_diameter, led_slot_span, lens_opening
-from .spec import lens_recess, lens_span, mounting_holes, screw_rows, screw_seat, usb_corner_radii, usb_opening_size
+from .spec import BOARD, CASE, CNC, CNC_PART_NUMBERS, LEVELS, PRINT, REVISION, Span, buttons, case_bounds
+from .spec import cnc_tapped_hole, dish_rim, encoder_centres, foot_span, ground_bond_hole, grown, key_centres
+from .spec import knob_well_diameter, led_slot_span, lens_opening, lens_recess, lens_span, mounting_holes, screw_rows
+from .spec import screw_seat, top_boss_diameters, usb_corner_radii, usb_opening_size
 
 SHEET = (420.0, 297.0)  # A3 landscape, mm
 SCALE = 1.6
@@ -62,7 +63,7 @@ DETAIL_AT = (272.0, 250.0)  # sheet position of the detail's centre
 DETAIL_SIZE = (7.0, 8.0)  # model mm shown, across and up
 TITLE_BLOCK_AT = (312.0, 9.0)  # top-left corner of the title block on a part sheet
 TITLE_BLOCK_SIZE = (101.0, 4.4)  # width, row height
-TABLE_AT = (312.0, 58.0)
+TABLE_AT = (312.0, 51.0)
 TABLE_LINE = 4.8
 NOTES_AT = 255.0  # sheet Y of the first line of notes on a part sheet
 NOTE_LINE = 3.5
@@ -80,8 +81,15 @@ PLATE_TOLERANCE = 0.05
 LAP_TOLERANCE = 0.03  # lap ridge and groove
 CUTOUT_PLUS = 0.05  # switch cut-outs: +0.05 / 0
 LENS_DEPTH_TOLERANCE = 0.05
+# Lens recess, length and width: +0.05 / 0, so the 0.1 mm fit per side stays 0.1 to 0.125 after anodise.
+# ISO 2768-m would allow 0.3 on the length, three times the fit.
+LENS_RECESS_PLUS = 0.05
+# Chosen, not from a standard: the lens is taped on its two ledges, and the top seats on the base rim.
+LEDGE_FLATNESS = 0.05
+SEAT_FLATNESS = 0.1
+LIGHT_SKIN_TOLERANCE = 0.1  # ISO 2768-m for 0.5 to 3 mm, stated on the sheet because the skin is thin
 USB_TOLERANCE = 0.1
-CUT_LETTER_ASIDE = 6.0  # sheet mm left of the cut line, so a letter clears dimension text centred on it
+CUT_LETTER_ASIDE = 9.0  # sheet mm left of the cut line, so a letter clears dimension text centred on it ("39.20")
 # The back letter sits just inside the back face: above it run the dimension lines of the lens and the knobs.
 CUT_LETTER_INSIDE = 6.0
 PREVIEW_NAMES = {"general_arrangement": "general_arrangement", "base": "drawing_base", "top": "drawing_top"}
@@ -368,20 +376,35 @@ FINISH_NOTES = (
     "6061-T6 aluminium.",
     "Bead blast all over, 120 to 150 grit glass bead, then anodise to MIL-A-8625 Type II, Class 1 (clear, "
     "not dyed), 8 to 12 um. Colour: natural silver, as in the renders. Cosmetic faces: the outside and the top face.",
-    "Anodise grows each face by about 0.004 to 0.006 mm (a guess: half the coating). The tolerances below "
-    "hold after anodise.",
+    "About half the coating builds up: each face grows 0.004 to 0.006 mm. The tolerances below hold after anodise.",
     "Break unmarked edges 0.05. The 0.3 chamfers are cosmetic: measure them after blasting.",
 )
+STEP_MASTER_NOTE = "The STEP file is the master for all geometry not dimensioned on this sheet."
 POSITION_NOTE = f"S1-S6 positions from datum A: \u00b1{_mm(POSITION_TOLERANCE)}, on both parts."
 CORNER_NOTE = (
     f"Outline corners: one quintic Bezier each, control points {_mm(CASE.corner_setback)}, "
     f"{_mm(CASE.corner_setback * CASE.corner_handles[0])} and {_mm(CASE.corner_setback * CASE.corner_handles[1])} mm "
     "from the box corner on both sides. Take the curve from the STEP file."
 )
-THREAD_CALLOUT = (
-    f"M2x0.4-6H, {_mm(CASE.cnc_full_thread)} min full thread, drill \u2300{_mm(CASE.cnc_tap_drill[0])} x "
-    f"{_mm(CASE.cnc_tap_drill[1])}, do not exceed {_mm(CASE.cnc_tap_drill_limit)}"
-)
+
+
+def thread_callout(hole: tuple[float, float]) -> str:
+    """The tapped hole at `hole`, as the top sheet's table calls it out."""
+    tapped = cnc_tapped_hole(hole)
+    drill = f"drill \u2300{_mm(CASE.cnc_tap_drill)} x {_mm(tapped.depth)}"
+    end = "flat bottom" if tapped.flat_bottom else f"point to {_mm(tapped.depth + drill_point_height(hole))}"
+    return (f"M2x0.4-6H, {tapped.full_thread:.1f} min full thread, from below; position "
+            f"\u00b1{_mm(POSITION_TOLERANCE)}\n{drill}, {end}, do not exceed {_mm(tapped.limit)}")
+
+
+def _lens_recess_size() -> str:
+    """The milled lens recess, length by width, each with its tolerance."""
+    (x_low, x_high), (y_low, y_high) = lens_recess(CNC)
+    plus = f" +{_mm(LENS_RECESS_PLUS)}/0"
+    return f"{x_high - x_low:.2f}{plus} x {y_high - y_low:.2f}{plus}"
+
+
+GROUND_HOLE = f"S{mounting_holes().index(ground_bond_hole()) + 1}"
 BASE_SHEET = PartSheet(
     "base", "macropad case: base, CNC variant", "url(#hatch)", -1.5,
     (
@@ -396,10 +419,12 @@ BASE_SHEET = PartSheet(
         "Cut it with the side of the end mill in setup 1.",
         f"Screw holes go straight through: M2 x {_mm(CASE.cnc_screw_length)} socket head from below.",
         CORNER_NOTE,
-        "Laser mark on the underside: see LASER MARK and engraving_underside.dxf.",
+        "Laser mark on the underside: see LASER MARK and engraving_underside.dxf. " + STEP_MASTER_NOTE,
     ),
     (
         *FINISH_NOTES,
+        "Rack marks: on the inner cavity walls, below the rim only.",
+        f"GROUND: mask the counterbore seat of {GROUND_HOLE} from anodise.",
         "TOLERANCES (after anodise)",
         "General: ISO 2768-m.",
         POSITION_NOTE,
@@ -433,22 +458,30 @@ TOP_SHEET = PartSheet(
         f"in a {BOARD.stack.plate_thickness:.2f} \u00b1{_mm(PLATE_TOLERANCE)} mm plate.",
         f"Key dish: flat floor on the plate, walls at 45 degrees, {_mm(LEVELS.deck_top - LEVELS.plate_top)} deep. "
         "A 90 degree chamfer mill of 8 mm or more cuts the walls.",
-        f"Screw holes S1-S6: {THREAD_CALLOUT}. For M2 x {_mm(CASE.cnc_screw_length)}.",
+        f"Screw holes S1-S6: M2x0.4-6H blind, from below, for M2 x {_mm(CASE.cnc_screw_length)}; depth and "
+        "thread of each in the table. S3 and S4 are flat bottomed: 0.8 mm of skin is left under the dish floor.",
         "Setup 2 (top side up): hold the part on a fixture plate through the six M2 holes, or in soft jaws cut to "
         "the outline. The skirts are too thin for vise pressure.",
         CORNER_NOTE,
+        STEP_MASTER_NOTE,
     ),
     (
         *FINISH_NOTES,
-        "Mask the six tapped M2 holes before anodising, or chase them with an M2 6H tap after it.",
+        "Mask the six tapped M2 holes before anodising, or chase them with an M2 6H tap after it. Rack marks: on "
+        "the inner faces of the skirt, in the cavity. Not on the top face, the outside, the joint face or the lens "
+        "recess.",
+        f"GROUND: also mask the boss face round {GROUND_HOLE} on the joint face, "
+        f"\u2300{_mm(dict(top_boss_diameters())[ground_bond_hole()])}: it rests on a bare GND ring "
+        f"\u2300{_mm(BOARD.mounting.ground_bond_pad_diameter)} on the PCB.",
         "TOLERANCES (after anodise)",
         "General: ISO 2768-m.",
         f"Switch cut-outs {BOARD.stack.switch_cutout:.2f} +{_mm(CUTOUT_PLUS)}/0; plate "
         f"{BOARD.stack.plate_thickness:.2f} \u00b1{_mm(PLATE_TOLERANCE)}.",
         POSITION_NOTE,
         f"Lap grooves: depth {_mm(CASE.lap_height + CASE.lap_fit)} and land, \u00b1{_mm(LAP_TOLERANCE)} (detail).",
-        f"Lens recess depth {_mm(CASE.lens_recess_depth)} \u00b1{_mm(LENS_DEPTH_TOLERANCE)}; USB opening "
-        f"\u00b1{_mm(USB_TOLERANCE)} (detail).",
+        f"Lens recess {_lens_recess_size()}, depth {_mm(CASE.lens_recess_depth)} \u00b1{_mm(LENS_DEPTH_TOLERANCE)}; "
+        f"USB opening \u00b1{_mm(USB_TOLERANCE)} (detail).",
+        f"Flatness {_mm(LEDGE_FLATNESS)} on each lens ledge, {_mm(SEAT_FLATNESS)} on the joint face (Z 0).",
         "LENS OPENING",
         f"Cut it in setup 2, after the lens recess, with the same 3 mm end mill, down to Z "
         f"{_mm(LEVELS.lens_rib_bottom)} ({_mm(BOARD.stack.deck_top - LEVELS.lens_rib_bottom)} deep). The "
@@ -494,31 +527,40 @@ def _span_size(span: Span) -> str:
 def _base_features() -> list[tuple[str, tuple[float, float], str]]:
     """(tag, board position, what to make) for every hole and every recess in the underside of the base.
     A line break in the text starts a new line in the table."""
-    seat = screw_seat(CNC) - LEVELS.floor_bottom
-    screw_text = (
-        f"\u2300{_mm(BOARD.mounting.hole_diameter)} through; counterbore \u2300{_mm(CASE.counterbore_diameter)} to "
-        f"{_mm(seat)} from below; position \u00b1{_mm(POSITION_TOLERANCE)}"
-    )
-    screws = [(f"S{index + 1}", hole, screw_text) for index, hole in enumerate(mounting_holes())]
-    button_text = f"\u2300{_mm(CASE.button_hole_diameter)} through"
-    button_holes = [(name.upper()[:2], centre, f"{button_text} ({name.upper()})") for name, centre in buttons().items()]
+    def screw_text(hole: tuple[float, float]) -> str:
+        seat = screw_seat(CNC, hole) - LEVELS.floor_bottom
+        return (f"\u2300{_mm(BOARD.mounting.hole_diameter)} through; counterbore "
+                f"\u2300{_mm(CASE.counterbore_diameter)} to {_mm(seat)} from below; position "
+                f"\u00b1{_mm(POSITION_TOLERANCE)}")
+
+    screws = [(f"S{index + 1}", hole, screw_text(hole)) for index, hole in enumerate(mounting_holes())]
+    names = " and ".join(name.upper() for name in buttons())
+    button_text = f"\u2300{_mm(CASE.button_hole_diameter)} through ({names})"
+    button_holes = [(name.upper()[:2], centre, button_text) for name, centre in buttons().items()]
     depth = f"{_mm(CASE.foot_recess_depth)} deep from below"
     recesses = [
         (f"R{index + 1}", _span_centre(foot_span(row)),
          f"slot {_span_size(grown(foot_span(row), CASE.foot_recess_fit))}, full-radius ends, {depth}")
         for index, row in enumerate(screw_rows())
     ]
-    return screws + button_holes + recesses
+    return screws + button_holes + recesses + _light_channel_features()
+
+
+def _light_channel_features() -> list[tuple[str, tuple[float, float], str]]:
+    """The two light channels, cut into the side walls from the cavity, and the skin they leave."""
+    start, end = led_slot_span()
+    reach, skin = CASE.light_channel_reach, CASE.wall - CASE.light_channel_reach
+    text = (
+        f"light channel {_mm(end - start)} long, {_mm(reach)} in, {_mm(-LEVELS.led_slot_bottom)} deep, "
+        f"R{_mm(CASE.light_channel_radius)}; skin {skin:.2f} \u00b1{_mm(LIGHT_SKIN_TOLERANCE)}"
+    )
+    middle = (start + end) / 2
+    inside = CASE.pcb_gap + reach / 2
+    return [("L1", (-inside, middle), text), ("L2", (BOARD.board.width + inside, middle), text)]
 
 
 def _top_features() -> list[tuple[str, tuple[float, float], str]]:
-    drill, depth = CASE.cnc_tap_drill
-    tapped = (
-        f"M2x0.4-6H, {_mm(CASE.cnc_full_thread)} min full thread, from below; position \u00b1{_mm(POSITION_TOLERANCE)}\n"
-        f"drill \u2300{_mm(drill)} x {_mm(depth)}, do not exceed {_mm(CASE.cnc_tap_drill_limit)} "
-        f"(point to {_mm(depth + drill_point_height())})"
-    )
-    pilots = [(f"S{index + 1}", hole, tapped) for index, hole in enumerate(mounting_holes())]
+    pilots = [(f"S{index + 1}", hole, thread_callout(hole)) for index, hole in enumerate(mounting_holes())]
     bushing = BOARD.stack.encoder_bushing_diameter + CASE.bushing_clearance
     through = (
         f"\u2300{_mm(bushing)} through; well \u2300{_mm(knob_well_diameter())} x "
@@ -530,9 +572,9 @@ def _top_features() -> list[tuple[str, tuple[float, float], str]]:
         f"{len(key_centres())} on a {_mm(BOARD.keys.pitch)} grid"
     )
     lens_text = (
-        f"lens recess {_span_size(lens_recess(CNC))}, R{_mm(CASE.lens_corner_radius + CASE.lens_fit)}, "
-        f"{_mm(CASE.lens_recess_depth)} \u00b1{_mm(LENS_DEPTH_TOLERANCE)} deep from above\n"
-        f"opening {_span_size(lens_opening(CNC))} through, in its middle"
+        f"lens recess {_lens_recess_size()}, R{_mm(CASE.lens_corner_radius + CASE.lens_fit)}\n"
+        f"{_mm(CASE.lens_recess_depth)} \u00b1{_mm(LENS_DEPTH_TOLERANCE)} deep from above; opening "
+        f"{_span_size(lens_opening(CNC))} through, in its middle"
     )
     return pilots + encoders + [("K1", key_centres()[0], cutout), ("LS", _span_centre(lens_recess(CNC)), lens_text)]
 
@@ -553,7 +595,9 @@ def _feature_table(features: list[tuple[str, tuple[float, float], str]]) -> str:
              f'<text class="note" x="{left + 40}" y="{top + TABLE_LINE}" text-anchor="end">Y</text>']
     line = top + 2 * TABLE_LINE
     previous = None
-    for tag, centre, text in features:
+    # Equal features stand together under one description, in the order each description first appears.
+    first_seen = {text: index for index, (_, _, text) in reversed(list(enumerate(features)))}
+    for tag, centre, text in sorted(features, key=lambda feature: first_seen[feature[2]]):
         if text != previous:  # the description stands once, above each group of equal features
             for part in text.split("\n"):
                 lines.append(f'<text class="small" x="{left}" y="{line:.1f}">{escape(part)}</text>')
@@ -710,9 +754,9 @@ def _top_part_dimensions() -> list[str]:
         _dimension(PLAN_ABOVE, _plan_point(LEFT, rim_front), _plan_point(LEFT, FRONT_SIDE), -7,
                    f"{_mm(FRONT_SIDE - rim_front, 3)} frame", along=True),
         _dimension(PLAN_ABOVE, _plan_point(recess_start, recess_back), _plan_point(recess_end, recess_back), -4,
-                   _mm(recess_end - recess_start)),
+                   f"{recess_end - recess_start:.2f}"),
         _dimension(PLAN_ABOVE, _plan_point(recess_end, recess_back), _plan_point(recess_end, recess_front), 4,
-                   _mm(recess_front - recess_back)),
+                   f"{recess_front - recess_back:.2f}"),
         _dimension(PLAN_ABOVE, _plan_point(*keys[-2]), _plan_point(*keys[-1]),
                    PLAN_ABOVE.scale * (FRONT_SIDE - keys[-1][1]) + 6, _mm(BOARD.keys.pitch)),
         *_section_heights([

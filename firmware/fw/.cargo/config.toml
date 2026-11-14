@@ -3,3 +3,9 @@ target = "thumbv8m.main-none-eabihf"
 
 [target.thumbv8m.main-none-eabihf]
 rustflags = ["-C", "link-arg=--nmagic", "-C", "link-arg=-Tlink.x"]
+# `cargo run --release --features probe` flashes over a debug probe and prints the log.
+# Same runner as embassy's examples/rp235x. Needs probe-rs; see the firmware README.
+runner = "probe-rs run --chip RP235x"
+
+[env]
+DEFMT_LOG = "info"

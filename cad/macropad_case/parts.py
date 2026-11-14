@@ -13,8 +13,9 @@ from . import signature
 from .solids import CUT_OVERSHOOT, box, case_outline, chamfered_slab, cylinder, discs, legend, millable, offset_sketch
 from .solids import pcb_outline, rectangle, rounded_rectangle, slab, stadium
 from .spec import BOARD, CASE, CENTRE_ROW, CNC, LEVELS, PRINT, buttons, bushing_hole, case_bounds, deck_pocket_front
-from .spec import dish_floor, dish_floor_radius, encoder_centres, foot_span, grown, key_centres, knob_well_diameter
-from .spec import label_field, lap_runs, led_slot_span, lens_opening, lens_recess, lens_rib_spans, mounting_holes
+from .spec import cnc_tapped_hole, dish_floor, dish_floor_radius, encoder_centres, foot_span, grown, key_centres
+from .spec import knob_well_diameter, label_field, lap_runs, led_slot_span, lens_opening, lens_recess, lens_rib_spans
+from .spec import mounting_holes
 from .spec import rib_lines, screw_rows, screw_seat, skin_chamfer, socket_posts, top_boss_diameters, usb_corner_radii
 from .spec import usb_opening_size, usb_pad_span
 
@@ -152,7 +153,9 @@ def _lap_footprint(run: tuple[str, float, float], outward: float, along: float) 
 def _base_cuts(variant: str) -> list[Part]:
     under = LEVELS.floor_bottom - CUT_OVERSHOOT
     screw_holes = [cylinder(hole, BOARD.mounting.hole_diameter, (under, 0)) for hole in mounting_holes()]
-    counterbores = [cylinder(hole, CASE.counterbore_diameter, (under, screw_seat(variant))) for hole in mounting_holes()]
+    counterbores = [
+        cylinder(hole, CASE.counterbore_diameter, (under, screw_seat(variant, hole))) for hole in mounting_holes()
+    ]
     button_holes = [
         cylinder(centre, CASE.button_hole_diameter, (under, LEVELS.floor_top + CUT_OVERSHOOT))
         for centre in buttons().values()
@@ -261,17 +264,30 @@ def top(variant: str) -> Part:
 
 
 def _top_screw_holes(variant: str) -> list[Part]:
-    """Print: a pilot hole the screw cuts its own thread in. CNC: the tap drill, with the cone its
-    point leaves, because that point is what comes nearest to the dish floor."""
+    """Print: a pilot hole the screw cuts its own thread in. CNC: the tap drill of each hole."""
     if variant == PRINT:
         return [cylinder(hole, CASE.pilot_diameter, (-CUT_OVERSHOOT, CASE.pilot_depth)) for hole in mounting_holes()]
-    diameter, depth = CASE.cnc_tap_drill
-    point = Pos(0, 0, depth) * Cone(diameter / 2, 0, drill_point_height(), align=(Align.CENTER, Align.CENTER, Align.MIN))
-    return [cylinder(hole, diameter, (-CUT_OVERSHOOT, depth)) + Pos(hole[0], -hole[1]) * point for hole in mounting_holes()]
+    return [tap_drill(hole) for hole in mounting_holes()]
 
 
-def drill_point_height() -> float:
-    return CASE.cnc_tap_drill[0] / 2 / tan(radians(CASE.cnc_drill_point_angle / 2))
+def tap_drill(hole: tuple[float, float], depth: float | None = None) -> Part:
+    """What the drill removes for one tapped hole of the milled top, to its drawn depth or to `depth`:
+    a flat bottom where the hole is milled flat, else the cone its point leaves, because that point
+    is what comes nearest to the face above."""
+    tapped = cnc_tapped_hole(hole)
+    depth = tapped.depth if depth is None else depth
+    drilled = cylinder(hole, CASE.cnc_tap_drill, (-CUT_OVERSHOOT, depth))
+    if tapped.flat_bottom:
+        return drilled
+    point = Cone(CASE.cnc_tap_drill / 2, 0, drill_point_height(hole), align=(Align.CENTER, Align.CENTER, Align.MIN))
+    return drilled + Pos(hole[0], -hole[1], depth) * point
+
+
+def drill_point_height(hole: tuple[float, float]) -> float:
+    """Height of the drill point's cone over the full diameter; zero in a flat-bottomed hole."""
+    if cnc_tapped_hole(hole).flat_bottom:
+        return 0.0
+    return CASE.cnc_tap_drill / 2 / tan(radians(CASE.cnc_drill_point_angle / 2))
 
 
 def _top_blank(variant: str) -> Part:

@@ -89,6 +89,12 @@ y = 21.3
 [mounting]
 hole_diameter = 2.2    # M2 clearance
 holes = [[3.2, 3.2], [80.8, 3.2], [42.0, 41.525], [42.0, 60.575], [3.2, 79.3], [80.8, 79.3]]
+# Case ground: the milled case is bonded to GND at this one hole (H1, back left, nearest the USB shell).
+# The PCB has a plated hole with a bare GND ring on both faces there; the top's corner boss (5.0 mm) seats
+# on the top-face ring, and the drawings mask that boss face and the base's screw seat at this hole from
+# anodise. The other holes float.
+ground_bond_hole = [3.2, 3.2]
+ground_bond_pad_diameter = 5.4   # bare copper ring, larger than the 5.0 mm corner boss face
 
 [stack]
 # Heights above the PCB top face (negative = below it).

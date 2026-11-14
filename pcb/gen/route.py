@@ -50,12 +50,13 @@ REGULATOR_KEEPOUT_MARGIN = 0.2
 # Layers that must have no copper under the inductor and the VREG_LX node; the bottom layer carries them.
 REGULATOR_KEEPOUT_LAYERS = (pcbnew.F_Cu, pcbnew.In1_Cu, pcbnew.In2_Cu)
 USB_PAIR_MISMATCH_LIMIT = 2.0  # mm; full-speed USB tolerates far more, this only catches a detour
-# Nets that must stay on the bottom layer, over the unbroken ground plane, from pad to pad.
+# Nets that must stay on the bottom layer, over the unbroken ground plane on In2.Cu, from pad to pad.
 NO_VIA_NETS = ("VREG_LX", "USB_DM", "USB_DP", "USB_D_P")
 _PLANE_EDGE_MARGIN = 0.55  # a via this close to the edge of its plane island might miss it
 _KICAD_LAYER = {FRONT: pcbnew.F_Cu, BACK: pcbnew.B_Cu}
 # Ground vias in the MCU's exposed pad: the chip's ground return and its heat path.
-_EXPOSED_PAD_VIA_OFFSETS = ((-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0))
+# The exposed pad's paste windows leave room for them (layout.EP_PASTE_WINDOWS).
+EXPOSED_PAD_VIA_OFFSETS = ((-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0))
 # Hand-placed regulator vias: net and offset (x, y) from the VREG_LX pin (48). Two ground vias beside the
 # joined ground pads of CIN and COUT; the 3.3 V via that feeds VREG_VIN from inside the pad ring, in a
 # notch of the 1.1 V island (layout.V1_ISLAND); the two ends of the wide 1.1 V link from the inductor's
@@ -110,7 +111,7 @@ def usb_path_length(router: Router, polarity: str) -> float:
     return router.net_length(f"USB_D_{polarity}") + router.net_length(mcu_side)
 
 
-def _rect(box: pcbnew.BOX2I) -> tuple[float, float, float, float]:
+def box_mm(box: pcbnew.BOX2I) -> tuple[float, float, float, float]:
     return tuple(pcbnew.ToMM(v) for v in (box.GetLeft(), box.GetTop(), box.GetRight(), box.GetBottom()))
 
 
@@ -131,7 +132,7 @@ def _load_obstacles(board: pcbnew.BOARD, router: Router) -> dict[str, list[Pad]]
             layers = tuple(layer for layer in BOTH_LAYERS if kicad_pad.IsOnLayer(_KICAD_LAYER[layer]))
             name = f"{footprint.GetReference()}.{kicad_pad.GetNumber()}"
             net = schematic.circuit_net_name(kicad_pad.GetNetname())
-            pad = Pad(name, net, _rect(kicad_pad.GetBoundingBox()), layers)
+            pad = Pad(name, net, box_mm(kicad_pad.GetBoundingBox()), layers)
             router.add_pad(pad)
             pads.setdefault(name, []).append(pad)
     mask_radius = circuit.FIDUCIAL_MASK_DIAMETER / 2
@@ -199,7 +200,7 @@ class _Plan:
         return self.pads[name][0]
 
     def exposed_pad_vias(self) -> None:
-        for dx, dy in _EXPOSED_PAD_VIA_OFFSETS:
+        for dx, dy in EXPOSED_PAD_VIA_OFFSETS:
             self.router.add_via_in_pad(GND, circuit.MCU_X + dx, circuit.MCU_Y + dy)
 
     def pair(self, net: str, first: str, second: str, wide: bool = False) -> None:
@@ -432,7 +433,7 @@ def check_sensitive_lengths(result: RoutingResult) -> None:
 
 def inductor_keepout(board: pcbnew.BOARD) -> tuple:
     """No copper on the top and the two inner layers under the regulator inductor (RP2350 datasheet 6.3.8.1)."""
-    inductor = _rect_around([_rect(pad.GetBoundingBox()) for pad in board.FindFootprintByReference("L1").Pads()])
+    inductor = _rect_around([box_mm(pad.GetBoundingBox()) for pad in board.FindFootprintByReference("L1").Pads()])
     return _grown(inductor, REGULATOR_KEEPOUT_MARGIN)
 
 
@@ -452,7 +453,7 @@ def _track_box(track: Track) -> tuple:
 
 def inductor_gap(board: pcbnew.BOARD) -> tuple:
     """The space between the inductor's two pads, where the bottom-layer ground pour must not run."""
-    pads = sorted((_rect(pad.GetBoundingBox()) for pad in board.FindFootprintByReference("L1").Pads()))
+    pads = sorted((box_mm(pad.GetBoundingBox()) for pad in board.FindFootprintByReference("L1").Pads()))
     (_, top, first_right, bottom), (second_left, second_top, _, _) = pads
     assert second_left > first_right and abs(second_top - top) < 0.01, "L1 is expected with its pads side by side in x"
     return first_right, top, second_left, bottom
@@ -466,7 +467,7 @@ def check_regulator_keepout(router: Router, keepouts: list[tuple]) -> None:
     """No via and no top-layer track inside the keepout under the inductor and VREG_LX (RP2350 datasheet 6.3.8)."""
     for rect in keepouts:
         for via in router.vias:
-            assert not _circle_meets_rect(via.x, via.y, router.rules.via_diameter / 2, rect), \
+            assert not circle_meets_rect(via.x, via.y, router.rules.via_diameter / 2, rect), \
                 f"{via.net} via at ({via.x:.2f}, {via.y:.2f}) under the regulator inductor or VREG_LX"
         for track in router.tracks:
             if track.layer == FRONT:
@@ -508,7 +509,7 @@ def _pad_capsule(pad: pcbnew.PAD) -> tuple[pcbnew.VECTOR2I, pcbnew.VECTOR2I, int
     return start, end, reach
 
 
-def _point_segment_distance(point: tuple[float, float], start: tuple[float, float], end: tuple[float, float]) -> float:
+def point_segment_distance(point: tuple[float, float], start: tuple[float, float], end: tuple[float, float]) -> float:
     dx, dy = end[0] - start[0], end[1] - start[1]
     length_squared = dx * dx + dy * dy
     t = 0.0 if length_squared == 0 else max(0.0, min(1.0, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy)
@@ -525,11 +526,11 @@ def _segment_distance(a, b) -> float:
     if (_cross(a.start, a.end, b.start) * _cross(a.start, a.end, b.end) < 0
             and _cross(b.start, b.end, a.start) * _cross(b.start, b.end, a.end) < 0):
         return 0.0
-    return min(_point_segment_distance(a.start, b.start, b.end), _point_segment_distance(a.end, b.start, b.end),
-               _point_segment_distance(b.start, a.start, a.end), _point_segment_distance(b.end, a.start, a.end))
+    return min(point_segment_distance(a.start, b.start, b.end), point_segment_distance(a.end, b.start, b.end),
+               point_segment_distance(b.start, a.start, a.end), point_segment_distance(b.end, a.start, a.end))
 
 
-def _circle_meets_rect(x: float, y: float, radius: float, rect: tuple) -> bool:
+def circle_meets_rect(x: float, y: float, radius: float, rect: tuple) -> bool:
     left, top, right, bottom = rect
     return math.dist((x, y), (min(max(x, left), right), min(max(y, top), bottom))) < radius
 
@@ -537,6 +538,6 @@ def _circle_meets_rect(x: float, y: float, radius: float, rect: tuple) -> bool:
 def _segment_meets_rect(track, rect: tuple) -> bool:
     """True if the track's copper reaches into the rectangle (sampled every 0.05 mm along its centre line)."""
     steps = max(1, math.ceil(track.length / 0.05))
-    return any(_circle_meets_rect(track.start[0] + (track.end[0] - track.start[0]) * i / steps,
+    return any(circle_meets_rect(track.start[0] + (track.end[0] - track.start[0]) * i / steps,
                                   track.start[1] + (track.end[1] - track.start[1]) * i / steps,
                                   track.width / 2, rect) for i in range(steps + 1))

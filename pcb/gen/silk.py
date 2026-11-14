@@ -13,6 +13,7 @@ import circuit
 from circuit import BOARD_SPEC
 
 REVISION = "A"
+PCBWAY_NUMBER_MARKER = "WayWayWay"
 # JLCPCB's legibility minimums: 1.0 mm text height, 0.15 mm line and stroke width.
 _LINE_WIDTH = 0.15
 _TEXT_SIZE = 1.0
@@ -152,7 +153,9 @@ def _bottom(board: pcbnew.BOARD) -> None:
     _text(board, "BOOT", buttons["boot"]["x"], buttons["boot"]["y"] - 3.6, pcbnew.B_SilkS)
     _text(board, "RESET", buttons["reset"]["x"], buttons["reset"]["y"] - 3.6, pcbnew.B_SilkS)
     _text(board, f"macropad rev {REVISION}", 22.0, _BOTTOM_BAND_Y, pcbnew.B_SilkS)
-    _text(board, "JLCJLCJLCJLC", 62.0, _BOTTOM_BAND_Y, pcbnew.B_SilkS)  # JLCPCB prints its order number here
+    # PCBWay prints its product number here, in place of this marker, when the order says "Specify a location"
+    # (PCBWay help: "Notes of Product No on Your PCB").
+    _text(board, PCBWAY_NUMBER_MARKER, 62.0, _BOTTOM_BAND_Y, pcbnew.B_SilkS)
     debug_pads = [part for part in circuit.all_parts() if part.ref in _DEBUG_PAD_NAMES]
     for part in debug_pads:
         _text(board, _DEBUG_PAD_NAMES[part.ref], part.x, part.y + 1.6, pcbnew.B_SilkS)

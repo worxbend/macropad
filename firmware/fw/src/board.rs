@@ -11,9 +11,10 @@ use macropad_core::sharp_lcd::Orientation;
 /// Change to `Rotated180` if the picture is upside down on your module.
 pub const DISPLAY_ORIENTATION: Orientation = Orientation::Normal;
 
-/// The Alps EC11E18244AU has 36 detents and 18 pulses per turn: two clicks per electrical cycle.
+/// The Alps EC11E18244AU has 36 detents and 18 pulses per turn: one click per edge of contact A.
+/// At rest its contact B may sit on its own edge (Alps' output-wave figure), so only A is counted.
 /// `tools/check_pins.py` fails when this disagrees with the encoder part in `board.toml`.
-pub const KNOB_DETENTS: Detents = Detents::PerHalfCycle;
+pub const KNOB_DETENTS: Detents = Detents::PerEdgeOfA;
 
 pub struct Knob {
     pub a: Input<'static>,
@@ -48,6 +49,9 @@ pub struct Board {
 
 impl Board {
     /// Every switch and encoder contact closes to ground, so all inputs are pulled up.
+    /// The board also has 3.3 kOhm pull-ups on the four encoder A/B lines, for the contact current
+    /// Alps asks for. The internal pull-ups stay on as well: they change nothing next to 3.3 kOhm,
+    /// and a board built without those resistors still works.
     #[rustfmt::skip]
     pub fn take(p: Peripherals) -> Self {
         let pulled_up = |pin: Peri<'static, AnyPin>| Input::new(pin, Pull::Up);

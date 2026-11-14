@@ -1,0 +1,11 @@
+(footprint "Hole_M2_Ground"
+	(version 20241229)
+	(generator "macropad")
+	(layer "F.Cu")
+	(descr "Plated 2.2 mm hole for an M2 screw with a bare 5.4 mm copper ring on both faces: the case ground bond. Ring size from board.toml mounting.ground_bond_pad_diameter; layout.py checks it. No courtyard: the case model checks what sits around the bosses.")
+	(attr exclude_from_pos_files exclude_from_bom)
+	(fp_text reference "REF**" (at 0 -3.4) (layer "F.Fab") (effects (font (size 0.8 0.8) (thickness 0.12))))
+	(fp_text value "Hole_M2_Ground" (at 0 3.4) (layer "F.Fab") (effects (font (size 0.8 0.8) (thickness 0.12))))
+	(fp_circle (center 0 0) (end 2.7 0) (stroke (width 0.1) (type solid)) (fill none) (layer "Dwgs.User"))
+	(pad "1" thru_hole circle (at 0 0) (size 5.4 5.4) (drill 2.2) (layers "*.Cu" "*.Mask"))
+)

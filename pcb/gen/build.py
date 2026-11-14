@@ -3,12 +3,14 @@
     build.py place    board.toml + circuit.py -> placed and routed board with filled planes,
                       the schematic (checked against circuit.py), and the pictures in docs/images/pcb
     build.py order    search for a routing order that connects every net; rewrites route_order.txt
-    build.py fab      routed board -> JLCPCB bill of materials and placement list
+    build.py fab      routed board -> JLCPCB and PCBWay bills of materials and placement lists
 """
 
 from __future__ import annotations
 
+import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -23,6 +25,7 @@ import schematic
 PCB_DIR = Path(__file__).resolve().parents[1]
 KICAD_DIR = PCB_DIR / "kicad"
 BOARD_PATH = KICAD_DIR / "macropad.kicad_pcb"
+PROJECT_PATH = KICAD_DIR / "macropad.kicad_pro"
 ROUTING_REPORT_PATH = PCB_DIR / "routing.txt"
 ROUTE_ORDER_PATH = Path(__file__).with_name("route_order.txt")
 BUILD_DIR = PCB_DIR / ".build"
@@ -52,29 +55,44 @@ def _plan(head_start: tuple[str, ...], open_pin_nets: dict[str, str]) -> tuple[p
     return board, route.route(board, layout.routing_setup(head_start))
 
 
-def place() -> None:
+def _write_project_files() -> None:
+    """Design rules into the project file; the project's copy of the MCU footprint, which the schematic names."""
     KICAD_DIR.mkdir(exist_ok=True)
+    layout.write_project_rules(PROJECT_PATH)
+    layout.write_derived_footprints()
+    layout.check_derived_footprints()
+
+
+def place() -> None:
+    _write_project_files()
     open_pin_nets = write_schematic()  # first: the board is checked against it below
     layout.write_models()
     board, result = _plan(_read_route_order(), open_pin_nets)
     nets = board.GetNetCount() - 1 - len(open_pin_nets)
     print(f"placed {len(board.GetFootprints())} footprints, {nets} nets, {len(open_pin_nets)} open pins")
     route.write_copper(board, result.router)
+    layout.check_ground_bond(board)
     layout.add_keepouts_above_bottom(board, result.switch_node_keepouts)
     if not result.unrouted:
         _check_connected_without_pours(board)
     layout.add_outer_ground_pours(board)
     _save_filled(board, BOARD_PATH)
-    if not result.unrouted:
-        _check_no_warnings()
+    # The report first, so it exists when the build stops on an unrouted pad.
     ROUTING_REPORT_PATH.write_text("\n".join(result.report_lines()) + "\n")
     print(result.report_lines()[0])
     for line in result.unrouted:
         print("UNROUTED", line)
-    if not result.unrouted:
-        route.check_sensitive_lengths(result)
-        route.check_regulator_keepout(result.router, [route.inductor_keepout(board)] + result.switch_node_keepouts)
-        route.check_no_pour_under_regulator(pcbnew.LoadBoard(str(BOARD_PATH)))
+    if result.unrouted:
+        write_images()
+        sys.exit(f"{len(result.unrouted)} unrouted pads; see {ROUTING_REPORT_PATH}. "
+                 "Move parts, or search a new order with `build.py order`.")
+    _check_rules_reach_drc()
+    _check_no_warnings()
+    route.check_sensitive_lengths(result)
+    route.check_regulator_keepout(result.router, [route.inductor_keepout(board)] + result.switch_node_keepouts)
+    saved = pcbnew.LoadBoard(str(BOARD_PATH))
+    route.check_no_pour_under_regulator(saved)
+    layout.check_paste_clear_of_vias(saved)
     write_images()
 
 
@@ -138,7 +156,8 @@ def write_images() -> None:
         _render(BOARD_PATH, f"assembled-{side}", "--side", side)
     _render(BOARD_PATH, "assembled-angle", "--rotate", ASSEMBLED_VIEW_ROTATION, "--perspective", "--zoom", "0.75")
     _render(BOARD_PATH, "assembled-underside", "--rotate", UNDERSIDE_VIEW_ROTATION, "--perspective", "--zoom", "0.75")
-    drawings = {"copper-top": "F.Cu", "copper-ground": "In1.Cu", "copper-power": "In2.Cu", "copper-bottom": "B.Cu",
+    drawings = {"copper-top": "F.Cu", "copper-ground": pcbnew.LayerName(layout.GROUND_LAYER),
+                "copper-power": pcbnew.LayerName(layout.POWER_LAYER), "copper-bottom": "B.Cu",
                 "assembly-top": "F.SilkS,F.Mask,F.Fab", "assembly-bottom": "B.SilkS,B.Mask,B.Fab"}
     for name, layers in drawings.items():
         mirror = ["--mirror"] if name == "assembly-bottom" else []
@@ -160,8 +179,25 @@ def _check_connected_without_pours(board: pcbnew.BOARD) -> None:
     BUILD_DIR.mkdir(exist_ok=True)
     bare_path = BUILD_DIR / "without-pours.kicad_pcb"
     _save_filled(board, bare_path)
+    shutil.copyfile(PROJECT_PATH, bare_path.with_suffix(".kicad_pro"))  # kicad-cli reads the rules from it
     _kicad_cli("pcb", "drc", "--severity-error", "--exit-code-violations", "-o",
                str(BUILD_DIR / "without-pours-drc.rpt"), str(bare_path))
+
+
+def _check_rules_reach_drc() -> None:
+    """Proof that kicad-cli's DRC reads the rules write_project_rules put in the project file: a copy of the board
+    with a project file that raises the minimum track width above the board's tracks must fail on track width."""
+    probe_dir = BUILD_DIR / "rules-probe"
+    probe_dir.mkdir(parents=True, exist_ok=True)
+    probe_board = probe_dir / BOARD_PATH.name
+    shutil.copyfile(BOARD_PATH, probe_board)
+    shutil.copyfile(PROJECT_PATH, probe_board.with_suffix(".kicad_pro"))
+    too_wide = layout.TRACK_WIDTH + 0.05
+    layout.write_project_rules(probe_board.with_suffix(".kicad_pro"), layout.DRC_RULES | {"min_track_width": too_wide})
+    report_path = probe_dir / "drc.json"
+    _kicad_cli("pcb", "drc", "--severity-error", "--format", "json", "-o", str(report_path), str(probe_board))
+    kinds = {violation["type"] for violation in json.loads(report_path.read_text())["violations"]}
+    assert "track_width" in kinds, f"DRC ignored a {too_wide} mm minimum track width in the project file: {kinds}"
 
 
 def _check_no_warnings() -> None:
@@ -183,6 +219,7 @@ def _check_no_warnings() -> None:
 def order() -> None:
     """Routes again and again; the nets that ended up walled in go to the front of the next round."""
     head_start: tuple[str, ...] = ()
+    _write_project_files()
     open_pin_nets = write_schematic()
     for round_number in range(1, ORDER_SEARCH_ROUNDS + 1):
         _, result = _plan(head_start, open_pin_nets)

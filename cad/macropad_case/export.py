@@ -5,11 +5,11 @@ from pathlib import Path
 import trimesh
 from build123d import Compound, Part, Shape, export_step, export_stl
 
-from .checks import PRINT_POSES
+from . import coupons
 from .components import components
 from .parts import top_chairs
 from .roundtrip import Exported, verify
-from .small_parts import case_parts
+from .small_parts import PRINT_POSES, case_parts
 from .spec import CNC, PRINT, VARIANTS, part_label
 
 # The two light bars are the same part turned around; the two knobs and the two foot strips are identical.
@@ -31,6 +31,7 @@ def export_all(exports: Path) -> int:
                 written.append(_export_part(parts[name], name, variant, exports / file_name))
     # The break-away chairs print with the top, in the same pose: load both files together.
     _write_stl(PRINT_POSES["top"] * top_chairs(), exports / PRINT / "top_chairs.stl")
+    written += _export_coupons(exports / PRINT / "coupons")
     assembly = _assembly()
     export_step(assembly, exports / "assembly.step")
     written.append(Exported(exports / "assembly.step", assembly, solids=len(assembly.solids())))
@@ -52,6 +53,17 @@ def _export_part(part: Part, name: str, variant: str, stem: Path) -> Exported:
         return Exported(step, part, milled=variant == CNC)
     _write_stl(PRINT_POSES[name] * part if variant == PRINT else part, stem.with_suffix(".stl"))
     return Exported(step, part, stl=stem.with_suffix(".stl"), milled=variant == CNC)
+
+
+def _export_coupons(folder: Path) -> list[Exported]:
+    """The print coupons, each as an STL that already lies the way it prints."""
+    folder.mkdir(parents=True, exist_ok=True)
+    written = []
+    for name, coupon in coupons.built().items():
+        stl = folder / f"{name}.stl"
+        _write_stl(coupon, stl)
+        written.append(Exported(None, coupon, stl=stl))
+    return written
 
 
 def _write_stl(shape: Shape, path: Path) -> None:

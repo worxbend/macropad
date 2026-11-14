@@ -8,6 +8,7 @@ use crate::keymap::{Layer, LAYER_COUNT};
 use crate::kps::{KpsMeter, HISTORY_BUCKETS};
 use crate::led::{LedFrame, MAX_LEVEL};
 use crate::lighting::{self, Lighting};
+use crate::reset::ResetCause;
 use crate::ui::{self, UiState};
 
 /// What the host computer told the pad.
@@ -24,15 +25,23 @@ pub struct Pad {
     activity: Activity,
     kps: KpsMeter,
     layers: &'static [Layer; LAYER_COUNT],
+    reset_cause: ResetCause,
 }
 
 impl Pad {
+    /// A pad that was just plugged in.
     pub fn new(layers: &'static [Layer; LAYER_COUNT]) -> Self {
+        Self::after_reset(layers, ResetCause::PowerOn)
+    }
+
+    /// A pad that started for `reset_cause`, which the splash screen shows.
+    pub fn after_reset(layers: &'static [Layer; LAYER_COUNT], reset_cause: ResetCause) -> Self {
         Self {
             engine: Engine::new(layers),
             activity: Activity::new(),
             kps: KpsMeter::default(),
             layers,
+            reset_cause,
         }
     }
 
@@ -53,6 +62,7 @@ impl Pad {
             led_level: self.engine.led_level(),
             flash_hold_ms: self.engine.bootloader_hold_ms(),
             flash_requested: self.engine.bootloader_requested(),
+            reset_cause: self.reset_cause,
         }
     }
 }
@@ -70,6 +80,8 @@ pub struct View {
     pub flash_hold_ms: u16,
     /// The pad is about to restart as a USB drive.
     pub flash_requested: bool,
+    /// Why the chip last started.
+    pub reset_cause: ResetCause,
 }
 
 impl View {
@@ -83,6 +95,7 @@ impl View {
             led_level: MAX_LEVEL,
             flash_hold_ms: 0,
             flash_requested: false,
+            reset_cause: ResetCause::PowerOn,
         }
     }
 
@@ -152,6 +165,13 @@ mod tests {
         let pad = Pad::new(&LAYERS);
         assert_eq!(pad.view().activity, View::at_power_on(&LAYERS).activity);
         assert_eq!(pad.view().led_level, View::at_power_on(&LAYERS).led_level);
+    }
+
+    #[test]
+    fn the_view_carries_the_reset_cause_the_pad_started_with() {
+        assert_eq!(Pad::new(&LAYERS).view().reset_cause, ResetCause::PowerOn);
+        let after_watchdog = Pad::after_reset(&LAYERS, ResetCause::Watchdog);
+        assert_eq!(after_watchdog.view().reset_cause, ResetCause::Watchdog);
     }
 
     #[test]
