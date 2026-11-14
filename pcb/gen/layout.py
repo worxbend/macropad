@@ -33,8 +33,10 @@ SILK_EDGE_CLEARANCE = 0.2
 # the USB connector so the USB pair runs over one unbroken plane.
 V3_ISLAND = [(23.0, 8.5, 61.0, 26.5), (37.0, 0.0, 47.5, 9.0)]
 # The 1.1 V core island, cut out of the 3.3 V island: a square under the chip, with a lobe out to
-# the supply via of each DVDD pin that has its capacitor straight in front of it (pins 6 and 23).
-V1_ISLAND = [(38.6, 14.1, 45.4, 20.9), (45.0, 15.9, 47.1, 17.5), (41.2, 20.5, 42.8, 22.6)]
+# the supply via of each DVDD pin that has its capacitor straight in front of it (pins 6 and 23), and a
+# notch inside the pad ring where the 3.3 V via of VREG_VIN (pin 49) reaches the 3.3 V island.
+V1_ISLAND = [(38.6, 15.8, 45.4, 20.9), (38.6, 14.1, 39.8, 15.8), (41.0, 14.1, 45.4, 15.8),
+             (45.0, 15.9, 47.1, 17.5), (41.2, 20.5, 42.8, 22.6)]
 ROUTING_RULES = Rules(track_width=TRACK_WIDTH, clearance=CLEARANCE, via_diameter=VIA_DIAMETER,
                       via_drill=VIA_DRILL, edge_clearance=EDGE_CLEARANCE)
 
@@ -209,6 +211,32 @@ def add_fiducial_keepouts(board: pcbnew.BOARD) -> None:
         board.Add(area)
 
 
+def add_regulator_keepouts(board: pcbnew.BOARD) -> None:
+    """No copper under the regulator inductor and the VREG_LX track on the other layers, and no bottom-layer
+    pour between the inductor's pads (RP2350 datasheet 6.3.8)."""
+    for layer in (pcbnew.F_Cu, pcbnew.In1_Cu, pcbnew.In2_Cu):
+        for rect in route.regulator_keepouts(board):
+            _rule_area(board, layer, rect, tracks_and_vias=True)
+    _rule_area(board, pcbnew.B_Cu, route.inductor_gap(board), tracks_and_vias=False)
+
+
+def _rule_area(board: pcbnew.BOARD, layer: int, rect: tuple, tracks_and_vias: bool) -> None:
+    area = pcbnew.ZONE(board)
+    area.SetIsRuleArea(True)
+    area.SetLayer(layer)
+    area.SetDoNotAllowCopperPour(True)
+    area.SetDoNotAllowTracks(tracks_and_vias)
+    area.SetDoNotAllowVias(tracks_and_vias)
+    area.SetDoNotAllowPads(False)
+    area.SetDoNotAllowFootprints(False)
+    left, top, right, bottom = rect
+    outline = area.Outline()
+    outline.NewOutline()
+    for x, y in ((left, top), (right, top), (right, bottom), (left, bottom)):
+        outline.Append(mm(x), mm(y))
+    board.Add(area)
+
+
 def _whole_board() -> list[tuple]:
     return [(0.0, 0.0, BOARD_SPEC["board"]["width"], BOARD_SPEC["board"]["height"])]
 
@@ -284,9 +312,31 @@ def check_placement(placed: dict[str, pcbnew.FOOTPRINT]) -> None:
     xin_pad, drive_pad = _pads(placed["Y1"], "1")[0], _pads(placed["Y1"], "3")[0]
     assert math.dist(xin_pad, mcu_xin) < 8.0 and math.dist(drive_pad, mcu_xin) < 8.0, "the crystal is far from XIN"
 
+    _check_inductor_dot(placed["L1"])
+
     for ref, footprint in placed.items():
         if ref.startswith("FID"):
             assert footprint.IsFlipped(), f"{ref} is not on the assembly face"
+
+
+def _dots(footprint: pcbnew.FOOTPRINT, layer: int) -> list[tuple[float, float]]:
+    """Centres of the filled circles a footprint draws on one layer."""
+    return [(pcbnew.ToMM(item.GetCenter().x), pcbnew.ToMM(item.GetCenter().y))
+            for item in footprint.GraphicalItems()
+            if item.GetLayer() == layer and item.GetClass() == "PCB_SHAPE"
+            and item.GetShape() == pcbnew.SHAPE_T_CIRCLE and item.IsFilled()]
+
+
+def _check_inductor_dot(inductor: pcbnew.FOOTPRINT) -> None:
+    """The polarity dot on the silkscreen and on the assembly drawing marks the +1V1 end of L1."""
+    pad_of_net = {net: pad for pad, net in circuit.INDUCTOR_PADS.items()}
+    output_pad = _pads(inductor, pad_of_net[V1])[0]
+    switch_pad = _pads(inductor, pad_of_net["VREG_LX"])[0]
+    for layer, name in ((pcbnew.B_SilkS, "B.SilkS"), (pcbnew.B_Fab, "B.Fab")):
+        dots = _dots(inductor, layer)
+        assert dots, f"L1 has no polarity dot on {name}"
+        for dot in dots:
+            assert math.dist(dot, output_pad) < math.dist(dot, switch_pad), f"L1 dot on {name} is not at the +1V1 end"
 
 
 def write_models() -> None:
@@ -316,4 +366,5 @@ def build_board(board_path: Path, open_pin_nets: dict[str, str]) -> pcbnew.BOARD
     silk.add_labels(board)
     add_inner_planes(board)
     add_fiducial_keepouts(board)
+    add_regulator_keepouts(board)
     return board

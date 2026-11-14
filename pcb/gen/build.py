@@ -71,7 +71,8 @@ def place() -> None:
     for line in result.unrouted:
         print("UNROUTED", line)
     if not result.unrouted:
-        route.check_sensitive_lengths(result.router)
+        route.check_sensitive_lengths(result)
+        route.check_regulator_keepout(result.router, route.regulator_keepouts(board))
     write_images()
 
 

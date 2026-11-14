@@ -54,6 +54,7 @@ class Solid:
 # Body height above the board and colour, for parts that are one block on their fabrication outline.
 _ONE_BLOCK = {
     "C0402": (0.5, CERAMIC),
+    "C0402W": (0.5, CERAMIC),
     "C0603": (0.8, CERAMIC),
     "R0402": (0.35, BLACK),
     "QFN60": (0.85, BLACK),

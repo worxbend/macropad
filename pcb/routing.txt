@@ -1,13 +1,13 @@
-tracks 797  vias 160  length 1305.5 mm  unrouted pads 0
+tracks 790  vias 160  length 1310.6 mm  unrouted pads 2
 USB pair, connector to MCU: D+ 15.43 mm, D- 14.26 mm
 
 net                 mm vias
-+1V1             15.93    5
++1V1             17.17    5
 +3V3             38.20   16
 +5V              21.05   25
 BOOT             10.34    0
-CC1               7.92    2
-CC2               6.59    0
+CC1               6.83    2
+CC2               6.83    2
 DISP_CS          16.83    1
 DISP_MOSI        20.49    0
 DISP_SCK         18.39    0
@@ -17,7 +17,7 @@ ENC_L_SW         20.34    1
 ENC_R_A          20.45    0
 ENC_R_B          18.46    0
 ENC_R_SW         33.24    0
-GND              74.47   66
+GND              74.23   65
 KEY0             37.12    0
 KEY1             17.57    2
 KEY10            60.07    2
@@ -47,12 +47,13 @@ USB_DM            2.55    0
 USB_DP            2.80    0
 USB_D_N          11.72    2
 USB_D_P          12.63    0
-VBUS             22.90    3
+VBUS             27.79    2
 VREG_AVDD         4.50    0
-VREG_LX           2.20    0
+VREG_LX           2.21    0
 XIN               8.59    2
 XOUT             14.93    2
 XTAL_DRIVE        7.75    0
 
 unrouted:
-none
+GND: J1.A12 (no via to its plane)
+GND: J1.B1 (no via to its plane)

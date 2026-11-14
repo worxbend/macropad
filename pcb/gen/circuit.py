@@ -29,7 +29,8 @@ LCSC = {
     "AP2112K-3.3": "C51118",
     "USBLC6-2SC6": "C7519",
     "74LVC1T45": "C168856",
-    "12MHz": "C50430",  # X322512MMB4SI, 10 pF load: the load the 15 pF capacitors and 1 k are sized for
+    # Abracon ABM8-272-T3, 10 pF load, 50 ohm ESR: the crystal Raspberry Pi tuned the 15 pF capacitors and the 1 k for.
+    "12MHz": "C20625731",
     "3.3uH": "C42411119",
     "USB-C": "C165948",
     "nSMD050": "C69688",
@@ -53,13 +54,14 @@ LCSC = {
 
 FOOTPRINT = {
     "C0402": "Capacitor_SMD:C_0402_1005Metric",
+    "C0402W": "macropad:C_0402_1005Metric_Wide",
     "C0603": "Capacitor_SMD:C_0603_1608Metric",
     "R0402": "Resistor_SMD:R_0402_1005Metric",
     "QFN60": "Package_DFN_QFN:QFN-60-1EP_7x7mm_P0.4mm_EP3.4x3.4mm",
     "SOT23-5": "Package_TO_SOT_SMD:SOT-23-5",
     "SOT23-6": "Package_TO_SOT_SMD:SOT-23-6",
     "XTAL3225": "Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
-    "L2016": "Inductor_SMD:L_Murata_DFE201610P",
+    "L2016": "macropad:L_Abracon_AOTA-B201610",
     "F1206": "Fuse:Fuse_1206_3216Metric",
     "TACT": "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A",
     "USBC": "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12",
@@ -225,21 +227,36 @@ def _decoupling_caps() -> list[Part]:
 
 
 CORE_TEST_PAD = "TP6"
+# Regulator inductor pads. The polarity dot sits on the +1V1 pad: RP2350 datasheet Figs. 25, 26 and 28,
+# and Raspberry Pi's RP2350A Minimal R4 board, where pad 1 is +1V1 and carries the dot.
+INDUCTOR_PADS = {"1": V1, "2": "VREG_LX"}
+
+
+# Where the regulator parts sit, from VREG_LX (pin 48) outward, in Raspberry Pi's RP2350A Minimal R4 pattern
+# mirrored for the bottom face: CIN across VREG_VIN (49) and PGND (47), COUT right behind it with the two
+# ground pads side by side, the inductor beyond both. VREG_LX runs between the capacitor pads.
+CIN_DISTANCE = 1.15
+COUT_DISTANCE = 2.1
+INDUCTOR_DISTANCE = 3.65
+# The inductor sits 0.1 mm toward PGND, so its +1V1 pad clears the USB series resistors.
+INDUCTOR_SHIFT = -0.1
 
 
 def _core_regulator() -> list[Part]:
-    """On-chip 1.1 V switching regulator, values from "Hardware design with RP2350".
-
-    The input capacitor sits right at VREG_VIN, the inductor right at VREG_LX.
-    """
+    """On-chip 1.1 V switching regulator, values and layout from "Hardware design with RP2350"."""
+    lx_x, pin_row_y = mcu_pin_xy(48)
     return [
-        Part("C11", "4.7uF", "C0402", 40.3, 12.3, 270, nets={"1": V3, "2": GND}),
-        Part("L1", "3.3uH", "L2016", 38.6, 11.9, 270, nets={"1": "VREG_LX", "2": V1}),
-        Part("C12", "4.7uF", "C0402", 38.2, 9.6, 270, nets={"1": V1, "2": GND}),
-        Part("C13", "4.7uF", "C0402", 39.3, 9.6, 270, nets={"1": V1, "2": GND}),
-        Part("C14", "4.7uF", "C0402", 37.0, 13.7, 0, nets={"1": "VREG_AVDD", "2": GND}),
+        Part("C11", "4.7uF", "C0402W", lx_x, pin_row_y - CIN_DISTANCE, 0, nets={"1": V3, "2": GND}),
+        Part("C12", "4.7uF", "C0402W", lx_x, pin_row_y - COUT_DISTANCE, 0, nets={"1": V1, "2": GND}),
+        # Pad 1 is the +1V1 end and carries the polarity dot, as in Raspberry Pi's reference board.
+        Part("L1", "3.3uH", "L2016", lx_x + INDUCTOR_SHIFT, pin_row_y - INDUCTOR_DISTANCE, 0, nets=INDUCTOR_PADS),
+        # A second 4.7 uF on the output, at the probe pad end of the output track, away from LX and COUT.
+        # Raspberry Pi's Minimal board has one COUT; the review asked for this one at DVDD pin 23, where the
+        # escape tracks of pins 24 to 29 leave no room.
+        Part("C13", "4.7uF", "C0402W", 37.5, 11.0, 90, nets={"1": V1, "2": GND}),
+        Part("C14", "4.7uF", "C0402W", 37.0, 13.7, 0, nets={"1": "VREG_AVDD", "2": GND}),
         Part("R1", "33R", "R0402", 35.0, 13.7, 0, nets={"1": "VREG_AVDD", "2": V3}),
-        # Probe pad on the regulator output, beside the inductor. Routed with the output capacitors.
+        # Probe pad on the regulator output. Routed with the output capacitor.
         Part(CORE_TEST_PAD, V1, "TESTPAD", 36.0, 11.0, nets={"1": V1}),
     ]
 
@@ -282,10 +299,10 @@ def _usb_and_power() -> list[Part]:
         Part("R6", "5.1k", "R0402", 48.0, 6.6, 90, nets={"1": "CC2", "2": GND}),
         Part("U3", "USBLC6-2SC6", "SOT23-6", 46.8, 10.4, 0,
              nets={"1": "USB_D_N", "6": "USB_D_N", "3": "USB_D_P", "4": "USB_D_P", "2": GND, "5": VBUS}),
-        # Each series resistor sits straight above its MCU pin (51 at x 41.2, 52 at x 41.6) or to the
-        # right of it, so D- runs straight and D+ leans away from it: both stay on the bottom layer.
-        Part("R7", "27R", "R0402", 41.25, 11.0, 90, nets={"1": "USB_D_N", "2": "USB_DM"}),
-        Part("R8", "27R", "R0402", 42.25, 11.0, 90, nets={"1": "USB_D_P", "2": "USB_DP"}),
+        # The series resistors sit above their MCU pins (51 at x 41.2, 52 at x 41.6), beside the inductor and
+        # beyond the VREG_FB track. Both lines run straight up on the bottom layer; D+ leans right at the end.
+        Part("R7", "27R", "R0402", 41.4, 9.9, 90, nets={"1": "USB_D_N", "2": "USB_DM"}),
+        Part("R8", "27R", "R0402", 42.3, 9.9, 90, nets={"1": "USB_D_P", "2": "USB_DP"}),
         Part("F1", "nSMD050", "F1206", 33.0, 3.4, 90, nets={"1": VBUS, "2": V5}),
         Part("U2", "AP2112K-3.3", "SOT23-5", 31.0, 9.4, 90,
              nets={"1": V5, "2": GND, "3": V5, "4": NO_NET, "5": V3}),

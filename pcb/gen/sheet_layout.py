@@ -130,17 +130,17 @@ _DECOUPLING = Block(
 
 _CORE_REGULATOR = Block(
     "1.1 V core supply: the switching regulator inside U1", 6, 134, 72, 50,
-    places=(Place("L1", 16, 12, 90), Place("C12", 24, 15), Place("C13", 30, 15), Place("TP6", 52, 12),
+    places=(Place("L1", 16, 12, 270), Place("C12", 24, 15), Place("C13", 30, 15), Place("TP6", 52, 12),
             Place("R1", 16, 32, 270), Place("C14", 24, 35), Place("C11", 50, 35)),
     wires=(
-        Wire(V1, ("L1.2", "C12.1", "C13.1", (36, 12), (44, 12), "TP6.1")),
+        Wire(V1, ("L1.1", "C12.1", "C13.1", (36, 12), (44, 12), "TP6.1")),
         Wire(V3, ((8, 32), "R1.2")),
         Wire("VREG_AVDD", ("R1.1", "C14.1", (36, 32)), label=(26, 32)),
     ),
     rails=(Rail(V1, (36, 12)), Rail(V3, (8, 32))),
     flags=(Flag((44, 12)), Flag((36, 32))),
     notes=(Note("C11: at VREG_VIN (pin 49)", 44, 24),
-           Note("L1: marked end to VREG_LX. Not verified on a part.", 2, 48)),
+           Note("L1: dot on pad 1, the +1V1 end. Not verified on a part.", 2, 48)),
 )
 
 _CLOCK = Block(

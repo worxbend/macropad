@@ -46,7 +46,7 @@ def circuit_net_name(board_net: str) -> str:
 
 # KiCad library symbol per footprint. A part value can name a more exact symbol.
 _SYMBOL_BY_FOOTPRINT = {
-    "C0402": "Device:C", "C0603": "Device:C", "R0402": "Device:R", "L2016": "Device:L", "F1206": "Device:Polyfuse",
+    "C0402": "Device:C", "C0402W": "Device:C", "C0603": "Device:C", "R0402": "Device:R", "L2016": "Device:L", "F1206": "Device:Polyfuse",
     "XTAL3225": "Device:Crystal_GND24", "TACT": "Switch:SW_Push", "MX_HOTSWAP": "Switch:SW_Push",
     "USBC": "Connector:USB_C_Receptacle_USB2.0_16P", "EC11": "Device:RotaryEncoder_Switch_MP",
     "TESTPAD": "Connector:TestPoint", "HOLE_M2": "Mechanical:MountingHole", "FIDUCIAL": "Mechanical:Fiducial",

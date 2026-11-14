@@ -3,3 +3,15 @@ SK6812-side-a.kicad_mod: from DangerousPrototypes/BusPirate5-hardware, MIT Licen
   hangs over the edge and the outline ran over its own pads.
 MX_Hotswap.kicad_mod: drawn for this project from the Kailh CPG151101S11 dimensions.
 Hole_M2.kicad_mod: drawn for this project.
+L_Abracon_AOTA-B201610.kicad_mod: from Raspberry Pi's RP2350A Minimal design files (Minimal-KiCAD.zip,
+  RPI-RP2350A-MINIMAL_R4-S1.kicad_pcb, footprint RPI_COMPILED:abracon_aota-b201610s3r3-101-t),
+  MIT License, Copyright (c) 2026 Raspberry Pi Ltd.
+  Kept: the pads (0.7 x 1.7 mm at +/-0.7 mm), the silkscreen and fabrication dots on the pad 1 side, the
+  body and courtyard rectangles. Pad 1 is the +1V1 end, as in Raspberry Pi's board.
+  Changed here: the 3D model link and Raspberry Pi's part properties are left out; the body outline
+  strokes are 0.05 mm instead of 0.01 mm.
+C_0402_1005Metric_Wide.kicad_mod: from the same Raspberry Pi RP2350A Minimal design files, footprint
+  RPI_COMPILED:generic_capc1005x50_wide, MIT License, Copyright (c) 2026 Raspberry Pi Ltd.
+  Kept: the pads (0.47 x 0.55 mm at +/-0.515 mm) and the body outline.
+  Changed here: the courtyard grows from the body outline to 0.1 mm around the pads; the pads keep the
+  board's own clearance instead of Raspberry Pi's 0.125 mm pad override.

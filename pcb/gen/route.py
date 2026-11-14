@@ -1,8 +1,8 @@
 """Routes the placed board with router.py and writes the tracks and vias. Needs pcbnew.
 
-Order: the sensitive connections first, while the board is empty and they can take the shortest
-way; then one via to the plane for every power and ground pad; then the ordinary signals,
-shortest first.
+Order: the 1.1 V regulator and the other sensitive connections first, while the board is empty and
+they can take the shortest way; then one via to the plane for every power and ground pad; then the
+ordinary signals, shortest first.
 """
 
 from __future__ import annotations
@@ -18,8 +18,11 @@ from circuit import BOARD_SPEC, GND, V1, V3, V5, VBUS
 from router import BACK, BOTH_LAYERS, FRONT, Pad, Router, Rules, Via
 
 PLANE_NETS = (GND, V1, V3, V5)
-# Routed before anything else, in this order. Limits are track lengths in mm that fail the build.
-SENSITIVE_NETS = ("VREG_LX", "USB_DM", "USB_DP", "USB_D_P", "USB_D_N", "XIN", "XOUT", "XTAL_DRIVE", "VREG_AVDD")
+# The USB lines from pins 51 and 52 squeeze past the regulator to their series resistors. They go straight
+# after it, before the decoupling vias of pins 53 and 54 take their lanes.
+REGULATOR_NEIGHBOURS = ("USB_DM", "USB_DP")
+# Routed after the MCU supply, in this order. Limits are track lengths in mm that fail the build.
+SENSITIVE_NETS = ("USB_D_P", "USB_D_N", "XIN", "XOUT", "XTAL_DRIVE", "VREG_AVDD")
 # MCU nets whose other pads are right next to the chip. Routed whole, straight after the sensitive ones.
 LOCAL_NETS = ("QSPI_SS", "BOOT")
 # RUN goes first of all signals: its pull-up and the reset button are on the far side of the SWD pins.
@@ -33,6 +36,16 @@ ESCAPE_DISTANCE = 8.0
 # crystal, so the crystal's own two nodes (XIN, XTAL_DRIVE) stay short.
 LENGTH_LIMIT = {"VREG_LX": 4.0, "USB_DM": 3.5, "USB_DP": 3.5, "XIN": 9.0, "XTAL_DRIVE": 9.0, "XOUT": 16.0,
                 "VREG_AVDD": 8.0}
+# VREG_FB is fed from COUT (RP2350 datasheet 6.3.8.1): one short track from pin 50 to the COUT pad.
+FEEDBACK_LENGTH_LIMIT = 3.0
+# It passes CIN's 3.3 V pad through this point, offset (x, y) from pin 50, hugging the pad, so that
+# USB D- and D+ still fit side by side between it and the USB series resistors.
+FEEDBACK_WAYPOINT = (0.2, -1.45)
+# VREG_AVDD is noise sensitive and VREG_LX is the switching node: their tracks stay this far apart,
+# centre to centre. The two pins are 0.8 mm apart, so this allows only the stubs at the pins.
+AVDD_TO_LX_MIN_DISTANCE = 0.75
+# How far the copper keepout reaches beyond the inductor's pads and the VREG_LX track.
+REGULATOR_KEEPOUT_MARGIN = 0.2
 USB_PAIR_MISMATCH_LIMIT = 2.0  # mm; full-speed USB tolerates far more, this only catches a detour
 # Nets that must stay on the bottom layer, over the unbroken ground plane, from pad to pad.
 NO_VIA_NETS = ("VREG_LX", "USB_DM", "USB_DP", "USB_D_P")
@@ -40,6 +53,17 @@ _PLANE_EDGE_MARGIN = 0.55  # a via this close to the edge of its plane island mi
 _KICAD_LAYER = {FRONT: pcbnew.F_Cu, BACK: pcbnew.B_Cu}
 # Ground vias in the MCU's exposed pad: the chip's ground return and its heat path.
 _EXPOSED_PAD_VIA_OFFSETS = ((-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0))
+# Hand-placed regulator vias: net and offset (x, y) from the VREG_LX pin (48). Two ground vias beside the
+# joined ground pads of CIN and COUT; the 3.3 V via that feeds VREG_VIN from inside the pad ring, in a
+# notch of the 1.1 V island (layout.V1_ISLAND); the two ends of the wide 1.1 V link from the inductor's
+# +1V1 pad, over the chip on the top layer, into the core island.
+REGULATOR_VIAS = {
+    "ground_cin": (GND, -1.2, -circuit.CIN_DISTANCE),
+    "ground_cout": (GND, -1.2, -circuit.COUT_DISTANCE),
+    "vin": (V3, 0.4, 0.95),
+    "core_out": (V1, 0.6, -5.25),
+    "core_in": (V1, 1.6, 0.95),
+}
 
 
 @dataclass(frozen=True)
@@ -55,6 +79,7 @@ class Setup:
 class RoutingResult:
     router: Router
     unrouted: list[str] = field(default_factory=list)  # "NET: pad" for every pad left unconnected
+    feedback_length: float = 0.0  # VREG_FB, pin 50 to the COUT pad
 
     def report_lines(self) -> list[str]:
         router = self.router
@@ -64,6 +89,7 @@ class RoutingResult:
             f"length {sum(t.length for t in router.tracks):.1f} mm  unrouted pads {len(self.unrouted)}",
             f"USB pair, connector to MCU: D+ {usb_path_length(router, 'P'):.2f} mm, "
             f"D- {usb_path_length(router, 'N'):.2f} mm",
+            f"VREG_FB, pin 50 to COUT: {self.feedback_length:.2f} mm",
             "",
             f"{'net':14} {'mm':>7} {'vias':>4}",
         ]
@@ -107,6 +133,9 @@ def _load_obstacles(board: pcbnew.BOARD, router: Router) -> dict[str, list[Pad]]
     mask_radius = circuit.FIDUCIAL_MASK_DIAMETER / 2
     for x, y in circuit.FIDUCIALS:
         router.add_keepout((x - mask_radius, y - mask_radius, x + mask_radius, y + mask_radius), (BACK,))
+    grow = router.rules.via_diameter / 2  # the keepout holds the centres; the copper keeps out of the area
+    for left, top, right, bottom in regulator_keepouts(board):
+        router.add_keepout((left - grow, top - grow, right + grow, bottom + grow), (FRONT,))
     return pads
 
 
@@ -139,6 +168,7 @@ class _Plan:
         self.plane_here = _plane_tests(setup.v3_island, setup.v1_island)
         self.head_start = setup.head_start
         self.unrouted: list[str] = []
+        self.feedback_length = 0.0
         self.routed_nets: set[str] = set(PLANE_NETS)
         self.on_plane: set[Pad] = set()  # plane-net pads that already reach their plane
         self.by_net: dict[str, list[Pad]] = {}
@@ -154,8 +184,8 @@ class _Plan:
         for dx, dy in _EXPOSED_PAD_VIA_OFFSETS:
             self.router.add_via_in_pad(GND, circuit.MCU_X + dx, circuit.MCU_Y + dy)
 
-    def pair(self, net: str, first: str, second: str) -> None:
-        if not self.router.route_pair(net, self.pad(first), self.pad(second)):
+    def pair(self, net: str, first: str, second: str, wide: bool = False) -> None:
+        if not self.router.route_pair(net, self.pad(first), self.pad(second), wide):
             self.unrouted.append(f"{net}: {first} to {second}")
 
     def fan_out(self, pad: Pad) -> None:
@@ -175,9 +205,6 @@ class _Plan:
             self.fan_out(self.pad(pad))
         self.pair(V3, "U1.44", "U1.45")
         self.pair(V3, "U1.54", "U1.53")
-        self.pair(V3, "U1.49", "C11.1")
-        self.pair(GND, "U1.47", "U1.61")
-        self.fan_out(self.pad("U1.50"))  # VREG_FB senses the core voltage at the island
 
     def _decouple(self, ref: str, pin: int) -> None:
         """Supply via, capacitor, ground via on one line pointing away from the chip.
@@ -215,20 +242,51 @@ class _Plan:
         else:
             self.fan_out(ground_pad)
 
-    def regulator_output(self) -> None:
-        """Inductor to its two capacitors and the probe pad, then to the via at VREG_FB that enters the 1.1 V island.
+    def core_regulator(self) -> None:
+        """The 1.1 V switching regulator, before anything else (RP2350 datasheet 6.3.8).
 
-        Wide all the way: the link to the island runs on the top layer, under the chip.
+        VREG_LX runs from its pin between the pads of CIN and COUT to the inductor. CIN joins VREG_VIN to
+        PGND, COUT sits right behind it, and their ground pads share two vias. VREG_VIN takes 3.3 V from a
+        via inside the pad ring. VREG_FB senses COUT. A separate wide link carries the output from the
+        inductor's +1V1 pad into the core island.
         """
-        output = [self.pad("L1.2"), self.pad("C12.1"), self.pad("C13.1"), self.pad(f"{circuit.CORE_TEST_PAD}.1")]
+        lx_x, lx_y = circuit.mcu_pin_xy(48)
+        via = {name: self.hand_via(net, lx_x + dx, lx_y + dy) for name, (net, dx, dy) in REGULATOR_VIAS.items()}
+        switch_pad = next(pad for pad, net in circuit.INDUCTOR_PADS.items() if net == "VREG_LX")
+        self.pair("VREG_LX", "U1.48", f"L1.{switch_pad}")  # from the pin: no copper drawn inside the inductor pad
+        self.routed_nets.add("VREG_LX")
+        self.pair(V3, "U1.49", "C11.1")
+        self.to_via(self.pad("U1.49"), via["vin"])
+        self.pair(GND, "U1.47", "C11.2")
+        self.pair(GND, "C11.2", "C12.2", wide=True)
+        self.to_via(self.pad("C11.2"), via["ground_cin"], wide=True)
+        self.to_via(self.pad("C12.2"), via["ground_cout"], wide=True)
+        tracks_before = len(self.router.tracks)
+        feedback_x, feedback_y = circuit.mcu_pin_xy(50)
+        waypoint = self.router.snapped(feedback_x + FEEDBACK_WAYPOINT[0], feedback_y + FEEDBACK_WAYPOINT[1])
+        bend = Pad("VREG_FB bend", V1, waypoint * 2, (BACK,))
+        if not (self.router.route_pair(V1, self.pad("U1.50"), bend)
+                and self.router.route_pair(V1, bend, self.pad("C12.1"))):
+            self.unrouted.append(f"{V1}: U1.50 (VREG_FB) to C12.1")
+        self.feedback_length = sum(track.length for track in self.router.tracks[tracks_before:])
+        inductor_output = next(pad for pad, net in circuit.INDUCTOR_PADS.items() if net == V1)
+        output = [self.pad("C12.1"), self.pad(f"L1.{inductor_output}"), self.pad("C13.1"),
+                  self.pad(f"{circuit.CORE_TEST_PAD}.1")]
         failed = self.router.route_net(V1, output, wide=True)
         self.unrouted += [f"{V1}: {name}" for name in failed]
-        feedback_pin = self.pad("U1.50").centre
-        island_via = min((via for via in self.router.vias if via.net == V1),
-                         key=lambda via: math.dist((via.x, via.y), feedback_pin))
-        if not self.router.route_to_via(V1, output, island_via, wide=True):
-            self.unrouted.append(f"{V1}: regulator output to the island")
-        self.on_plane.update(output)
+        self.to_via(self.pad(f"L1.{inductor_output}"), via["core_out"], wide=True)
+        link_start = Pad("core_out", V1, (via["core_out"].x, via["core_out"].y) * 2, BOTH_LAYERS)
+        self.to_via(link_start, via["core_in"], wide=True)
+        self.on_plane.update(output + [self.pad(name) for name in ("C11.1", "C11.2", "C12.2")])
+
+    def hand_via(self, net: str, x: float, y: float) -> Via:
+        snapped = self.router.snapped(x, y)
+        self.router.add_via(net, *snapped)
+        return Via(net, *snapped)
+
+    def to_via(self, pad: Pad, via: Via, wide: bool = False) -> None:
+        if not self.router.route_to_via(via.net, [pad], via, wide):
+            self.unrouted.append(f"{via.net}: {pad.name} to the via at ({via.x:.1f}, {via.y:.1f})")
 
     def net(self, net: str, wide: bool = False) -> None:
         failed = self.router.route_net(net, self.by_net[net], wide)
@@ -294,8 +352,10 @@ def route(board: pcbnew.BOARD, setup: Setup) -> RoutingResult:
     router = Router(spec["width"], spec["height"], spec["corner_radius"], setup.rules)
     plan = _Plan(router, _load_obstacles(board, router), setup)
     plan.exposed_pad_vias()
+    plan.core_regulator()
+    for net in REGULATOR_NEIGHBOURS:
+        plan.net(net)
     plan.mcu_supply()
-    plan.regulator_output()
     plan.crystal_ground()
     plan.net("RUN")
     for name in EARLY_ESCAPES:
@@ -306,7 +366,7 @@ def route(board: pcbnew.BOARD, setup: Setup) -> RoutingResult:
     plan.plane_fan_out()
     plan.mcu_escapes()
     plan.signals()
-    return RoutingResult(router, plan.unrouted)
+    return RoutingResult(router, plan.unrouted, plan.feedback_length)
 
 
 def write_copper(board: pcbnew.BOARD, router: Router) -> None:
@@ -333,12 +393,87 @@ def _point(x: float, y: float) -> pcbnew.VECTOR2I:
     return pcbnew.VECTOR2I(pcbnew.FromMM(x), pcbnew.FromMM(y))
 
 
-def check_sensitive_lengths(router: Router) -> None:
+def check_sensitive_lengths(result: RoutingResult) -> None:
+    router = result.router
     for net, limit in LENGTH_LIMIT.items():
         length = router.net_length(net)
         assert 0 < length <= limit, f"{net} is {length:.2f} mm long, limit {limit} mm"
+    assert 0 < result.feedback_length <= FEEDBACK_LENGTH_LIMIT, \
+        f"VREG_FB to COUT is {result.feedback_length:.2f} mm, limit {FEEDBACK_LENGTH_LIMIT} mm"
     for net in NO_VIA_NETS:
         vias = sum(via.net == net for via in router.vias)
         assert vias == 0, f"{net} changes layer {vias} times"
     mismatch = abs(usb_path_length(router, "P") - usb_path_length(router, "N"))
     assert mismatch <= USB_PAIR_MISMATCH_LIMIT, f"USB D+ and D- differ by {mismatch:.2f} mm"
+    gap = min(_segment_distance(a, b) for a in router.tracks if a.net == "VREG_AVDD"
+              for b in router.tracks if b.net == "VREG_LX")
+    assert gap >= AVDD_TO_LX_MIN_DISTANCE, f"VREG_AVDD runs {gap:.2f} mm from VREG_LX, limit {AVDD_TO_LX_MIN_DISTANCE} mm"
+
+
+def regulator_keepouts(board: pcbnew.BOARD) -> list[tuple]:
+    """Rectangles with no copper on the top and the two inner layers (RP2350 datasheet 6.3.8): the inductor,
+    and the VREG_LX track from its pin to the inductor."""
+    margin = REGULATOR_KEEPOUT_MARGIN
+    inductor = _rect_around([_rect(pad.GetBoundingBox()) for pad in board.FindFootprintByReference("L1").Pads()])
+    lx_pin = next(pad for pad in board.FindFootprintByReference("U1").Pads() if pad.GetNumber() == "48")
+    lx_x, _ = circuit.mcu_pin_xy(48)
+    left, top, right, bottom = inductor
+    return [(left - margin, top - margin, right + margin, bottom + margin),
+            (lx_x - margin, bottom + margin, lx_x + margin, _rect(lx_pin.GetBoundingBox())[3])]
+
+
+def inductor_gap(board: pcbnew.BOARD) -> tuple:
+    """The space between the inductor's two pads, where the bottom-layer ground pour must not run."""
+    pads = sorted((_rect(pad.GetBoundingBox()) for pad in board.FindFootprintByReference("L1").Pads()))
+    (_, top, first_right, bottom), (second_left, second_top, _, _) = pads
+    assert second_left > first_right and abs(second_top - top) < 0.01, "L1 is expected with its pads side by side in x"
+    return first_right, top, second_left, bottom
+
+
+def _rect_around(rects: list[tuple]) -> tuple:
+    return (min(r[0] for r in rects), min(r[1] for r in rects), max(r[2] for r in rects), max(r[3] for r in rects))
+
+
+def check_regulator_keepout(router: Router, keepouts: list[tuple]) -> None:
+    """No via and no top-layer track under the inductor or the VREG_LX track (RP2350 datasheet 6.3.8)."""
+    for rect in keepouts:
+        for via in router.vias:
+            assert not _circle_meets_rect(via.x, via.y, router.rules.via_diameter / 2, rect), \
+                f"{via.net} via at ({via.x:.2f}, {via.y:.2f}) under the regulator inductor or VREG_LX"
+        for track in router.tracks:
+            if track.layer == FRONT:
+                assert not _segment_meets_rect(track, rect), f"{track.net} track under the regulator inductor or VREG_LX"
+
+
+def _point_segment_distance(point: tuple[float, float], start: tuple[float, float], end: tuple[float, float]) -> float:
+    dx, dy = end[0] - start[0], end[1] - start[1]
+    length_squared = dx * dx + dy * dy
+    t = 0.0 if length_squared == 0 else max(0.0, min(1.0, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy)
+                                                     / length_squared))
+    return math.dist(point, (start[0] + t * dx, start[1] + t * dy))
+
+
+def _cross(o: tuple[float, float], a: tuple[float, float], b: tuple[float, float]) -> float:
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+
+def _segment_distance(a, b) -> float:
+    """Centre-line distance between two track segments, seen from above: zero where they cross."""
+    if (_cross(a.start, a.end, b.start) * _cross(a.start, a.end, b.end) < 0
+            and _cross(b.start, b.end, a.start) * _cross(b.start, b.end, a.end) < 0):
+        return 0.0
+    return min(_point_segment_distance(a.start, b.start, b.end), _point_segment_distance(a.end, b.start, b.end),
+               _point_segment_distance(b.start, a.start, a.end), _point_segment_distance(b.end, a.start, a.end))
+
+
+def _circle_meets_rect(x: float, y: float, radius: float, rect: tuple) -> bool:
+    left, top, right, bottom = rect
+    return math.dist((x, y), (min(max(x, left), right), min(max(y, top), bottom))) < radius
+
+
+def _segment_meets_rect(track, rect: tuple) -> bool:
+    """True if the track's copper reaches into the rectangle (sampled every 0.05 mm along its centre line)."""
+    steps = max(1, math.ceil(track.length / 0.05))
+    return any(_circle_meets_rect(track.start[0] + (track.end[0] - track.start[0]) * i / steps,
+                                  track.start[1] + (track.end[1] - track.start[1]) * i / steps,
+                                  track.width / 2, rect) for i in range(steps + 1))
