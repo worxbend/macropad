@@ -233,9 +233,9 @@ pub fn draw_pad(canvas: &mut Canvas, origin: (i32, i32), shot: &Shot) {
         inputs.right_switch,
     );
     let layer = &LAYERS[shot.layer_index];
-    for key in 0..KEY_COUNT {
+    for (key, binding) in layer.keys.iter().enumerate() {
         let down = inputs.keys & (1 << key) != 0;
-        draw_key(canvas, on_pad(origin, key_centre_um(key)), layer.keys[key].label, down);
+        draw_key(canvas, on_pad(origin, key_centre_um(key)), binding.label, down);
     }
 }
 
