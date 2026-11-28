@@ -1,0 +1,6 @@
+{
+  "ignoredFiles": [
+    "docs/images/**",
+    "cad/exports/**"
+  ]
+}
