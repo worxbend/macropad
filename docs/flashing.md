@@ -13,9 +13,9 @@ design's known guesses, most likely first. It is not a record of faults somebody
 To build it yourself:
 
 1. Install Rust with [rustup](https://rustup.rs).
-2. Add the chip's target: `rustup target add thumbv8m.main-none-eabihf`.
-3. Run `make firmware` in the repository root.
-4. The last lines must say `bootable RP2350 image` and name `dist/macropad.uf2`.
+2. Run `make firmware` in the repository root. The first run installs Rust 1.100.0 and the chip's
+   target, as pinned in `firmware/rust-toolchain.toml`.
+3. The last lines must say `bootable RP2350 image` and name `dist/macropad.uf2`.
 
 ## First flash
 

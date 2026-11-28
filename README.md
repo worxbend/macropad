@@ -195,7 +195,7 @@ Four layers. Tap the left knob for the next layer. The display always shows the 
 
 | For | You need |
 |---|---|
-| Firmware | Rust (stable) with `rustup target add thumbv8m.main-none-eabihf`, Python 3.11 or newer, `make` |
+| Firmware | Rust through rustup: `firmware/rust-toolchain.toml` pins 1.100.0 and the chip target. Python 3.11 or newer, `make` |
 | Simulator pictures | The above plus ImageMagick (`magick`) |
 | Case | Python 3.12 and a virtual environment in `cad/.venv` (set-up in [cad/README.md](cad/README.md#build)). `rsvg-convert` for the PDF and PNG drawings |
 | PCB | Docker. All KiCad work runs in the pinned image `kicad/kicad:9.0.9` through `pcb/kicad.sh` |

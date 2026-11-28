@@ -1,0 +1,5 @@
+# Pinned so a new clippy release cannot break `make firmware` overnight; rustup installs this on first use.
+[toolchain]
+channel = "1.100.0"
+components = ["clippy", "rustfmt"]
+targets = ["thumbv8m.main-none-eabihf"]

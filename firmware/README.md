@@ -125,9 +125,11 @@ for flash mode. Colours are brightened for the screen.*
 ## Build and flash
 
 ```sh
-rustup target add thumbv8m.main-none-eabihf
 make            # tests, lint, board check, and dist/macropad.uf2
 ```
+
+`rust-toolchain.toml` pins Rust 1.100.0 with clippy, rustfmt and the chip target; rustup installs
+them on the first build.
 
 Single steps: `make test`, `make lint`, `make uf2`, `make ui-images` (needs ImageMagick for the GIF).
 
